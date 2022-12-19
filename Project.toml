@@ -1,0 +1,13 @@
+name = "SparseIdentification"
+uuid = "9a34ec7f-1978-43d1-92b5-2e42bdcf4e44"
+authors = ["Michael Kraus"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
