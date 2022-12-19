@@ -1,13 +1,17 @@
 module SparseIdentification
 
-export MonomialBasis, TrigonometricBasis, CompoundBasis
+export PolynomialBasis, TrigonometricBasis, CompoundBasis
 export evaluate
-export JuliaLeastSquare, OptimSolver
-export solve
-export sparse_galerkin, sparsify_dynamics
 
 include("basis.jl")
+
+export JuliaLeastSquare, OptimSolver
+export solve
+
 include("solvers.jl")
+
+export sparse_galerkin, sparsify_dynamics
+
 include("sparse_galerkin.jl")
 include("sparsify_dynamics.jl")
 
