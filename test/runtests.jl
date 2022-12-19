@@ -1,6 +1,3 @@
-using SparseIdentification
-using Test
+using SafeTestsets
 
-@testset "SparseIdentification.jl" begin
-    # Write your tests here.
-end
+@safetestset "Solvers                                                                         " begin include("solvers_tests.jl") end
