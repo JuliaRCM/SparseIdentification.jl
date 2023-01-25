@@ -23,7 +23,7 @@ struct OptimSolver <: NonlinearSolver
 end
 
 function optimize(loss, x₀, solver::OptimSolver)
-    result = Optim.optimize(loss, x₀, solver.method)
+    result = Optim.optimize(loss, x₀, solver.method, Optim.Options(iterations=483))
     println(result)
     return result.minimizer
 end
