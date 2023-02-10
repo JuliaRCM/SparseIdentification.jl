@@ -22,7 +22,7 @@ usesine = false
 # generate basis
 basis = CompoundBasis()
 
-# initial datra
+# initial data
 x₀ = [2., 0.]
 
 # 2D system 
@@ -65,7 +65,7 @@ for i in axes(ẋ,2)
 end
 
 # add noise
-# dx .+= eps .* randn(size(x))
+ẋ .+= eps .* randn(size(x))
 
 # println("x = ", x)
 # println("ẋ = ", ẋ)
@@ -87,12 +87,12 @@ println("Pool Data...")
 print("Sparsify Dynamics...")
 
 # Ξ = sparsify_dynamics(Θ, ẋ, lambda, 0)
-Ξ = sparsify_dynamics(Θ, ẋ, lambda)
-# Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
+#Ξ = sparsify_dynamics(Θ, ẋ, lambda)
+ Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
 
-println(Ξ)
+#println(Ξ)
 
-println("   maximum(Ξ) = ", maximum(Ξ))
+#println("   maximum(Ξ) = ", maximum(Ξ))
 
 
 # ----------------------------------------
@@ -103,7 +103,7 @@ println("Integrate Identified System...")
 
 p = (Ξ = Ξ, basis = basis)
 
-prob_approx = ODEProblem(sparse_galerkin, x₀, tspan, p)
+prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
 xid = ODE.solve(prob_approx, ode4(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
 
@@ -123,3 +123,8 @@ plot!(p2, xid.t, xid[2,:], label = "Identified")
 
 plot(p1, p2)
 savefig("linear2d.png")
+
+p3 = plot(data[1,:], data[2,:], label="true")
+p3 = scatter!(xid[1,:], xid[2,:], label="approx", linestyle =:dash, mc=:red, ms=2, ma=0.5, xlabel ="X1", ylabel="X2")
+display(plot(p3, show = true, reuse = false))
+savefig("linear2d_fig2.png")

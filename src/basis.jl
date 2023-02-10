@@ -19,10 +19,10 @@ struct PolynomialBasis <: AbstractBasis
     p::Int
 end
 
-
-_prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
-_prod(a, b) = a .* b
-_prod(a) = a
+# already defined in util.jl file
+# _prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
+# _prod(a, b) = a .* b
+# _prod(a) = a
 
 function _evaluate_polynomial(data, p, inds...)
     # number of degrees of freedom
