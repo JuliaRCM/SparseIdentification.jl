@@ -1,6 +1,12 @@
 module SparseIdentification
 
-export _prod, calculate_nparams, hamiltonian, hamil_trig
+using RuntimeGeneratedFunctions
+using Symbolics
+
+RuntimeGeneratedFunctions.init(@__MODULE__)
+
+
+export calculate_nparams, hamiltonian, hamil_trig
 
 include("util.jl")
 
@@ -18,22 +24,38 @@ export solve
 
 include("solvers.jl")
 
-export sparse_galerkin!, sparsify_dynamics, lorenz, sparsify_hamiltonian_dynamics
+export sparsify, lorenz, sparsify_hamiltonian_dynamics
 
-include("sparse_galerkin.jl")
-include("sparsify_dynamics.jl")
 include("lorenz.jl")
 
 export hamilGradient!, hamiltonianFunction
 
-include("hamiltonianGenerator.jl")
+# include("hamiltonianGenerator.jl")
 
 export hamil_basis_maker, hamiltonian_basis_concat
 
 include("hamiltonian_basis_maker.jl")
 
-export hamilGrad_func_builder, hamilGradient_general!
 
-include("hamilGradGen2.jl")
+
+
+
+export TrainingData
+
+include("trainingdata.jl")
+
+export SparsificationMethod, VectorField
+
+include("methods/method.jl")
+include("methods/vectorfield.jl")
+
+export SINDy, SINDyVectorField
+
+include("methods/sindy.jl")
+
+export HamiltonianSINDy, HamiltonianSINDyVectorField
+
+include("methods/hamiltonian.jl")
+include("methods/hamiltonian_sindy.jl")
 
 end

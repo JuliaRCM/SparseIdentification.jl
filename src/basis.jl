@@ -94,8 +94,8 @@ struct CompoundBasis{BT <: Tuple} <: AbstractBasis
     CompoundBasis(bases...) = new{typeof(bases)}(bases)
 end
 
-function CompoundBasis(p::Int = 5; trigonometric::Int = 0)
-    bases = Tuple([PolynomialBasis(i) for i in 0:p])
+function CompoundBasis(; polyorder::Int = 5, trigonometric::Int = 0)
+    bases = Tuple([PolynomialBasis(i) for i in 0:polyorder])
 
     if trigonometric > 0
         bases = (bases..., TrigonometricBasis(trigonometric))
