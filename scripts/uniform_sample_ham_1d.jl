@@ -133,13 +133,14 @@ for i in 1:5
     data_sindy = ODE.solve(prob_sindy, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
     p1 = plot(xlabel = "Time", ylabel = "q₁")
-    plot!(p1, data_reference.t, data_reference[1,:], markershape=:circle, label = "Data q₁")
-    plot!(p1, data_sindy.t, data_sindy[1,:], label = "Identified q₁")
-    
-    p2 = plot(xlabel = "Time", ylabel = "p₁")
-    plot!(p2, data_reference.t, data_reference[2,:], markershape=:circle, label = "Data p₁")
-    plot!(p2, data_sindy.t, data_sindy[2,:], label = "Identified p₁")
+    scatter!(p1, data_reference.t, data_reference[1,:], label = "Data q₁")
+    scatter!(p1, data_sindy.t, data_sindy[1,:], markershape=:xcross, label = "Identified q₁")
+    plot!(size=(1000,1000))
 
-    plot(p1, p2, title="Analytical vs Calculated gradient in a 2D system")
-    savefig("uniform_sample_ham_1d_$i.png")
+    p2 = plot(xlabel = "Time", ylabel = "p₁")
+    scatter!(p2, data_reference.t, data_reference[2,:], label = "Data p₁")
+    scatter!(p2, data_sindy.t, data_sindy[2,:], markershape=:xcross, label = "Identified p₁")
+    plot!(size=(1000,1000))
+    display(plot(p1, p2, title="Analytical vs Calculated gradient in a 2D system"))
+    #savefig("uniform_sample_ham_1d_$i.png")
 end
