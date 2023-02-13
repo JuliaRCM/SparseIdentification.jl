@@ -103,7 +103,7 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     # TODO: Check that first dimension x is even
 
     # dimension of system
-    d = ndims(data.x) ÷ 2
+    d = size(data.x, 1) ÷ 2
 
     # returns function that builds hamiltonian gradient through symbolics
     # " the function hamilGradient_general!() needs this "
