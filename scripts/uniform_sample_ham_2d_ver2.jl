@@ -54,7 +54,7 @@ grad_H_ana(x, p, t) = grad_H_ana(x)
 println("Generate Training Data...")
 
 # number of samples
-num_samp = 8
+num_samp = 10
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
@@ -107,12 +107,6 @@ ẋid = zero(ẋ)
 for j in axes(ẋid, 2)
     @views vectorfield(ẋid[:,j], x[:,j])
 end
-
-# calculate difference between answers
-ẋerr = sqrt.((ẋid .- ẋ).^2 ./ ẋ.^2)
-
-plot(heatmap(ẋerr), title="Relative difference b/w analytical and calculated gradient in a 2D system", titlefontsize=8)
-
 
 # ----------------------------------------
 # Plot some solutions
