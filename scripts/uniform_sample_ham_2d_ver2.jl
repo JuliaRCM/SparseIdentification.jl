@@ -22,15 +22,23 @@ println("Setting up...")
 # define the number of variables, q,p in this case gives 2 variables
 const d = 1
 
-# 2D system with 4 variables [q₁, q₂, p₁, p₂]
+#############################################################
+#############################################################
+# IMP SETUP NOTE: 2D system with 4 variables [q₁, q₂, p₁, p₂]
 const nd = 4d
+#############################################################
+#############################################################
 
 # search space up to polyorder polynomials (highest polynomial order)
 const polyorder = 3 
 
+######################################################################
+######################################################################
 # maximum wave number of trig basis for function library to explore
 # trig_wave_num can be adjusted if higher frequency arguments expected
-const trig_wave_num = 3
+const trig_wave_num = 0
+######################################################################
+######################################################################
 
 # 1 dim each of [q₁, q₂, p₁, p₂] gives 4*d = 4 variables
 out = zeros(nd)
@@ -43,8 +51,8 @@ m = 1
 # H_ana(x, p, t) = ϵ * x[1]^2 + ϵ * x[2]^2 + 1/(2*m) * x[3]^2 1/(2*m) * x[4]^2
 
 # Gradient function of the 2D hamiltonian
-#grad_H_ana(x) = [x[2]; -2ϵ * x[1]]
-grad_H_ana(x) = [x[3]; x[4]; sin(x[1]); sin(x[2])]
+grad_H_ana(x) = [x[3]; x[4]; -2ϵ * x[1]; -2ϵ * x[2]]
+#grad_H_ana(x) = [x[3]; x[4]; sin(x[1]); sin(x[2])]
 grad_H_ana(x, p, t) = grad_H_ana(x)
 
 # ------------------------------------------------------------
@@ -107,11 +115,6 @@ ẋid = zero(ẋ)
 for j in axes(ẋid, 2)
     @views vectorfield(ẋid[:,j], x[:,j])
 end
-
-# calculate difference between answers
-ẋerr = sqrt.((ẋid .- ẋ).^2 ./ ẋ.^2)
-
-plot(heatmap(ẋerr), title="Relative difference b/w analytical and calculated gradient in a 2D system", titlefontsize=8)
 
 
 # ----------------------------------------
