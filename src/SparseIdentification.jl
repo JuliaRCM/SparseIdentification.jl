@@ -2,6 +2,8 @@ module SparseIdentification
 
 using RuntimeGeneratedFunctions
 using Symbolics
+using DifferentialEquations
+using ODE
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
