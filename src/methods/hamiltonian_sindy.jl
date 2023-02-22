@@ -1,27 +1,29 @@
 
-struct HamiltonianSINDy{T} <: SparsificationMethod
+struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
+    analytical_∇H::GHT
+
     λ::T
-    ϵ::T
+    noise_level::T
     nloops::Int
 
     polyorder::Int
     trigonometric::Int
 
-    function HamiltonianSINDy(;
-        lambda::T = DEFAULT_LAMBDA,
+    function HamiltonianSINDy(analytical_∇H::GHT;
+        λ::T = DEFAULT_LAMBDA,
         noise_level::T = DEFAULT_NOISE_LEVEL,
         nloops = DEFAULT_NLOOPS,
         polyorder::Int = 3,
-        trigonometric::Int = 0) where {T}
+        trigonometric::Int = 0) where {T, GHT <: Base.Callable}
 
-        new{T}(lambda, noise_level, nloops, polyorder, trigonometric)
+        new{T, GHT}(analytical_∇H, λ, noise_level, nloops, polyorder, trigonometric)
     end
 end
 
 
 function sparsify(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
     # add noise
-    ẋnoisy = ẋ .+ method.ϵ .* randn(size(ẋ))
+    ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
 
     # dimension of system
     nd = size(x,1)
@@ -144,7 +146,7 @@ end
 ################################################################################################
 function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
     # add noise
-    ẋnoisy = ẋ .+ method.ϵ .* randn(size(ẋ))
+    ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
 
     # dimension of system
     nd = size(x,1)
@@ -168,26 +170,6 @@ function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
         
         data_ref = zero(x)
 
-        # Gradient function of the 2D hamiltonian
-        ϵ = 0.5
-        m = 1 # m₁=m₂
-        l₁ = 1
-        l₂ = 1
-        g = 9.81
-
-        h₁(x) = (x[3]*x[4]*sin(x[1]-x[2])) / (l₁*l₂*(m + m*(sin(x[1]-x[2]))^2))
-        h₂(x) = m * l₂^2 * x[3]^2 + (m+m) * l₁^2 * x[4]^2 - 2*m*l₁*l₂*x[3]*x[4]*cos(x[1]-x[2]) /
-        2*l₁^2 *l₂^2 (m + m * (sin(x[1]-x[2]))^2)^2
-
-        grad_H_ana(x) = [(l₂*x[3] - l₁*x[4] * cos(x[1]-x[2])) / (l₁^2 * l₂ * (m + m*(sin(x[1]-x[2]))^2)); 
-                 (-m*l₂*x[3] * cos(x[1]-x[2]) + (m+m)*(l₁*x[4])) / (m * l₁ * l₂^2 * (m + m*(sin(x[1]-x[2]))^2));
-                 -(m+m)*g*l₁*sin(x[1]) - h₁(x) + h₂(x) * sin(2*(x[1]-x[2]));
-                 -m*g*l₂*sin(x[2]) + h₁(x) - h₂(x) * sin(2*(x[1]-x[2]))];
-
-        #grad_H_ana(x) = [x[3]; x[4]; -2ϵ * x[1]; -2ϵ * x[2]]
-
-        grad_H_ana(x, p, t) = grad_H_ana(x)
-
         # initialization for the SINDy coefficients result
         res = zeros(eltype(a), axes(ẋnoisy))
         out = zeros(eltype(a), nd)
@@ -197,7 +179,7 @@ function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
             res[:,j] .= out
             eulerX[:,j] .= x[:,j] + EulerTimeStep * res[:,j]
 
-            prob_ref = ODEProblem(grad_H_ana, x[:,j], tspan)
+            prob_ref = ODEProblem(method.analytical_∇H, x[:,j], tspan)
             sol = ODE.solve(prob_ref, Tsit5(), dt = 0.01, abstol = 1e-10, reltol = 1e-10, saveat = trange)
             data_ref[:,j] = sol.u[2]
         end
