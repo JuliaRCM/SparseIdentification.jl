@@ -1,7 +1,18 @@
-#This file uses uniform sampling to find the SINDY solution of a hamiltonian system in 1D and 2D
+# The Planar Circular Restricted Three-Body Problem (PCR3BP) is 
+# a special case of the n-body problem in which two massive bodies 
+# orbit around their center of mass while a third, massless body moves 
+# in their gravitational field. The motion of the massless body is restricted 
+# to the plane of the two massive bodies and is influenced only by their 
+# gravitational forces. These equations describe the motion of the massless body 
+# in the plane of the massive bodies. The solutions of these equations give the 
+# trajectory of the massless body as it moves under the influence of the gravitational 
+# field of the two massive bodies. The PCR3BP is a highly nonlinear problem and does not 
+# have an analytical solution, but numerical methods can be used to approximate the solutions of these equations.
+
+
 using DifferentialEquations
-using ODE
 using Distributions
+using ODE
 using Plots
 using Random
 using SparseIdentification
@@ -35,27 +46,27 @@ const polyorder = 3
 ######################################################################
 # maximum wave number of trig basis for function library to explore
 # trig_wave_num can be adjusted if higher frequency arguments expected
-const trig_wave_num = 3
+const trig_wave_num = 0
 ######################################################################
 ######################################################################
 
 # 1 dim each of [q₁, q₂, p₁, p₂] gives 4*d = 4 variables
 out = zeros(nd)
 
-# initialize analytical function, keep ϵ bigger than lambda so system is identifiable
-m = 1 # m₁=m₂
-l₁ = 1
-l₂ = 1
-g = 9.81
+# initialize all variables to be above sparsification parameter (λ)
+G = 6.6743e-11 # gravitational constant
+big_m = 1000 # masses of the two massive bodies, assumed equal
+small_m = 0.01 # mass of assumed masslesss body
+dist = 1 # distances between the masless body and the two massive bodies, assumed equal
+R = 10 # distance between the two massive bodies
 
-h₁(x) = (x[3]*x[4]*sin(x[1]-x[2])) / (l₁*l₂*(m + m*(sin(x[1]-x[2]))^2))
-h₂(x) = (m * l₂^2 * x[3]^2 + (m+m) * l₁^2 * x[4]^2 - 2*m*l₁*l₂*x[3]*x[4]*cos(x[1]-x[2])) / 
-        (2*l₁^2 * l₂^2 * (m + m * (sin(x[1]-x[2]))^2)^2)
+# Gradient function of the 2D hamiltonian
+x_cm = -big_m * R / (big_m + big_m)
+grad_H_ana(x) = [x[3]; 
+                x[4]; 
+                -G * (big_m + big_m) * x[1] / dist^3 - G * small_m * (x[1] - x_cm) / dist^3; 
+                -G * (big_m + big_m) * x[2] / dist^3 - G * small_m * x[2] / dist^3]
 
-grad_H_ana(x) = [(l₂*x[3] - l₁*x[4] * cos(x[1]-x[2])) / (l₁^2 * l₂ * (m + m*(sin(x[1]-x[2]))^2)); 
-                 (-m*l₂*x[3] * cos(x[1]-x[2]) + (m+m)*(l₁*x[4])) / (m * l₁ * l₂^2 * (m + m*(sin(x[1]-x[2]))^2));
-                 -(m+m)*g*l₁*sin(x[1]) - h₁(x) + h₂(x) * sin(2*(x[1]-x[2]));
-                 -m*g*l₂*sin(x[2]) + h₁(x) - h₂(x) * sin(2*(x[1]-x[2]))];
 grad_H_ana(x, p, t) = grad_H_ana(x)
 
 # ------------------------------------------------------------
@@ -65,7 +76,7 @@ grad_H_ana(x, p, t) = grad_H_ana(x)
 println("Generate Training Data...")
 
 # number of samples
-num_samp = 10
+num_samp = 8
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
@@ -92,7 +103,7 @@ tdata = TrainingData(x, ẋ)
 # ----------------------------------------
 
 # choose SINDy method
-# (lambda parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
+# (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
 method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
 
 # compute vector field
