@@ -43,7 +43,7 @@ const trig_wave_num = 0
 # 1 dim each of [q₁, q₂, p₁, p₂] gives 4*d = 4 variables
 out = zeros(nd)
 
-# initialize analytical function, keep ϵ bigger than lambda so system is identifiable
+# initialize analytical function, keep ϵ bigger than λ so system is identifiable
 ϵ = 0.5
 m = 1
 
@@ -89,8 +89,8 @@ tdata = TrainingData(x, ẋ)
 # ----------------------------------------
 
 # choose SINDy method
-# (lambda parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-method = HamiltonianSINDy(lambda = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
+# (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
+method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
 
 # compute vector field
 vectorfield = VectorField(method, tdata)
