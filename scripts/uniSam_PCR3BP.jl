@@ -55,17 +55,23 @@ out = zeros(nd)
 
 # initialize all variables to be above sparsification parameter (λ)
 G = 6.6743e-11 # gravitational constant
-big_m = 1000 # masses of the two massive bodies, assumed equal
+big_m = 100 # masses of the two massive bodies, assumed equal
 small_m = 0.01 # mass of assumed masslesss body
 dist = 1 # distances between the masless body and the two massive bodies, assumed equal
 R = 10 # distance between the two massive bodies
 
 # Gradient function of the 2D hamiltonian
-x_cm = -big_m * R / (big_m + big_m)
-grad_H_ana(x) = [x[3]; 
-                x[4]; 
-                -G * (big_m + big_m) * x[1] / dist^3 - G * small_m * (x[1] - x_cm) / dist^3; 
-                -G * (big_m + big_m) * x[2] / dist^3 - G * small_m * x[2] / dist^3]
+# x_cm = -big_m * R / (big_m + big_m)
+# grad_H_ana(x) = [x[3]; 
+#                 x[4]; 
+#                 -G * (big_m + big_m) * x[1] / (dist^3) - G * small_m * (x[1] - x_cm) / dist^3; 
+#                 -G * (big_m + big_m) * x[2] / (dist^3) - G * small_m * x[2] / dist^3]
+alpha = 1
+wₚ = 1
+grad_H_ana(x) = [alpha*x[1]; 
+                wₚ*x[4]; 
+                -alpha*x[3]; 
+                -wₚ*x[2]]
 
 grad_H_ana(x, p, t) = grad_H_ana(x)
 
