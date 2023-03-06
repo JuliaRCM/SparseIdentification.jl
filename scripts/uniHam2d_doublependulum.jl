@@ -29,13 +29,13 @@ const nd = 4d
 #############################################################
 
 # search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 3 
+const polyorder = 3
 
 ######################################################################
 ######################################################################
 # maximum wave number of trig basis for function library to explore
 # trig_wave_num can be adjusted if higher frequency arguments expected
-const trig_wave_num = 3
+const trig_wave_num = 5
 ######################################################################
 ######################################################################
 
@@ -48,14 +48,28 @@ l₁ = 1
 l₂ = 1
 g = 9.81
 
-h₁(x) = (x[3]*x[4]*sin(x[1]-x[2])) / (l₁*l₂*(m + m*(sin(x[1]-x[2]))^2))
-h₂(x) = (m * l₂^2 * x[3]^2 + (m+m) * l₁^2 * x[4]^2 - 2*m*l₁*l₂*x[3]*x[4]*cos(x[1]-x[2])) / 
-        (2*l₁^2 * l₂^2 * (m + m * (sin(x[1]-x[2]))^2)^2)
+# h₁(x) = (x[3]*x[4]*sin(x[1]-x[2])) / (l₁*l₂*(m + m*(sin(x[1]-x[2]))^2))
+# h₂(x) = (m * l₂^2 * x[3]^2 + (m+m) * l₁^2 * x[4]^2 - 2*m*l₁*l₂*x[3]*x[4]*cos(x[1]-x[2])) / 
+#         (2*l₁^2 * l₂^2 * (m + m * (sin(x[1]-x[2]))^2)^2)
 
-grad_H_ana(x) = [(l₂*x[3] - l₁*x[4] * cos(x[1]-x[2])) / (l₁^2 * l₂ * (m + m*(sin(x[1]-x[2]))^2)); 
-                 (-m*l₂*x[3] * cos(x[1]-x[2]) + (m+m)*(l₁*x[4])) / (m * l₁ * l₂^2 * (m + m*(sin(x[1]-x[2]))^2));
-                 -(m+m)*g*l₁*sin(x[1]) - h₁(x) + h₂(x) * sin(2*(x[1]-x[2]));
-                 -m*g*l₂*sin(x[2]) + h₁(x) - h₂(x) * sin(2*(x[1]-x[2]))];
+# grad_H_ana(x) = [(l₂*x[3] - l₁*x[4] * cos(x[1]-x[2])) / (l₁^2 * l₂ * (m + m*(sin(x[1]-x[2]))^2)); 
+#                  (-m*l₂*x[3] * cos(x[1]-x[2]) + (m+m)*(l₁*x[4])) / (m * l₁ * l₂^2 * (m + m*(sin(x[1]-x[2]))^2));
+#                  -(m+m)*g*l₁*sin(x[1]) - h₁(x) + h₂(x) * sin(2*(x[1]-x[2]));
+#                  -m*g*l₂*sin(x[2]) + h₁(x) - h₂(x) * sin(2*(x[1]-x[2]))];
+
+l = 1 # assume both pendulums have same length
+
+# grad_H_ana(x) = [(m*l*l * x[3] * x[4] * sin(x[1] - x[2]) - (m + m) * g * l * sin(x[1]) - m * l * l * x[4]^2 * sin(x[1] - x[2]) * cos(x[1] - x[2])) / (l^2 * (m + m * sin(x[1] - x[2])^2));
+#                  (m * l * l * (x[3]^2 * sin(x[1] - x[2]) - g * sin(x[2]) + x[4]^2 * sin(x[1] - x[2]) * cos(x[1] - x[2]))) / (l^2 * (m + m * sin(x[1] - x[2])^2));
+#                  ((m + m) * g * l * sin(x[1]) - m * l * l * (x[4]^2 * sin(x[1] - x[2]) - x[3] * x[4] * sin(x[1] - x[2]) * cos(x[1] - x[2]))) / (l^2 * (m + m * sin(x[1] - x[2])^2));
+#                  ((m + m) * g * l * sin(x[2]) - m * l * l * (x[3]^2 * sin(x[1] - x[2]) - x[3] * x[4] * sin(x[1] - x[2]) * cos(x[1] - x[2]))) / (l^2 * (m + m * sin(x[1] - x[2])^2))]
+
+
+grad_H_ana(x) = [(m+m) * l^2 * x[3] + m * l^2 * x[4] * cos(x[1]-x[2]);
+                 m * l^2 * x[4] + m *l^2 * x[3] * cos(x[1]-x[2]);
+                 - (m * l^2 * x[3] * x[4] * -sin(x[1]-x[2]) - (m + m) * g * l * -sin(x[1]));
+                 - (m * l^2 * x[3] * x[4] * -sin(x[1]-x[2]) - m * g * l * -sin(x[2]))]
+
 grad_H_ana(x, p, t) = grad_H_ana(x)
 
 # ------------------------------------------------------------
@@ -65,7 +79,7 @@ grad_H_ana(x, p, t) = grad_H_ana(x)
 println("Generate Training Data...")
 
 # number of samples
-num_samp = 10
+num_samp = 12
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
@@ -93,10 +107,10 @@ tdata = TrainingData(x, ẋ)
 
 # choose SINDy method
 # (lambda parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
+method = HamiltonianSINDy(grad_H_ana, λ = 0.0005, noise_level = 0.0005, polyorder = polyorder, trigonometric = trig_wave_num)
 
 # compute vector field
-vectorfield = VectorField(method, tdata)
+vectorfield = VectorField(method, tdata, solver = ConjugateGradient())
 
 println(vectorfield.coefficients)
 
