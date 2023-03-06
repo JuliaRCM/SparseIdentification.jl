@@ -161,11 +161,12 @@ function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
     function loss(a::AbstractVector)
 
         # initialization for euler solution
-        eulerX = zeros(eltype(a), axes(x))
+        hermiteX = zeros(eltype(a), axes(x))
         EulerTimeStep = 0.01
+        numLoops = 4 # random choice of loop steps
 
         # initialization for anaylitical solution
-        tspan = (0.0, 0.01)
+        tspan = (0.0, EulerTimeStep)
         trange = range(tspan[begin], step = EulerTimeStep, stop = tspan[end])
         
         data_ref = zero(x)
@@ -175,21 +176,27 @@ function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
         out = zeros(eltype(a), nd)
         
         for j in axes(res, 2)
-            ∇H(out, x[:,j], a)
+            ∇H(out, x[:,j], a) # gradient at current (x) values
             res[:,j] .= out
-            eulerX[:,j] .= x[:,j] + EulerTimeStep * res[:,j]
+            hermiteX[:,j] .= x[:,j] .+ EulerTimeStep .* res[:,j] # for first guess use explicit euler
+            
+            for loop = 1:numLoops
+                ∇H(out, (x[:,j] .+ hermiteX[:,j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
+                res[:,j] .= out
+                hermiteX[:,j] .= x[:,j] + EulerTimeStep * res[:,j] # mid point rule for integration to next step
+            end
 
             prob_ref = ODEProblem(method.analytical_∇H, x[:,j], tspan)
-            sol = ODE.solve(prob_ref, Tsit5(), dt = 0.01, abstol = 1e-10, reltol = 1e-10, saveat = trange)
+            sol = ODE.solve(prob_ref, Tsit5(), dt = EulerTimeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
             data_ref[:,j] = sol.u[2]
         end
 
-        mapreduce(y -> y^2, +, data_ref .- eulerX)
+        mapreduce(y -> y^2, +, data_ref .- hermiteX)
     end
     
     # initial guess
     println("Initial Guess...")
-    result = Optim.optimize(loss, coeffs, solver; autodiff = :forward)
+    result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
     coeffs .= result.minimizer
 
     println(result)
@@ -216,7 +223,7 @@ function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
         end
 
         b = coeffs[biginds]
-        result = Optim.optimize(sparseloss, b, solver; autodiff = :forward)
+        result = Optim.optimize(sparseloss, b, solver, Optim.Options(show_trace=true); autodiff = :forward)
         b .= result.minimizer
 
         println(result)
