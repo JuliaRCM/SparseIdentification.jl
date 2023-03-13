@@ -36,7 +36,7 @@ const polyorder = 3
 ######################################################################
 # maximum wave number of trig basis for function library to explore
 # trig_wave_num can be adjusted if higher frequency arguments expected
-const trig_wave_num = 0
+const trig_wave_num = 2
 ######################################################################
 ######################################################################
 
@@ -51,8 +51,8 @@ m = 1
 # H_ana(x, p, t) = ϵ * x[1]^2 + ϵ * x[2]^2 + 1/(2*m) * x[3]^2 1/(2*m) * x[4]^2
 
 # Gradient function of the 2D hamiltonian
-grad_H_ana(x) = [x[3]; x[4]; -2ϵ * x[1]; -2ϵ * x[2]]
-#grad_H_ana(x) = [x[3]; x[4]; sin(x[1]); sin(x[2])]
+# grad_H_ana(x) = [x[3]; x[4]; -2ϵ * x[1]; -2ϵ * x[2]]
+grad_H_ana(x) = [x[3]; x[4]; sin(x[1]); sin(x[2])]
 grad_H_ana(x, p, t) = grad_H_ana(x)
 
 # ------------------------------------------------------------
@@ -73,7 +73,9 @@ samp_range = LinRange(-20, 20, num_samp)
 # stored as matrix with dims [nd,ntime]
 x = zeros(nd, num_samp^nd)
 ẋ = zero(x)
-s = collect(Iterators.product(samp_range,samp_range, samp_range, samp_range))
+
+# s depend on size of nd (dimensions), 4 in the case here so we use samp_range x samp_range x samp_range x samp_range
+s = collect(Iterators.product(samp_range, samp_range, samp_range, samp_range))
 
 for j in eachindex(s)
     x[:,j] .= s[j]
