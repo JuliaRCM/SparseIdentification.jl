@@ -242,21 +242,26 @@ end
 
 
 
+
+
+
+
+
 ################################################################################################
 ################################################################################################
 ################################################################################################
 ################################################################################################
 
-# TODO: 
-# 1. find SINDY graident function on reduced dims, already decide on size of reduced dims
+# TODO: For autoencoder 
+# 0. before this step, pre-decide on size of reduced dims (d) to give to ΔH. 
+    # 0.1 reduced-dim size must be even number for hamiltonians (confirm with Dr. Michael)
+# 1. find SINDY graident function on reduced dims (after encoding), 
     # 1.1 find also nparam and coeffs on reduced dims
 # 2. use autoencoder to reduce dims i.e less numbers of q,p
 # 3. calculate x using SINDY method
 # 4. reverse autoencoder to actual variables
 # 5. find loss function
 function sparsify_three(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
-
-# TODO: remove ẋ, it is unused
 
    # dimension of system
    nd = size(x,1)
@@ -285,7 +290,7 @@ function sparsify_three(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
        data_ref = zero(x)
 
        # initialization for the SINDy coefficients result
-       res = zeros(eltype(a), axes(ẋnoisy))
+       res = zeros(eltype(a), axes(ẋ))
        out = zeros(eltype(a), nd)
        
        for j in axes(res, 2)
@@ -306,8 +311,8 @@ function sparsify_three(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
            data_ref[:,j] = sol.u[2]
        end
 
-       # add noise
-       data_ref_noisy = data_ref .+ method.noise_level .* randn(size(x))
+       # add noise to training data
+       data_ref_noisy = data_ref .+ method.noise_level .* randn(size(data_ref))
 
        mapreduce(y -> y^2, +, data_ref_noisy .- hermiteX)
    end
