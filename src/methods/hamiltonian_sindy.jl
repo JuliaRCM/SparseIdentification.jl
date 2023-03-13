@@ -1,6 +1,6 @@
 
 struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
-    analytical_∇H::GHT
+    analytical_fθ::GHT
 
     λ::T
     noise_level::T
@@ -9,19 +9,19 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
     polyorder::Int
     trigonometric::Int
 
-    function HamiltonianSINDy(analytical_∇H::GHT;
+    function HamiltonianSINDy(analytical_fθ::GHT;
         λ::T = DEFAULT_LAMBDA,
         noise_level::T = DEFAULT_NOISE_LEVEL,
         nloops = DEFAULT_NLOOPS,
         polyorder::Int = 3,
         trigonometric::Int = 0) where {T, GHT <: Base.Callable}
 
-        new{T, GHT}(analytical_∇H, λ, noise_level, nloops, polyorder, trigonometric)
+        new{T, GHT}(analytical_fθ, λ, noise_level, nloops, polyorder, trigonometric)
     end
 end
 
 
-function sparsify(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
+function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     # add noise
     ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
 
@@ -40,7 +40,7 @@ function sparsify(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
         out = zeros(eltype(a), nd)
         
         for j in axes(res, 2)
-            ∇H(out, x[:,j], a)
+            fθ(out, x[:,j], a)
             res[:,j] .= out
         end
 
@@ -91,10 +91,10 @@ end
 struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
     # basis::BT
     coefficients::CT
-    ∇H::GHT
+    fθ::GHT
 
-    function HamiltonianSINDyVectorField(coefficients::CT, ∇H::GHT) where {DT, CT <: AbstractVector{DT}, GHT <: Base.Callable}
-        new{DT,CT,GHT}(coefficients, ∇H)
+    function HamiltonianSINDyVectorField(coefficients::CT, fθ::GHT) where {DT, CT <: AbstractVector{DT}, GHT <: Base.Callable}
+        new{DT,CT,GHT}(coefficients, fθ)
     end
 end
 
@@ -109,21 +109,21 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
 
     # returns function that builds hamiltonian gradient through symbolics
     # " the function hamilGradient_general!() needs this "
-    ∇H = hamilGrad_func_builder(d, method.polyorder, method.trigonometric)
+    fθ = hamilGrad_func_builder(d, method.polyorder, method.trigonometric)
 
     # Compute Sparse Regression
-    coeffs = sparsify_two(method, ∇H, data.x, data.ẋ, solver)
+    coeffs = sparsify_two(method, fθ, data.x, data.ẋ, solver)
 
-    HamiltonianSINDyVectorField(coeffs, ∇H)
+    HamiltonianSINDyVectorField(coeffs, fθ)
 end
 
 
 " wrapper function for generalized SINDY hamiltonian gradient.
-Needs the output of ∇H_sparse to work!
+Needs the output of fθ_sparse to work!
 It is in a syntax that is suitable to be evaluated by a loss function
 for optimization "
 function (vectorfield::HamiltonianSINDyVectorField)(dz, z)
-    vectorfield.∇H(dz, z, vectorfield.coefficients)
+    vectorfield.fθ(dz, z, vectorfield.coefficients)
     return dz
 end
 
@@ -144,9 +144,26 @@ end
 ################################################################################################
 ################################################################################################
 ################################################################################################
-function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
+function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
+
+    # initialize timestep data for analytical solution
+    EulerTimeStep = 0.01 # randomly chosen timestep size
+    tspan = (0.0, EulerTimeStep)
+    trange = range(tspan[begin], step = EulerTimeStep, stop = tspan[end])
+
+    # matrix to store solution at next time point
+    data_ref = zero(x)
+
+    for j in axes(data_ref, 2)
+        prob_ref = ODEProblem(method.analytical_fθ, x[:,j], tspan)
+        sol = ODE.solve(prob_ref, Tsit5(), dt = EulerTimeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
+        data_ref[:,j] = sol.u[2]
+    end
+
+    #TODO: Ask Dr. Michael if it is correct to add noise here or to x directly before doing ODE.solve
+    
     # add noise
-    ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
+    data_ref_noisy = data_ref .+ method.noise_level .* randn(size(data_ref))
 
     # dimension of system
     nd = size(x,1)
@@ -154,44 +171,38 @@ function sparsify_two(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
     nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
 
-    # (a) initialized to a vector of zeros b/c easier to optimze zeros for our case
+    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(nparam)
     
     # define loss function
     function loss(a::AbstractVector)
 
-        # initialization for euler solution
-        hermiteX = zeros(eltype(a), axes(x))
-        EulerTimeStep = 0.01
         numLoops = 4 # random choice of loop steps
 
-        # initialization for anaylitical solution
-        tspan = (0.0, EulerTimeStep)
-        trange = range(tspan[begin], step = EulerTimeStep, stop = tspan[end])
-        
-        data_ref = zero(x)
+        # initialize matrix to store picard iterations result
+        picardX = zeros(eltype(a), axes(x))
 
         # initialization for the SINDy coefficients result
-        res = zeros(eltype(a), axes(ẋnoisy))
+        res = zeros(eltype(a), axes(ẋ))
         out = zeros(eltype(a), nd)
         
         for j in axes(res, 2)
-            ∇H(out, x[:,j], a) # gradient at current (x) values
+            fθ(out, x[:,j], a) # gradient at current (x) values
             res[:,j] .= out
-            hermiteX[:,j] .= x[:,j] .+ EulerTimeStep .* res[:,j] # for first guess use explicit euler
+            picardX[:,j] .= x[:,j] .+ EulerTimeStep .* res[:,j] # for first guess use explicit euler
             
             for loop = 1:numLoops
-                ∇H(out, (x[:,j] .+ hermiteX[:,j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
+                fθ(out, (x[:,j] .+ picardX[:,j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
                 res[:,j] .= out
-                hermiteX[:,j] .= x[:,j] + EulerTimeStep * res[:,j] # mid point rule for integration to next step
+                picardX[:,j] .= x[:,j] + EulerTimeStep * res[:,j] # mid point rule for integration to next step
             end
 
-            prob_ref = ODEProblem(method.analytical_∇H, x[:,j], tspan)
+            prob_ref = ODEProblem(method.analytical_fθ, x[:,j], tspan)
             sol = ODE.solve(prob_ref, Tsit5(), dt = EulerTimeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
             data_ref[:,j] = sol.u[2]
         end
 
-        mapreduce(y -> y^2, +, data_ref .- hermiteX)
+        mapreduce(y -> y^2, +, data_ref_noisy .- picardX)
     end
     
     # initial guess
