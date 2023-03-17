@@ -31,7 +31,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
     nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
 
-    # (a) initialized to a vector of zeros b/c easier to optimze zeros for our case
+    # coeffs initialized to a vector of zeros b/c easier to optimze zeros for our case
     coeffs = zeros(nparam)
     
     # define loss function
@@ -67,8 +67,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         # set all small coefficients to zero
         coeffs[smallinds] .= 0
 
-        # Regress dynamics onto remaining terms to find sparse a
-
+        # Regress dynamics onto remaining terms to find sparse coeffs
         function sparseloss(b::AbstractVector)
             c = zeros(eltype(b), axes(coeffs))
             c[biginds] .= b
@@ -175,9 +174,9 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     coeffs = zeros(nparam)
     
     # define loss function
-    function loss(a::AbstractVector)
+    function loss(a::AbstractVector, λ::Real)
 
-        numLoops = 4 # random choice of loop steps
+        numLoops = 3 # random choice of loop steps
 
         # initialize matrix to store picard iterations result
         picardX = zeros(eltype(a), axes(x))
@@ -196,18 +195,17 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
                 res[:,j] .= out
                 picardX[:,j] .= x[:,j] + EulerTimeStep * res[:,j] # mid point rule for integration to next step
             end
-
-            prob_ref = ODEProblem(method.analytical_fθ, x[:,j], tspan)
-            sol = ODE.solve(prob_ref, Tsit5(), dt = EulerTimeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
-            data_ref[:,j] = sol.u[2]
         end
 
-        mapreduce(y -> y^2, +, data_ref_noisy .- picardX)
+        return mapreduce(y -> y^2, +, data_ref_noisy .- picardX) + λ * sum(abs2.(a))
     end
     
     # initial guess
     println("Initial Guess...")
-    result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
+
+    # example l2 regularization
+    λ = 0 #TODO: change this because there is already method.λ
+    result = Optim.optimize(a -> loss(a, λ), coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
     coeffs .= result.minimizer
 
     println(result)
@@ -225,12 +223,11 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         # set all small coefficients to zero
         coeffs[smallinds] .= 0
 
-        # Regress dynamics onto remaining terms to find sparse a
-
+        # Regress dynamics onto remaining terms to find sparse coeffs
         function sparseloss(b::AbstractVector)
             c = zeros(eltype(b), axes(coeffs))
             c[biginds] .= b
-            loss(c)
+            loss(c, λ)
         end
 
         b = coeffs[biginds]
