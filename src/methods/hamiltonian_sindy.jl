@@ -4,6 +4,7 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
 
     λ::T
     noise_level::T
+    integrator_timeStep::T
     nloops::Int
 
     polyorder::Int
@@ -12,11 +13,12 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
     function HamiltonianSINDy(analytical_fθ::GHT;
         λ::T = DEFAULT_LAMBDA,
         noise_level::T = DEFAULT_NOISE_LEVEL,
+        integrator_timeStep::T = DEFAULT_INTEGRATOR_TIMESTEP,
         nloops = DEFAULT_NLOOPS,
         polyorder::Int = 3,
         trigonometric::Int = 0) where {T, GHT <: Base.Callable}
 
-        new{T, GHT}(analytical_fθ, λ, noise_level, nloops, polyorder, trigonometric)
+        new{T, GHT}(analytical_fθ, λ, noise_level, integrator_timeStep, nloops, polyorder, trigonometric)
     end
 end
 
@@ -139,30 +141,42 @@ end
 
 
 
-################################################################################################
-################################################################################################
-################################################################################################
-################################################################################################
-function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
 
+
+
+################################################################################################
+################################################################################################
+################################################################################################
+################################################################################################
+
+function gen_noisy_ref_data(method::HamiltonianSINDy, x)
     # initialize timestep data for analytical solution
-    EulerTimeStep = 0.01 # randomly chosen timestep size
-    tspan = (0.0, EulerTimeStep)
-    trange = range(tspan[begin], step = EulerTimeStep, stop = tspan[end])
+    timeStep = method.integrator_timeStep
+    tspan = (0.0, timeStep)
+    trange = range(tspan[begin], step = timeStep, stop = tspan[end])
 
     # matrix to store solution at next time point
     data_ref = zero(x)
 
     for j in axes(data_ref, 2)
         prob_ref = ODEProblem(method.analytical_fθ, x[:,j], tspan)
-        sol = ODE.solve(prob_ref, Tsit5(), dt = EulerTimeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
+        sol = ODE.solve(prob_ref, Tsit5(), dt = timeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
         data_ref[:,j] = sol.u[2]
     end
 
-    #TODO: Ask Dr. Michael if it is correct to add noise here or to x directly before doing ODE.solve
-    
     # add noise
     data_ref_noisy = data_ref .+ method.noise_level .* randn(size(data_ref))
+
+    return data_ref_noisy
+
+    #TODO: Ask Dr. Michael if it is correct to add noise here or to x directly before doing ODE.solve
+end
+
+
+function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
+
+    # generate noisy references data
+    data_ref_noisy = gen_noisy_ref_data(method::HamiltonianSINDy, x)
 
     # dimension of system
     nd = size(x,1)
@@ -188,12 +202,12 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         for j in axes(res, 2)
             fθ(out, x[:,j], a) # gradient at current (x) values
             res[:,j] .= out
-            picardX[:,j] .= x[:,j] .+ EulerTimeStep .* res[:,j] # for first guess use explicit euler
+            picardX[:,j] .= x[:,j] .+ method.integrator_timeStep .* res[:,j] # for first guess use explicit euler
             
             for loop = 1:numLoops
                 fθ(out, (x[:,j] .+ picardX[:,j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
                 res[:,j] .= out
-                picardX[:,j] .= x[:,j] + EulerTimeStep * res[:,j] # mid point rule for integration to next step
+                picardX[:,j] .= x[:,j] + method.integrator_timeStep * res[:,j] # mid point rule for integration to next step
             end
         end
 
