@@ -4,6 +4,9 @@ using RuntimeGeneratedFunctions
 using Symbolics
 using DifferentialEquations
 using ODE
+using Base.Threads
+using Distances
+using ThreadsX
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 

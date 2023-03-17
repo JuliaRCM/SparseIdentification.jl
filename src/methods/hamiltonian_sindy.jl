@@ -113,7 +113,7 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     fθ = hamilGrad_func_builder(d, method.polyorder, method.trigonometric)
 
     # Compute Sparse Regression
-    coeffs = sparsify_two(method, fθ, data.x, data.ẋ, solver)
+    coeffs = sparsify_parallel(method, fθ, data.x, data.ẋ, solver)
 
     HamiltonianSINDyVectorField(coeffs, fθ)
 end
@@ -212,6 +212,105 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         end
 
         return mapreduce(y -> y^2, +, data_ref_noisy .- picardX)
+    end
+    
+    # initial guess
+    println("Initial Guess...")
+    result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
+    
+    coeffs .= result.minimizer
+
+    println(result)
+
+    for n in 1:method.nloops
+        println("Iteration #$n...")
+
+        # find coefficients below λ threshold
+        smallinds = abs.(coeffs) .< method.λ
+        biginds = .~smallinds
+
+        # check if there are any small coefficients != 0 left
+        all(coeffs[smallinds] .== 0) && break
+
+        # set all small coefficients to zero
+        coeffs[smallinds] .= 0
+
+        # Regress dynamics onto remaining terms to find sparse coeffs
+        function sparseloss(b::AbstractVector)
+            c = zeros(eltype(b), axes(coeffs))
+            c[biginds] .= b
+            loss(c)
+        end
+
+        b = coeffs[biginds]
+        result = Optim.optimize(sparseloss, b, solver, Optim.Options(show_trace=true); autodiff = :forward)
+        b .= result.minimizer
+
+        println(result)
+    end
+    
+    return coeffs
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################################
+################################################################################################
+################################################################################################
+################################################################################################
+function sparsify_parallel(method::HamiltonianSINDy, fθ, x, ẋ, solver)
+
+    # generate noisy references data
+    data_ref_noisy = gen_noisy_ref_data(method::HamiltonianSINDy, x)
+
+    # dimension of system
+    nd = size(x,1)
+
+    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
+    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
+
+    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
+    coeffs = zeros(nparam)
+    
+    # define loss function
+    function loss(a::AbstractVector)
+
+        numLoops = 4 # random choice of loop steps
+
+        # initialize matrix to store picard iterations result
+        picardX = zeros(eltype(a), axes(x))
+
+        # initialization for the SINDy coefficients result
+        res = zeros(eltype(a), axes(ẋ))
+        out = zeros(eltype(a), nd)
+        
+        @threads for j in axes(res, 2)
+            fθ(out, x[:,j], a) # gradient at current (x) values
+            res[:,j] .= out
+            picardX[:,j] .= x[:,j] .+ method.integrator_timeStep .* res[:,j] # for first guess use explicit euler
+            
+            for loop = 1:numLoops
+                fθ(out, (x[:,j] .+ picardX[:,j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
+                res[:,j] .= out
+                picardX[:,j] .= x[:,j] + method.integrator_timeStep * res[:,j] # mid point rule for integration to next step
+            end
+        end
+
+        lossDiff(a,b) = euclidean(a,b)
+        z = tuple(data_ref_noisy, picardX)
+
+        return ThreadsX.mapreduce(z -> lossDiff(z...), +, zip(@views(data_ref_noisy), @views(picardX)))
     end
     
     # initial guess
