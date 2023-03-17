@@ -174,9 +174,9 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     coeffs = zeros(nparam)
     
     # define loss function
-    function loss(a::AbstractVector, λ::Real)
+    function loss(a::AbstractVector)
 
-        numLoops = 3 # random choice of loop steps
+        numLoops = 4 # random choice of loop steps
 
         # initialize matrix to store picard iterations result
         picardX = zeros(eltype(a), axes(x))
@@ -197,15 +197,13 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
             end
         end
 
-        return mapreduce(y -> y^2, +, data_ref_noisy .- picardX) + λ * sum(abs2.(a))
+        return mapreduce(y -> y^2, +, data_ref_noisy .- picardX)
     end
     
     # initial guess
     println("Initial Guess...")
-
-    # example l2 regularization
-    λ = 0 #TODO: change this because there is already method.λ
-    result = Optim.optimize(a -> loss(a, λ), coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
+    result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
+    
     coeffs .= result.minimizer
 
     println(result)
@@ -227,7 +225,7 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         function sparseloss(b::AbstractVector)
             c = zeros(eltype(b), axes(coeffs))
             c[biginds] .= b
-            loss(c, λ)
+            loss(c)
         end
 
         b = coeffs[biginds]
