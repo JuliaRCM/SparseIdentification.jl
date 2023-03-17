@@ -62,7 +62,7 @@ grad_H_ana(x, p, t) = grad_H_ana(x)
 println("Generate Training Data...")
 
 # number of samples
-num_samp = 8
+num_samp = 12
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
@@ -92,7 +92,8 @@ tdata = TrainingData(x, ẋ)
 
 # choose SINDy method
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
+# integrator_timeStep chosen randomly for now
+method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, integrator_timeStep = 0.01, polyorder = polyorder, trigonometric = trig_wave_num)
 
 # compute vector field
 vectorfield = VectorField(method, tdata)
