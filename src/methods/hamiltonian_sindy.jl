@@ -295,7 +295,7 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         res = zeros(eltype(a), axes(ẋ))
         out = zeros(eltype(a), nd)
         
-        @threads for j in axes(res, 2)
+        for j in axes(res, 2)
             fθ(out, x[:,j], a) # gradient at current (x) values
             res[:,j] .= out
             picardX[:,j] .= x[:,j] .+ method.integrator_timeStep .* res[:,j] # for first guess use explicit euler
@@ -308,9 +308,11 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         end
         
         lossDiff(x,y) = sqeuclidean(x,y)
-        z = tuple(data_ref_noisy, picardX)
+        # z = tuple(data_ref_noisy, picardX)
         
-        return ThreadsX.mapreduce(z -> lossDiff(z...), +, zip(@view(data_ref_noisy[begin:end]), @view(picardX[begin:end])))
+        return mapreduce(z -> lossDiff(z...), +, zip(@view(data_ref_noisy[begin:end]), @view(picardX[begin:end])))
+
+        # return ThreadsX.mapreduce(y -> y^2, +, data_ref_noisy .- picardX)
     end
     
     # initial guess
