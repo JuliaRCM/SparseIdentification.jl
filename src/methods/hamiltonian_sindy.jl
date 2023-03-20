@@ -306,11 +306,11 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, ẋ, solver)
                 picardX[:,j] .= x[:,j] + method.integrator_timeStep * res[:,j] # mid point rule for integration to next step
             end
         end
-
-        lossDiff(a,b) = euclidean(a,b)
+        
+        lossDiff(x,y) = sqeuclidean(x,y)
         z = tuple(data_ref_noisy, picardX)
-
-        return ThreadsX.mapreduce(z -> lossDiff(z...), +, zip(@views(data_ref_noisy), @views(picardX)))
+        
+        return ThreadsX.mapreduce(z -> lossDiff(z...), +, zip(@view(data_ref_noisy[begin:end]), @view(picardX[begin:end])))
     end
     
     # initial guess
