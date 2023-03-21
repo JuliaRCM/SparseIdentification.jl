@@ -6,7 +6,7 @@ using DifferentialEquations
 using ODE
 using Base.Threads
 using Distances
-using ThreadsX
+using ParallelUtilities
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 

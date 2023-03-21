@@ -69,21 +69,12 @@ samp_range = LinRange(-20, 20, num_samp)
 
 # initialize vector of matrices to store ODE solve output
 
-# compute vector field from x state values
-# stored as matrix with dims [nd,ntime]
-x = zeros(nd, num_samp^nd)
-ẋ = zero(x)
-
 # s depend on size of nd (dimensions), 4 in the case here so we use samp_range x samp_range x samp_range x samp_range
 s = collect(Iterators.product(samp_range, samp_range, samp_range, samp_range))
 
-for j in eachindex(s)
-    x[:,j] .= s[j]
-    ẋ[:,j] .= grad_H_ana(x[:,j])
-end
-
-# collect training data
-tdata = TrainingData(x, ẋ)
+# compute vector field from x state values
+x = [collect(s[i]) for i in eachindex(s)]
+ẋ = [grad_H_ana(_x) for _x in x]
 
 
 # ----------------------------------------
@@ -94,6 +85,12 @@ tdata = TrainingData(x, ẋ)
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
 # integrator_timeStep chosen randomly for now
 method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, integrator_timeStep = 0.01, polyorder = polyorder, trigonometric = trig_wave_num)
+
+# generate noisy references data
+y = SparseIdentification.gen_noisy_ref_data(method, x)
+
+# collect training data
+tdata = TrainingData(x, ẋ, y)
 
 # compute vector field
 vectorfield = VectorField(method, tdata)
@@ -113,10 +110,10 @@ println("Plotting...")
 
 println("Compute approximate gradient...")
 
-ẋid = zero(ẋ)
+ẋid = zero.(ẋ)
 
-for j in axes(ẋid, 2)
-    @views vectorfield(ẋid[:,j], x[:,j])
+for j in eachindex(ẋid)
+    vectorfield(ẋid[j], x[j])
 end
 
 
@@ -131,10 +128,10 @@ trange = range(tspan[begin], step = tstep, stop = tspan[end])
 for i in 1:5
     idx = rand(1:length(s))
 
-    prob_reference = ODEProblem(grad_H_ana, x[:,idx], tspan)
+    prob_reference = ODEProblem(grad_H_ana, x[idx], tspan)
     data_reference = ODE.solve(prob_reference, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
 
-    prob_sindy = ODEProblem(vectorfield, x[:,idx], tspan)
+    prob_sindy = ODEProblem(vectorfield, x[idx], tspan)
     data_sindy = ODE.solve(prob_sindy, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
     p1 = plot(xlabel = "Time", ylabel = "q₁")
