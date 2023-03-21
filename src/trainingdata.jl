@@ -1,6 +1,7 @@
 
-struct TrainingData{DT}
-    x::Matrix{DT}
-    ẋ::Matrix{DT}
+struct TrainingData{AT<:AbstractArray}
+    x::AT
+    ẋ::AT
+    y::AT
 end
 
