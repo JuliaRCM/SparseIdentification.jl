@@ -13,16 +13,12 @@ gr()
 # Setup
 # --------------------
 
-# search space up to fifth order polynomials
-polyorder = 5
-
-# no trigonometric functions
-usesine = false
-
 # generate basis
-basis = CompoundBasis()
+#  - search space up to fifth order polynomials
+#  - no trigonometric functions
+basis = CompoundBasis(polyorder = 5, trigonometric = 0)
 
-# initial datra
+# initial data
 x₀ = [2., 0.]
 
 # 2D system 
@@ -32,12 +28,6 @@ tstep = 0.01
 # tspan = (0.0,0.05)
 tspan = (0.0,25.0)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
-
-# noise level
-eps = 0.05 
-
-# lambda parameter
-lambda = 0.05
 
 # vector field
 const A = [-0.1  2.0
@@ -64,35 +54,27 @@ for i in axes(ẋ,2)
     ẋ[:,i] .= A*x[:,i]
 end
 
-# add noise
-# dx .+= eps .* randn(size(x))
+# collect training data
+tdata = TrainingData(x, ẋ)
 
-# println("x = ", x)
-# println("ẋ = ", ẋ)
-
-
-# ------------------------------------------------------------
-# Pool Data (evaluate library of candidate basis functions on training data)
-# ------------------------------------------------------------
-
-println("Pool Data...")
-
-Θ = evaluate(x, basis)
+# println("x = ", tdata.x)
+# println("ẋ = ", tdata.ẋ)
 
 
 # ----------------------------------------
-# Compute Sparse Regression
+# Identify SINDy Vector Field
 # ----------------------------------------
 
-print("Sparsify Dynamics...")
+# choose SINDy method
+method = SINDy(lambda = 0.05, noise_level = 0.05)
 
-# Ξ = sparsify_dynamics(Θ, ẋ, lambda, 0)
-Ξ = sparsify_dynamics(Θ, ẋ, lambda)
-# Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
+# compute vector field
+vectorfield = VectorField(method, basis, tdata)
+# vectorfield = VectorField(method, basis, data; solver = OptimSolver())
 
-println(Ξ)
+#println(vectorfield.coefficients)
 
-println("   maximum(Ξ) = ", maximum(Ξ))
+#println("   maximum(vectorfield.coefficients) = ", maximum(vectorfield.coefficients))
 
 
 # ----------------------------------------
@@ -101,9 +83,7 @@ println("   maximum(Ξ) = ", maximum(Ξ))
 
 println("Integrate Identified System...")
 
-p = (Ξ = Ξ, basis = basis)
-
-prob_approx = ODEProblem(sparse_galerkin, x₀, tspan, p)
+prob_approx = ODEProblem(vectorfield, x₀, tspan)
 xid = ODE.solve(prob_approx, ode4(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
 
@@ -123,3 +103,8 @@ plot!(p2, xid.t, xid[2,:], label = "Identified")
 
 plot(p1, p2)
 savefig("linear2d.png")
+
+p3 = plot(data[1,:], data[2,:], label="true")
+p3 = scatter!(xid[1,:], xid[2,:], label="approx", linestyle =:dash, mc=:red, ms=2, ma=0.5, xlabel ="X1", ylabel="X2")
+display(plot(p3, show = true, reuse = false))
+savefig("linear2d_fig2.png")

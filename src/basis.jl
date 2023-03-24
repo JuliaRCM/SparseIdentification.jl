@@ -19,10 +19,10 @@ struct PolynomialBasis <: AbstractBasis
     p::Int
 end
 
-
-_prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
-_prod(a, b) = a .* b
-_prod(a) = a
+# already defined in util.jl file
+# _prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
+# _prod(a, b) = a .* b
+# _prod(a) = a
 
 function _evaluate_polynomial(data, p, inds...)
     # number of degrees of freedom
@@ -94,8 +94,8 @@ struct CompoundBasis{BT <: Tuple} <: AbstractBasis
     CompoundBasis(bases...) = new{typeof(bases)}(bases)
 end
 
-function CompoundBasis(p::Int = 5; trigonometric::Int = 0)
-    bases = Tuple([PolynomialBasis(i) for i in 0:p])
+function CompoundBasis(; polyorder::Int = 5, trigonometric::Int = 0)
+    bases = Tuple([PolynomialBasis(i) for i in 0:polyorder])
 
     if trigonometric > 0
         bases = (bases..., TrigonometricBasis(trigonometric))
