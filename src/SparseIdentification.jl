@@ -1,12 +1,11 @@
 module SparseIdentification
 
-using RuntimeGeneratedFunctions
-using Symbolics
-using DifferentialEquations
-using ODE
 using Base.Threads
 using Distances
+using GeometricIntegrators
 using ParallelUtilities
+using RuntimeGeneratedFunctions
+using Symbolics
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 

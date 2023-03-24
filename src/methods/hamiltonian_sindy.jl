@@ -149,17 +149,16 @@ end
 
 function gen_noisy_ref_data(method::HamiltonianSINDy, x)
     # initialize timestep data for analytical solution
-    timeStep = method.integrator_timeStep
-    tspan = (0.0, timeStep)
-    trange = range(tspan[begin], step = timeStep, stop = tspan[end])
+    tstep = method.integrator_timeStep
+    tspan = (zero(tstep), tstep)
 
     # # matrix to store solution at next time point
     # data_ref = zero(x)
 
     function next_timestep(x)
-        prob_ref = ODEProblem(method.analytical_fθ, x, tspan)
-        sol = ODE.solve(prob_ref, Tsit5(), dt = timeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
-        sol.u[2]
+        prob_ref = ODEProblem((dx, t, x, params) -> dx .= method.analytical_fθ(x, params, t), tspan, tstep, x)
+        sol = integrate(prob_ref, Gauss(2))
+        sol.q[end]
     end
 
     data_ref = [next_timestep(_x) for _x in x]

@@ -1,14 +1,11 @@
 #This file uses uniform sampling to find the SINDY solution of a hamiltonian system in 1D and 2D
 
-using DifferentialEquations
 using Distributions
-using ODE
+using GeometricIntegrators
+using Optim
 using Plots
 using Random
 using SparseIdentification
-using Zygote
-using ForwardDiff
-using Optim
 
 gr()
 
@@ -30,7 +27,7 @@ const nd = 4d
 #############################################################
 
 # search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 3 
+const polyorder = 2
 
 ######################################################################
 ######################################################################
@@ -62,7 +59,7 @@ grad_H_ana(x, p, t) = grad_H_ana(x)
 println("Generate Training Data...")
 
 # number of samples
-num_samp = 12
+num_samp = 8
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
@@ -128,30 +125,30 @@ trange = range(tspan[begin], step = tstep, stop = tspan[end])
 for i in 1:5
     idx = rand(1:length(s))
 
-    prob_reference = ODEProblem(grad_H_ana, x[idx], tspan)
-    data_reference = ODE.solve(prob_reference, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
+    prob_reference = ODEProblem((dx, t, x, params) -> dx .= grad_H_ana(x, params, t), tspan, tstep, x[idx])
+    data_reference = integrate(prob_reference, Gauss(2))
 
-    prob_sindy = ODEProblem(vectorfield, x[idx], tspan)
-    data_sindy = ODE.solve(prob_sindy, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
+    prob_sindy = ODEProblem((dx, t, x, params) -> vectorfield(dx, x, params, t), tspan, tstep, x[idx])
+    data_sindy = integrate(prob_sindy, Gauss(2))
 
     p1 = plot(xlabel = "Time", ylabel = "q₁")
-    scatter!(p1, data_reference.t, data_reference[1,:], label = "Data q₁")
-    scatter!(p1, data_sindy.t, data_sindy[1,:], markershape=:xcross, label = "Identified q₁")
+    scatter!(p1, data_reference.t, data_reference.q[1,:], label = "Data q₁")
+    scatter!(p1, data_sindy.t, data_sindy.q[1,:], markershape=:xcross, label = "Identified q₁")
 
     p3 = plot(xlabel = "Time", ylabel = "p₁")
-    scatter!(p3, data_reference.t, data_reference[3,:], label = "Data p₁")
-    scatter!(p3, data_sindy.t, data_sindy[3,:], markershape=:xcross, label = "Identified p₁")
+    scatter!(p3, data_reference.t, data_reference.q[3,:], label = "Data p₁")
+    scatter!(p3, data_sindy.t, data_sindy.q[3,:], markershape=:xcross, label = "Identified p₁")
 
     plot!(size=(1000,1000))
     display(plot(p1, p3, title="Analytical vs Calculated q₁ & p₁ in a 2D system with Euler"))
 
     p2 = plot(xlabel = "Time", ylabel = "q₂")
-    scatter!(p2, data_reference.t, data_reference[2,:], label = "Data q₂")
-    scatter!(p2, data_sindy.t, data_sindy[2,:], markershape=:xcross, label = "Identified q₂")
+    scatter!(p2, data_reference.t, data_reference.q[2,:], label = "Data q₂")
+    scatter!(p2, data_sindy.t, data_sindy.q[2,:], markershape=:xcross, label = "Identified q₂")
 
     p4 = plot(xlabel = "Time", ylabel = "p₂")
-    scatter!(p4, data_reference.t, data_reference[4,:], label = "Data p₂")
-    scatter!(p4, data_sindy.t, data_sindy[4,:], markershape=:xcross, label = "Identified p₂")
+    scatter!(p4, data_reference.t, data_reference.q[4,:], label = "Data p₂")
+    scatter!(p4, data_sindy.t, data_sindy.q[4,:], markershape=:xcross, label = "Identified p₂")
 
     plot!(size=(1000,1000))
     display(plot(p2, p4, title="Analytical vs Calculated q₂ & p₂ in a 2D system with Euler"))
