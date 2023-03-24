@@ -206,7 +206,7 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
             for loop = 1:numLoops
                 fθ(out, (x[:,j] .+ picardX[:,j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
                 res[:,j] .= out
-                picardX[:,j] .= x[:,j] + method.integrator_timeStep * res[:,j] # mid point rule for integration to next step
+                picardX[:,j] .= x[:,j] .+ method.integrator_timeStep .* res[:,j] # mid point rule for integration to next step
             end
         end
 
