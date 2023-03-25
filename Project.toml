@@ -24,6 +24,7 @@ DifferentialEquations = "7"
 Distributions = "0.25"
 ODE = "2"
 Optim = "1"
+ParallelUtilities = "0.8"
 Plots = "1"
 julia = "1.6"
 
