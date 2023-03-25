@@ -22,6 +22,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 [compat]
 DifferentialEquations = "7"
 Distributions = "0.25"
+ForwardDiff = "0.10"
 ODE = "2"
 Optim = "1"
 Plots = "1"
