@@ -25,6 +25,7 @@ Distributions = "0.25"
 ODE = "2"
 Optim = "1"
 Plots = "1"
+RuntimeGeneratedFunctions = "0.5"
 julia = "1.6"
 
 [extras]
