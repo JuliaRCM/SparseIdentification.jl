@@ -25,20 +25,8 @@ function hamiltonian_poly(z, order, inds...)
 end
 
 
-" collects and sums only polynomial combinations of basis "
-function hamiltonian(z, a, order)
-    ham = []
-
-    for i in 1:order
-        ham = vcat(ham, hamiltonian_poly(z, i))
-    end
-
-    sum(collect(a .* ham))
-end
-
-
-" collects and sums polynomial and trignometric combinations of basis "
-function hamil_trig(z, a, order, trig_wave_num)
+" collects and sums polynomial, trignometric, and states differences combinations of basis "
+function hamiltonian(z, a, order, trig_wave_num, diffs_power)
     ham = []
 
     # Polynomial basis
@@ -51,8 +39,26 @@ function hamil_trig(z, a, order, trig_wave_num)
         ham = vcat(ham, vcat(sin.(k*z)), vcat(cos.(k*z)))
     end
 
-    ham = sum(collect(a .* ham))
+    if diffs_power > 0
+        # States difference basis
+        diffs = Vector{Num}()
+        idx = 1
+        for i in 1:length(z)
+            for j in 1:length(z)
+                if i == j
+                    continue  # skip index where difference is between same state
+                end
+                push!(diffs, (z[i] - z[j]))
+                idx += 1
+            end
+        end
 
+        for k = 1:diffs_power
+            ham = vcat(ham, vcat(diffs .^ k))
+        end
+    end
+
+    ham = sum(collect(a .* ham))
     return ham
 
 end
@@ -60,45 +66,31 @@ end
 
 
 " returns a function that can build the gradient of the hamiltonian "
-function hamilGrad_func_builder(d, polyorder, trig_wave_num)
+function ΔH_func_builder(d, polyorder, trig_wave_num, diffs_power)
+    # nd is the total number of dimensions of all the states, e.g. if q,p each of 3 dims, that is 6 dims in total
+    nd = 2d
+    
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(d, polyorder, trig_wave_num)
+    nparam = calculate_nparams(nd, polyorder, trig_wave_num, diffs_power)
 
     # symbolic variables
     @variables a[1:nparam]
     @variables q[1:d]
     @variables p[1:d]
     z = vcat(q,p)
+    Dz = Differential.(z)
+    
+    # make a basis library
+    ham = hamiltonian(z, a, polyorder, trig_wave_num, diffs_power)
+    
+    # gives derivative of the hamiltonian, but not the skew-symmetric true one
+    f = [expand_derivatives(dz(ham)) for dz in Dz]
 
-    # usesine: whether to add trig basis or not
-    if trig_wave_num > 0
+    # line below makes the vector into a hamiltonian vector field by multiplying with the skew-symmetric matrix
+    ∇H = vcat(f[d+1:2d], -f[1:d])
 
-        # gives derivative of the hamiltonian, but not the skew-symmetric true one
-        Dz = Differential.(z)
-        ∇H_add_trig = [expand_derivatives(dz(hamil_trig(z, a, polyorder, trig_wave_num))) for dz in Dz]
+    # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
+    ∇H_eval = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(∇H, z, a)[2]))
 
-        # line below makes the vector into a hamiltonian vector field by multiplying with the skew-symmetric matrix
-        ∇H_trig = vcat(∇H_add_trig[d+1:2d], -∇H_add_trig[1:d])
-
-        # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
-        ∇H_eval = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(∇H_trig, z, a)[2]))
-
-        return ∇H_eval
-
-    else
-
-        # gives derivative of the hamiltonian, but not the skew-symmetric true one
-        Dz = Differential.(z)
-        f = [expand_derivatives(dz(hamiltonian(z, a, polyorder))) for dz in Dz]
-
-        # line below makes the vector into a hamiltonian by multiplying with the skew-symmetric matrix
-        ∇H = vcat(f[d+1:2d], -f[1:d])
-
-        # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
-        ∇H_eval = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(∇H, z, a)[2]))
-        
-        return ∇H_eval
-
-    end
-
+    return ∇H_eval
 end
