@@ -1,13 +1,14 @@
 struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
     analytical_fθ::GHT
 
-    λ::T
+    λ::T # Sparsification Parameter
     noise_level::T
     integrator_timeStep::T
-    nloops::Int
+    nloops::Int # Sparsification Loops
 
     polyorder::Int
     trigonometric::Int
+    diffs_power::Int
 
     function HamiltonianSINDy(analytical_fθ::GHT;
         λ::T = DEFAULT_LAMBDA,
@@ -15,36 +16,42 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
         integrator_timeStep::T = DEFAULT_INTEGRATOR_TIMESTEP,
         nloops = DEFAULT_NLOOPS,
         polyorder::Int = 3,
-        trigonometric::Int = 0) where {T, GHT <: Base.Callable}
+        trigonometric::Int = 0,
+        diffs_power::Int = 0) where {T, GHT <: Base.Callable}
 
-        new{T, GHT}(analytical_fθ, λ, noise_level, integrator_timeStep, nloops, polyorder, trigonometric)
+        new{T, GHT}(analytical_fθ, λ, noise_level, integrator_timeStep, nloops, polyorder, trigonometric, diffs_power)
     end
 end
 
 function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     # add noise
-    ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
+    ẋnoisy = [_ẋ .+ method.noise_level .* randn(size(_ẋ)) for _ẋ in ẋ]
 
     # dimension of system
-    nd = size(x,1)
+    nd = size(x[begin],1)
 
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
+    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power)
 
     # coeffs initialized to a vector of zeros b/c easier to optimze zeros for our case
     coeffs = zeros(nparam)
     
     # define loss function
-    function loss(a::AbstractVector)
-        res = zeros(eltype(a), axes(ẋnoisy))
-        out = zeros(eltype(a), nd)
+    function loss_kernel(x₀, x̃, fθ, a)
+        # gradient of SINDy Hamiltonian problem
+        f = zeros(eltype(a), axes(x₀))
         
-        for j in axes(res, 2)
-            fθ(out, x[:,j], a)
-            res[:,j] .= out
-        end
+        # gradient at current (x) values
+        fθ(f, x₀, a)
 
-        mapreduce(y -> y^2, +, ẋnoisy .- res)
+        # calcualte square eucilidean distance
+        sqeuclidean(f,x̃)
+    
+    end
+
+    # define loss function
+    function loss(a::AbstractVector)
+        mapreduce(z -> loss_kernel(z..., fθ, a), +, zip(x, ẋnoisy))
     end
     
     # initial guess
@@ -107,20 +114,19 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     d = size(data.x[begin], 1) ÷ 2
 
     # returns function that builds hamiltonian gradient through symbolics
-    # " the function hamilGradient_general!() needs this "
-    fθ = hamilGrad_func_builder(d, method.polyorder, method.trigonometric)
+    fθ = ΔH_func_builder(d, method.polyorder, method.trigonometric, method.diffs_power)
 
     # Compute Sparse Regression
+    #TODO: make sparsify method chooseable through arguments
     coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
-
+    # coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
+    
     HamiltonianSINDyVectorField(coeffs, fθ)
 end
 
 
 " wrapper function for generalized SINDY hamiltonian gradient.
-Needs the output of fθ_sparse to work!
-It is in a syntax that is suitable to be evaluated by a loss function
-for optimization "
+Needs the output of fθ to work! "
 function (vectorfield::HamiltonianSINDyVectorField)(dz, z)
     vectorfield.fθ(dz, z, vectorfield.coefficients)
     return dz
@@ -168,50 +174,50 @@ function gen_noisy_ref_data(method::HamiltonianSINDy, x)
     data_ref_noisy = [_x .+ method.noise_level .* randn(size(_x)) for _x in data_ref]
 
     return data_ref_noisy
-
-    #TODO: Ask Dr. Michael if it is correct to add noise here or to x directly before doing ODE.solve
 end
 
 
-function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
-
-    # generate noisy references data
-    data_ref_noisy = gen_noisy_ref_data(method::HamiltonianSINDy, x)
+function sparsify_two(method::HamiltonianSINDy, fθ, x, y, solver)
 
     # dimension of system
-    nd = size(x,1)
+    nd = size(x[begin],1)
 
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
+    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power)
 
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(nparam)
     
     # define loss function
-    function loss(a::AbstractVector)
-
+    function loss_kernel(x₀, x₁, fθ, a, Δt)
         numLoops = 4 # random choice of loop steps
 
-        # initialize matrix to store picard iterations result
-        picardX = zeros(eltype(a), axes(x))
+        # solution of SINDy Hamiltonian problem
+        local x̄ = zeros(eltype(a), axes(x₁))
+        local x̃ = zeros(eltype(a), axes(x₁))
+        local f = zeros(eltype(a), axes(x₁))
 
-        # initialization for the SINDy coefficients result
-        res = zeros(eltype(a), axes(ẋ))
-        out = zeros(eltype(a), nd)
+        # gradient at current (x) values
+        fθ(f, x₀, a)
+
+        # for first guess use explicit euler
+        x̃ .= x₀ .+ Δt .* f
         
-        for j in axes(res, 2)
-            fθ(out, x[:,j], a) # gradient at current (x) values
-            res[:,j] .= out
-            picardX[:,j] .= x[:,j] .+ method.integrator_timeStep .* res[:,j] # for first guess use explicit euler
-            
-            for loop = 1:numLoops
-                fθ(out, (x[:,j] .+ picardX[:,j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
-                res[:,j] .= out
-                picardX[:,j] .= x[:,j] + method.integrator_timeStep * res[:,j] # mid point rule for integration to next step
-            end
+        for _ in 1:numLoops
+            x̄ .= (x₀ .+ x̃) ./ 2
+            # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
+            fθ(f, x̄, a)
+            # mid point rule for integration to next step
+            x̃ .= x₀ .+ Δt .* f
         end
 
-        return mapreduce(y -> y^2, +, data_ref_noisy .- picardX)
+        # calcualte square eucilidean distance
+        sqeuclidean(x₁,x̃)
+    end
+
+    # define loss function
+    function loss(a::AbstractVector)
+        mapreduce(z -> loss_kernel(z..., fθ, a, method.integrator_timeStep), +, zip(x, y))
     end
     
     # initial guess
@@ -265,6 +271,7 @@ end
 
 
 
+
 ################################################################################################
 ################################################################################################
 ################################################################################################
@@ -275,7 +282,7 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
     nd = size(x[begin],1)
 
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
+    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power)
 
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(nparam)
@@ -303,6 +310,7 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
             x̃ .= x₀ .+ Δt .* f
         end
 
+        # calcualte square eucilidean distance
         sqeuclidean(x₁,x̃)
     end
 
