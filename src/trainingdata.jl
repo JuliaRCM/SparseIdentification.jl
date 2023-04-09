@@ -1,7 +1,7 @@
 
 struct TrainingData{AT<:AbstractArray}
-    x::AT
-    ẋ::AT
-    y::AT
+    x::AT # initial condition
+    ẋ::AT # initial condition
+    y::AT # noisy data at next time step
 end
 
