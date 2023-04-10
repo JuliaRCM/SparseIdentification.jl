@@ -7,12 +7,10 @@ _prod(a) = a
 
 
 """
-returns the number of required parameters
-depending on whether there are trig basis or not
+returns the number of required parameters taking into account many types of basis functions
 """
-function calculate_nparams(nd, polyorder, trig_wave_num, diffs_power)
+function calculate_nparams(nd, polyorder, trig_wave_num, diffs_power, trig_state_diffs)
     # binomial used to get the combination of polynomials till the highest order without repeat, e.g nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    #TODO: ask prof if this is correct: changed 2d to nd in all places, nd: total number to dims of all variable states
     # nd: total number of dims of all variable states
     nparam = binomial(nd + polyorder, polyorder) - 1
 
@@ -21,9 +19,14 @@ function calculate_nparams(nd, polyorder, trig_wave_num, diffs_power)
         nparam += 2 * trig_wave_num * nd
     end
 
-    if diffs_power > 0
-        # diffs power is the 
-        nparam += diffs_power * nd * (nd-1)
+    if abs(diffs_power) > 0
+        # diffs power is the max power of the difference of states in the library of basis functions
+        nparam += abs(diffs_power) * nd * (nd-1)
+    end
+
+    if abs(trig_state_diffs) > 0 
+        # we add this b/c we also want to get the powers of sin and cos of the difference of states in the function library
+        nparam += 2 * abs(trig_state_diffs) * nd * (nd-1)
     end
 
     return nparam
