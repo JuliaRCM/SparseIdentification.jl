@@ -23,7 +23,7 @@ struct OptimSolver <: NonlinearSolver
 end
 
 function optimize(loss, x₀, solver::OptimSolver)
-    result = Optim.optimize(loss, x₀, solver.method, Optim.Options(iterations=483))
+    result = Optim.optimize(loss, x₀, solver.method, Optim.Options(iterations=483)) #TODO: do i still need to specify iterations
     println(result)
     return result.minimizer
 end

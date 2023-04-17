@@ -24,11 +24,9 @@ const nd = 4
 const polyorder = 3 
 
 # maximum wave number of trig basis for function library to explore
-# trig_wave_num can be adjusted if higher frequency arguments expected
 const trig_wave_num = 2
 
-# maximum power of state difference basis for function library to explore
-#TODO: make diffs_power into vector later with start and end values to include negative powers
+# max or min power of state difference basis for function library to explore
 const diffs_power = 1
 
 # initialize analytical function, keep λ smaller than ϵ so system is identifiable
@@ -76,7 +74,7 @@ ẋ = [grad_H_ana(_x) for _x in x]
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
 # integrator_timeStep chosen randomly for now
 method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, integrator_timeStep = 0.05, 
-                            polyorder = polyorder, trigonometric = trig_wave_num, diffs_power = diffs_power)
+                            polyorder = polyorder, trignometric = trig_wave_num, diffs_power = diffs_power)
 
 # generate noisy references data at next time step
 y = SparseIdentification.gen_noisy_ref_data(method, x)
@@ -121,10 +119,10 @@ trange = range(tspan[begin], step = tstep, stop = tspan[end])
 for _ in 1:5
     idx = rand(1:length(s)) # chosse a random sample to plot
 
-    prob_reference = ODEProblem(grad_H_ana, x[idx], tspan)
+    prob_reference = DifferentialEquations.ODEProblem(grad_H_ana, x[idx], tspan)
     data_reference = ODE.solve(prob_reference, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
 
-    prob_sindy = ODEProblem(vectorfield, x[idx], tspan)
+    prob_sindy = DifferentialEquations.ODEProblem(vectorfield, x[idx], tspan)
     data_sindy = ODE.solve(prob_sindy, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
     p1 = plot(xlabel = "Time", ylabel = "q₁")

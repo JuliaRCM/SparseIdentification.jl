@@ -1,12 +1,11 @@
-#This file uses uniform sampling to find the SINDY solution of a hamiltonian system in 1D and 2D
+# This file uses uniform sampling to find the SINDY solution of a hamiltonian system in 1D and 2D
+
 using DifferentialEquations
 using ODE
 using Distributions
 using Plots
 using Random
 using SparseIdentification
-using Zygote
-using ForwardDiff
 using Optim
 
 gr()
@@ -18,34 +17,24 @@ gr()
 
 println("Setting up...")
 
-# define the number of variables, q,p in this case gives 2 variables
-const d = 1
-
-#############################################################
-#############################################################
 # IMP SETUP NOTE: 2D system with 4 variables [q₁, q₂, p₁, p₂]
-const nd = 4d
-#############################################################
-#############################################################
+const nd = 4
 
 # search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 3
+const polyorder = 2
 
-######################################################################
-######################################################################
 # maximum wave number of trig basis for function library to explore
-# trig_wave_num can be adjusted if higher frequency arguments expected
-const trig_wave_num = 5
-######################################################################
-######################################################################
+const trig_wave_num = 1
+
+# max or min power of state difference basis for function library to explore
+const trig_state_diffs = 1
 
 # 1 dim each of [q₁, q₂, p₁, p₂] gives 4*d = 4 variables
 out = zeros(nd)
 
 # initialize analytical function, keep ϵ bigger than lambda so system is identifiable
 m = 1 # m₁=m₂
-l₁ = 1
-l₂ = 1
+l = 1 # assume both pendulums have same length
 g = 9.81
 
 # h₁(x) = (x[3]*x[4]*sin(x[1]-x[2])) / (l₁*l₂*(m + m*(sin(x[1]-x[2]))^2))
@@ -57,20 +46,24 @@ g = 9.81
 #                  -(m+m)*g*l₁*sin(x[1]) - h₁(x) + h₂(x) * sin(2*(x[1]-x[2]));
 #                  -m*g*l₂*sin(x[2]) + h₁(x) - h₂(x) * sin(2*(x[1]-x[2]))];
 
-l = 1 # assume both pendulums have same length
-
 # grad_H_ana(x) = [(m*l*l * x[3] * x[4] * sin(x[1] - x[2]) - (m + m) * g * l * sin(x[1]) - m * l * l * x[4]^2 * sin(x[1] - x[2]) * cos(x[1] - x[2])) / (l^2 * (m + m * sin(x[1] - x[2])^2));
 #                  (m * l * l * (x[3]^2 * sin(x[1] - x[2]) - g * sin(x[2]) + x[4]^2 * sin(x[1] - x[2]) * cos(x[1] - x[2]))) / (l^2 * (m + m * sin(x[1] - x[2])^2));
 #                  ((m + m) * g * l * sin(x[1]) - m * l * l * (x[4]^2 * sin(x[1] - x[2]) - x[3] * x[4] * sin(x[1] - x[2]) * cos(x[1] - x[2]))) / (l^2 * (m + m * sin(x[1] - x[2])^2));
 #                  ((m + m) * g * l * sin(x[2]) - m * l * l * (x[3]^2 * sin(x[1] - x[2]) - x[3] * x[4] * sin(x[1] - x[2]) * cos(x[1] - x[2]))) / (l^2 * (m + m * sin(x[1] - x[2])^2))]
 
 
-grad_H_ana(x) = [(m+m) * l^2 * x[3] + m * l^2 * x[4] * cos(x[1]-x[2]);
-                 m * l^2 * x[4] + m *l^2 * x[3] * cos(x[1]-x[2]);
-                 - (m * l^2 * x[3] * x[4] * -sin(x[1]-x[2]) - (m + m) * g * l * -sin(x[1]));
-                 - (m * l^2 * x[3] * x[4] * -sin(x[1]-x[2]) - m * g * l * -sin(x[2]))]
+# grad_H_ana(x) = [(m+m) * l^2 * x[3] + m * l^2 * x[4] * cos(x[1]-x[2]);
+#                  m * l^2 * x[4] + m *l^2 * x[3] * cos(x[1]-x[2]);
+#                  - (m * l^2 * x[3] * x[4] * -sin(x[1]-x[2]) - (m + m) * g * l * -sin(x[1]));
+#                  - (m * l^2 * x[3] * x[4] * -sin(x[1]-x[2]) - m * g * l * -sin(x[2]))]
+
+grad_H_ana(x) = [x[3] / (m * l^2);
+                 x[4] / (m * l^2);
+                 - (m * g * l * sin(x[1]) + m * g * l * sin(x[1]) + l * sin(x[1] + x[2]));
+                 - (m * g * l * sin(x[1] + x[2]))]
 
 grad_H_ana(x, p, t) = grad_H_ana(x)
+
 
 # ------------------------------------------------------------
 # Training Data
@@ -79,26 +72,18 @@ grad_H_ana(x, p, t) = grad_H_ana(x)
 println("Generate Training Data...")
 
 # number of samples
-num_samp = 12
+num_samp = 15
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
 
 # initialize vector of matrices to store ODE solve output
 
+s = collect(Iterators.product(fill(samp_range, nd)...))
+
 # compute vector field from x state values
-# stored as matrix with dims [nd,ntime]
-x = zeros(nd, num_samp^nd)
-ẋ = zero(x)
-s = collect(Iterators.product(samp_range,samp_range, samp_range, samp_range))
-
-for j in eachindex(s)
-    x[:,j] .= s[j]
-    ẋ[:,j] .= grad_H_ana(x[:,j])
-end
-
-# collect training data
-tdata = TrainingData(x, ẋ)
+x = [collect(s[i]) for i in eachindex(s)]
+ẋ = [grad_H_ana(_x) for _x in x]
 
 
 # ----------------------------------------
@@ -106,11 +91,19 @@ tdata = TrainingData(x, ẋ)
 # ----------------------------------------
 
 # choose SINDy method
-# (lambda parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-method = HamiltonianSINDy(grad_H_ana, λ = 0.0005, noise_level = 0.0005, polyorder = polyorder, trigonometric = trig_wave_num)
+# (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
+# integrator_timeStep chosen randomly for now
+method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, integrator_timeStep = 0.05, 
+                            polyorder = polyorder, trignometric = trig_wave_num, trig_state_diffs = trig_state_diffs)
+
+# generate noisy references data at next time step
+y = SparseIdentification.gen_noisy_ref_data(method, x)
+
+# collect training data
+tdata = TrainingData(x, ẋ, y)
 
 # compute vector field
-vectorfield = VectorField(method, tdata, solver = ConjugateGradient())
+vectorfield = VectorField(method, tdata)
 
 println(vectorfield.coefficients)
 
@@ -127,12 +120,6 @@ println("Plotting...")
 
 println("Compute approximate gradient...")
 
-ẋid = zero(ẋ)
-
-for j in axes(ẋid, 2)
-    @views vectorfield(ẋid[:,j], x[:,j])
-end
-
 
 # ----------------------------------------
 # Plot some solutions
@@ -142,13 +129,13 @@ tstep = 0.01
 tspan = (0.0,25.0)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
-for i in 1:5
+for _ in 1:5
     idx = rand(1:length(s))
 
-    prob_reference = ODEProblem(grad_H_ana, x[:,idx], tspan)
+    prob_reference = ODEProblem(grad_H_ana, x[idx], tspan)
     data_reference = ODE.solve(prob_reference, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
 
-    prob_sindy = ODEProblem(vectorfield, x[:,idx], tspan)
+    prob_sindy = ODEProblem(vectorfield, x[idx], tspan)
     data_sindy = ODE.solve(prob_sindy, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
     p1 = plot(xlabel = "Time", ylabel = "q₁")
