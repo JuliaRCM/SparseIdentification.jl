@@ -252,30 +252,30 @@ data_sindy = integrate(prob_sindy, QinZhang())
 # plot positions
 p1 = plot(xlabel = "Time", ylabel = "position")
 plot!(p1, data_reference.t, data_reference[1,:], label = "VenusRef xPos")
-plot!(p1, data_sindy.t, data_sindy.q[:,1], markershape=:xcross, label = "VenusId xPos")
+plot!(p1, data_sindy.t, data_sindy.q[:,1], label = "VenusId xPos")
 
 p3 = plot(xlabel = "Time", ylabel = "position")
 plot!(p3, data_reference.t, data_reference[3,:], label = "EarthRef xPos")
-plot!(p3, data_sindy.t, data_sindy.q[:,3], markershape=:xcross, label = "EarthId xPos")
+plot!(p3, data_sindy.t, data_sindy.q[:,3], label = "EarthId xPos")
 
 p5 = plot(xlabel = "Time", ylabel = "position")
 plot!(p5, data_reference.t, data_reference[5,:], label = "SunRef xPos")
-plot!(p5, data_sindy.t, data_sindy.q[:,5], markershape=:xcross, label = "SunId xPos")
+plot!(p5, data_sindy.t, data_sindy.q[:,5], label = "SunId xPos")
 
 plot!(xlabel = "Time", ylabel = "x_pos", size=(1000,1000))
 display(plot(p1, p3, p5, title="Analytical vs Calculated x Positions"))
 
 p2 = plot(xlabel = "Time", ylabel = "position")
 plot!(p2, data_reference.t, data_reference[2,:], label = "VenusRef yPos")
-plot!(p2, data_sindy.t, data_sindy[2,:], markershape=:xcross, label = "VenusId yPos")
+plot!(p2, data_sindy.t, data_sindy.q[:,2], label = "VenusId yPos")
 
 p4 = plot(xlabel = "Time", ylabel = "position")
 plot!(p4, data_reference.t, data_reference[4,:], label = "EarthRef yPos")
-plot!(p4, data_sindy.t, data_sindy[4,:], markershape=:xcross, label = "EarthId yPos")
+plot!(p4, data_sindy.t, data_sindy.q[:,4], label = "EarthId yPos")
 
 p6 = plot(xlabel = "Time", ylabel = "position")
 plot!(p6, data_reference.t, data_reference[6,:], label = "SunRef yPos")
-plot!(p6, data_sindy.t, data_sindy[6,:], markershape=:xcross, label = "SunId yPos")
+plot!(p6, data_sindy.t, data_sindy.q[:,6], label = "SunId yPos")
 
 plot!(xlabel = "Time", ylabel = "y_pos", size=(1000,1000))
 display(plot(p2, p4, p6, title="Analytical vs Calculated y Positions"))
@@ -283,37 +283,33 @@ display(plot(p2, p4, p6, title="Analytical vs Calculated y Positions"))
 # plot momenta
 p7 = plot(xlabel = "Time", ylabel = "momentum")
 plot!(p7, data_reference.t, data_reference[7,:], label = "VenusRef xMom")
-plot!(p7, data_sindy.t, data_sindy[7,:], markershape=:xcross, label = "VenusId xMom")
+plot!(p7, data_sindy.t, data_sindy.q[:,7], label = "VenusId xMom")
 
 p9 = plot(xlabel = "Time", ylabel = "momentum")
 plot!(p9, data_reference.t, data_reference[9,:], label = "EarthRef xMom")
-plot!(p9, data_sindy.t, data_sindy[9,:], markershape=:xcross, label = "EarthId xMom")
+plot!(p9, data_sindy.t, data_sindy.q[:,9], label = "EarthId xMom")
 
 p11 = plot(xlabel = "Time", ylabel = "momentum")
 plot!(p11, data_reference.t, data_reference[11,:], label = "SunRef xMom")
-plot!(p11, data_sindy.t, data_sindy[11,:], markershape=:xcross, label = "SunId xMom")
+plot!(p11, data_sindy.t, data_sindy.q[:,11], label = "SunId xMom")
 
 plot!(xlabel = "Time", ylabel = "x_mom", size=(1000,1000))
 display(plot(p7, p9, p11, title="Analytical vs Calculated x Momenta"))
 
 p8 = plot(xlabel = "Time", ylabel = "momentum")
 plot!(p8, data_reference.t, data_reference[8,:], label = "VenusRef yMom")
-plot!(p8, data_sindy.t, data_sindy[8,:], markershape=:xcross, label = "VenusId yMom")
+plot!(p8, data_sindy.t, data_sindy.q[:,8], label = "VenusId yMom")
 
 p10 = plot(xlabel = "Time", ylabel = "momentum")
 plot!(p10, data_reference.t, data_reference[10,:], label = "EarthRef yMom")
-plot!(p10, data_sindy.t, data_sindy[10,:], markershape=:xcross, label = "EarthId yMom")
+plot!(p10, data_sindy.t, data_sindy.q[:,10], label = "EarthId yMom")
 
 p12 = plot(xlabel = "Time", ylabel = "momentum")
 plot!(p12, data_reference.t, data_reference[12,:], label = "SunRef yMom")
-plot!(p12, data_sindy.t, data_sindy[12,:], markershape=:xcross, label = "SunId yMom")
+plot!(p12, data_sindy.t, data_sindy.q[:,12], label = "SunId yMom")
 
 plot!(xlabel = "Time", ylabel = "y_mom", size=(1000,1000))
 display(plot(p8, p10, p12, title="Analytical vs Calculated y Momenta"))
-
-
-
-
 
 
 
@@ -351,3 +347,66 @@ plot!(p11, data_reference.t, data_reference[11,:], label = "Sun x-momentum")
 p12 = plot(xlabel = "Time", ylabel = "momentum")
 plot!(p12, data_reference.t, data_reference[12,:], label = "Sun y-momentum")
 display(plot(p7, p8, p9, p10, p11, p12, title="Analytical momentum"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# plot positions
+p1 = plot(xlabel = "Time", ylabel = "position")
+plot!(p1, data_reference.t, data_reference[1,:], label = "VenusRef xPos")
+plot!(p1, data_sindy.t, data_sindy.q[:,1], label = "VenusId xPos")
+
+p3 = plot(xlabel = "Time", ylabel = "position")
+plot!(p3, data_reference.t, data_reference[3,:], label = "EarthRef xPos")
+plot!(p3, data_sindy.t, data_sindy.q[:,3], label = "EarthId xPos")
+
+plot!(xlabel = "Time", ylabel = "x_pos", size=(1000,1000))
+display(plot(p1, p3, title="Analytical vs Calculated x Positions"))
+
+p2 = plot(xlabel = "Time", ylabel = "position")
+plot!(p2, data_reference.t, data_reference[2,:], label = "VenusRef yPos")
+plot!(p2, data_sindy.t, data_sindy.q[:,2], label = "VenusId yPos")
+
+p4 = plot(xlabel = "Time", ylabel = "position")
+plot!(p4, data_reference.t, data_reference[4,:], label = "EarthRef yPos")
+plot!(p4, data_sindy.t, data_sindy.q[:,4], label = "EarthId yPos")
+
+plot!(xlabel = "Time", ylabel = "y_pos", size=(1000,1000))
+display(plot(p2, p4, title="Analytical vs Calculated y Positions"))
+
+# plot momenta
+p5 = plot(xlabel = "Time", ylabel = "momentum")
+plot!(p5, data_reference.t, data_reference[5,:], label = "VenusRef xMom")
+plot!(p5, data_sindy.t, data_sindy.q[:,5], label = "VenusId xMom")
+
+p7 = plot(xlabel = "Time", ylabel = "momentum")
+plot!(p7, data_reference.t, data_reference[7,:], label = "EarthRef xMom")
+plot!(p7, data_sindy.t, data_sindy.q[:,7], label = "EarthId xMom")
+
+
+plot!(xlabel = "Time", ylabel = "x_mom", size=(1000,1000))
+display(plot(p5, p7, title="Analytical vs Calculated x Momenta"))
+
+p6 = plot(xlabel = "Time", ylabel = "momentum")
+plot!(p6, data_reference.t, data_reference[6,:], label = "VenusRef yMom")
+plot!(p6, data_sindy.t, data_sindy.q[:,6], label = "VenusId yMom")
+
+p8 = plot(xlabel = "Time", ylabel = "momentum")
+plot!(p8, data_reference.t, data_reference[8,:], label = "EarthRef yMom")
+plot!(p8, data_sindy.t, data_sindy.q[:,8], label = "EarthId yMom")
+
+plot!(xlabel = "Time", ylabel = "y_mom", size=(1000,1000))
+display(plot(p6, p8, title="Analytical vs Calculated y Momenta"))
