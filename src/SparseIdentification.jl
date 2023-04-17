@@ -11,7 +11,7 @@ using ParallelUtilities
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
 
-export calculate_nparams, hamiltonian, hamil_trig
+export calculate_nparams
 
 include("util.jl")
 
@@ -33,14 +33,13 @@ export sparsify, lorenz, sparsify_hamiltonian_dynamics
 
 include("lorenz.jl")
 
-export hamilGradient!, hamiltonianFunction
+# export hamilGradient!, hamiltonianFunction
 
 # include("hamiltonianGenerator.jl")
 
-export hamil_basis_maker, hamiltonian_basis_concat
+# export hamil_basis_maker, hamiltonian_basis_concat
 
-include("hamiltonian_basis_maker.jl")
-
+# include("hamiltonian_basis_maker.jl")
 
 
 
