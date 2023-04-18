@@ -11,17 +11,17 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
     diffs_power::Int # power of states differences basis, if 0 then no states differences basis is used
     trig_state_diffs::Int # multiple of states differences basis is used with the trignometric basis
 
-    function HamiltonianSINDy(analytical_fθ::GHT;
+    function HamiltonianSINDy(analytical_fθ::GHT = missing;
         λ::T = DEFAULT_LAMBDA,
         noise_level::T = DEFAULT_NOISE_LEVEL,
         integrator_timeStep::T = DEFAULT_INTEGRATOR_TIMESTEP, #TODO: change name to noiseRef_timeStep or noiseGen_timeStep
         nloops = DEFAULT_NLOOPS,
         polyorder::Int = 3,
-        trignometric::Int = 0,
+        trigonometric::Int = 0,
         diffs_power::Int = 0,
-        trig_state_diffs::Int = 0) where {T, GHT <: Base.Callable}
+        trig_state_diffs::Int = 0) where {T, GHT <: Union{Base.Callable,Missing}}
 
-        new{T, GHT}(analytical_fθ, λ, noise_level, integrator_timeStep, nloops, polyorder, trignometric, diffs_power, trig_state_diffs)
+        new{T, GHT}(analytical_fθ, λ, noise_level, integrator_timeStep, nloops, polyorder, trigonometric, diffs_power, trig_state_diffs)
     end
 end
 

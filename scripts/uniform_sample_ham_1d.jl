@@ -82,7 +82,7 @@ tdata = TrainingData(x, ẋ)
 
 # choose SINDy method
 # (lambda parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-method = HamiltonianSINDy(lambda = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
+method = HamiltonianSINDy(λ = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
 
 # compute vector field
 vectorfield = VectorField(method, tdata)
