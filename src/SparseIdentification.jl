@@ -16,7 +16,6 @@ export calculate_nparams
 include("util.jl")
 
 export PolynomialBasis, TrigonometricBasis, CompoundBasis
-export evaluate
 
 include("basis.jl")
 

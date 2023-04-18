@@ -46,7 +46,7 @@ function _evaluate_polynomial(data, p, inds...)
     return out
 end
 
-function evaluate(data::AbstractArray, basis::PolynomialBasis)
+function (basis::PolynomialBasis)(data::AbstractArray)
     _evaluate_polynomial(data', basis.p)
 end
 
@@ -60,7 +60,19 @@ struct TrigonometricBasis <: AbstractBasis
     n::Int
 end
 
-function evaluate(data::AbstractArray, basis::TrigonometricBasis)
+# function (basis::TrigonometricBasis)(data::AbstractVector)
+#     # initialize output array
+#     out = zeros(0)
+
+#     for k in 1:basis.n
+#         tmp = [sin(k*data), cos(k*data)]
+#         out = hcat(out, tmp)
+#     end
+
+#     return out
+# end
+
+function (basis::TrigonometricBasis)(data::AbstractArray)
     # number of snapshots
     ns = size(data,2)
 
@@ -101,8 +113,19 @@ end
 
 bases(b::CompoundBasis) = b.bases
 
+# function (basis::CompoundBasis)(data::AbstractVector)
+#     # initialize output array
+#     out = zeros(0)
 
-function evaluate(data::AbstractArray, basis::CompoundBasis)
+#     # loop over bases
+#     for b in bases(basis)
+#         out = hcat(out, b(data))
+#     end
+
+#     return out
+# end
+
+function (basis::CompoundBasis)(data::AbstractArray)
     # number of snapshots
     ns = size(data,2)
 
@@ -111,7 +134,7 @@ function evaluate(data::AbstractArray, basis::CompoundBasis)
 
     # loop over bases
     for b in bases(basis)
-        out = hcat(out, evaluate(data, b))
+        out = hcat(out, b(data))
     end
 
     return out

@@ -49,7 +49,7 @@ end
 
 
 function (vf::SINDyVectorField)(dy, y, p, t)
-    yPool = evaluate(y, vf.basis)
+    yPool = vf.basis(y)
     ẏ = yPool * vf.coefficients
     @assert axes(dy,1) == axes(ẏ,2)
     for index in eachindex(dy)
@@ -63,11 +63,10 @@ end
 
 function VectorField(method::SINDy, basis::AbstractBasis, data::TrainingData; solver::AbstractSolver = JuliaLeastSquare())
     # Pool Data (evaluate library of candidate basis functions on training data)
-    Θ = evaluate(data.x, basis)
+    Θ = basis(data.x)
 
     # Compute Sparse Regression
     Ξ = sparsify(method, Θ, data.ẋ, solver)
 
     SINDyVectorField(basis, Ξ)
 end
-
