@@ -1,10 +1,5 @@
 # builds a function that is able to construct an augmented library of candidate nonlinear functions
 
-# already defined in util.jl file
-# _prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
-# _prod(a, b) = a .* b
-# _prod(a) = a
-
 function hamiltonian_poly_combos(z, order, inds...)
     ham = []
 
