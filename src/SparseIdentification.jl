@@ -20,10 +20,6 @@ export evaluate
 
 include("basis.jl")
 
-export poolDataLIST
-
-include("poolDataLIST.jl")
-
 export JuliaLeastSquare, OptimSolver
 export solve
 
