@@ -24,9 +24,11 @@ function build_network_layers(input, input_dim, output_dim, widths, activation, 
         input = input * W .+ b
         if activation !== nothing
             input = activation(input)
+        end
         last_width = n_units
         push!(weights, W)
         push!(biases, b)
+    end
     W = param(name*"_W"*string(length(widths)), Flux.glorot_uniform(last_width, output_dim))
     b = param(name*"_b"*string(length(widths)), zeros(output_dim))
     input = input * W .+ b
