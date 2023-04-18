@@ -43,8 +43,8 @@ function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
     if diffs_power != 0 || trig_state_diffs != 0
         diffs = Vector{Num}()
         idx = 1
-        for i in 1:length(z)
-            for j in 1:length(z)
+        for i in eachindex(z)
+            for j in eachindex(z)
                 if i == j
                     continue  # skip index where difference is between same state
                 end
