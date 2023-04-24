@@ -52,7 +52,7 @@ const polyorder = 2
 # max or min power of state difference basis for function library to explore
 const diffs_power = -2
 
-# Get states information of 3 planets
+# Get states information of earth and sun
 earth = solar_system[:earth]
 sun = solar_system[:sun]
 
@@ -68,18 +68,17 @@ G = 9.983431049193709e8 # km³(10^24 kg)⁻¹days⁻²
 
 function grad_pos_ana!(dq,q,p,m,t) 
         dq .= [p[1]./m[1]; p[2]./m[1];
-              p[3]./m[2]; p[4]./m[2];]
+              0;0;]
 end
 
 function grad_mom_ana!(dp,q,p,m,t) 
         dp .= [-G .* (m[1] .* m[2] .* (q[1] - q[3]) ./ (abs(q[1] - q[3]).^3)); 
             -G .* (m[1] .* m[2] .* (q[2] - q[4]) ./ (abs(q[2] - q[4]).^3)); 
-            -G .* (m[2] .* m[1] .* (q[3] - q[1]) ./ (abs(q[3] - q[1]).^3));
-            -G .* (m[2] .* m[1] .* (q[4] - q[2]) ./ (abs(q[4] - q[2]).^3));] 
+            0; 0] 
 end
 
 # Initial conditions
-q₀ = [earth.x[1:2]; sun.x[1:2];] #.* 1e3 #km to m      sun.x[1:2];
+q₀ = [earth.x[1:2] ; sun.x[1:2];] #.* 1e3 #km to m      sun.x[1:2];
 p₀ = [earth.v[1:2] .* m[1]; sun.v[1:2] .* m[2];] #.* 1e3 ./ (3600.0 .* 24.0) #km/d to m/s    sun.v[1:2] .* m[3];
 
 
@@ -128,16 +127,13 @@ x = [vcat(x, vec(_x)) for _x in x_ref]
 ẋ = Float64[]
 ẋ = [vcat(ẋ, vec(_ẋ)) for _ẋ in ẋ_ref]
 
-y = Float64[]
-y = [vcat(y, vec(_y)) for _y in y_noisy]
-
 
 # ----------------------------------------
 # Compute Sparse Regression
 # ----------------------------------------
 
 # collect training data
-tdata = TrainingData(x, ẋ, y)
+tdata = TrainingData(x, ẋ)
 
 # compute vector field
 vectorfield = VectorField(method_params, tdata, solver = BFGS()) 
@@ -151,15 +147,15 @@ println(vectorfield.coefficients)
 
 println("Plotting...")
 
-tstep = 100000
-tspan = (0.0, 1e6)
+tstep = 10000
+tspan = (0.0, 1e5)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
 prob_reference = DynamicalODEProblem(grad_pos_ana!, grad_mom_ana!, q₀, p₀, tspan, m)
 data_reference = ODE.solve(prob_reference, KahanLi6(), abstol=1e-7, reltol=1e-7, saveat = trange, tstops = trange)
 
 prob_sindy = GeometricIntegrators.ODEProblem((dx, t, x, params) -> vectorfield(dx, x, params, t), tspan, tstep, x[1])
-data_sindy = integrate(prob_sindy, QinZhang())
+data_sindy = integrate(prob_sindy, Gauss(2))
 
 
 # Sun and Earth plots
