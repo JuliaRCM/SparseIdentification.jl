@@ -46,10 +46,10 @@ println("Setting up...")
 const nd = 8
 
 # search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 2
+const polyorder = 3
 
 # max or min power of state difference basis for function library to explore
-const diffs_power = -2
+const diffs_power = -3
 
 # Get states information of earth and sun
 earth = solar_system[:earth]
@@ -84,7 +84,7 @@ q₀ = [earth.x[1:2]; sun.x[1:2];] #.* 1e3 #km to m      sun.x[1:2];
 p₀ = [earth.v[1:2] .* m[1]; sun.v[1:2] .* m[2];] #.* 1e3 ./ (3600.0 .* 24.0) #km/d to m/s    sun.v[1:2] .* m[3];
 x₀ = [q₀; p₀]
 
-tstep = 5e1
+tstep = 5000
 tspan = (0.0, 1e7)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
@@ -138,8 +138,8 @@ println(vectorfield.coefficients)
 
 println("Plotting...")
 
-tstep = 5000
-tspan = (0.0, 1e7)
+tstep = 10000
+tspan = (0.0, 1e5)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
 prob_reference = GeometricIntegrators.ODEProblem((dx, t, x, params) -> gradient_analytical!(dx, x, params, t), tspan, tstep, x₀, parameters = m)
@@ -152,22 +152,22 @@ data_sindy = integrate(prob_sindy, Gauss(2))
 # Sun and Earth plots
 # plot positions
 p1 = plot(xlabel = "Time", ylabel = "position")
-plot!(p1, data_reference.t, data_reference[:,1], label = "EarthRef xPos")
+plot!(p1, data_reference.t, data_reference.q[:,1], label = "EarthRef xPos")
 plot!(p1, data_sindy.t, data_sindy.q[:,1], label = "EarthId xPos")
 
 p3 = plot(xlabel = "Time", ylabel = "position")
-plot!(p3, data_reference.t, data_reference[:,3], label = "SunRef xPos")
+plot!(p3, data_reference.t, data_reference.q[:,3], label = "SunRef xPos")
 plot!(p3, data_sindy.t, data_sindy.q[:,3], label = "SunId xPos")
 
 plot!(xlabel = "Time", ylabel = "x_pos", size=(1000,1000))
 display(plot(p1, p3, title="Analytical vs Calculated x Positions"))
 
 p2 = plot(xlabel = "Time", ylabel = "position")
-plot!(p2, data_reference.t, data_reference[:,2], label = "EarthRef yPos")
+plot!(p2, data_reference.t, data_reference.q[:,2], label = "EarthRef yPos")
 plot!(p2, data_sindy.t, data_sindy.q[:,2], label = "EarthId yPos")
 
 p4 = plot(xlabel = "Time", ylabel = "position")
-plot!(p4, data_reference.t, data_reference[:,4], label = "SunRef yPos")
+plot!(p4, data_reference.t, data_reference.q[:,4], label = "SunRef yPos")
 plot!(p4, data_sindy.t, data_sindy.q[:,4], label = "SunId yPos")
 
 plot!(xlabel = "Time", ylabel = "y_pos", size=(1000,1000))
@@ -175,11 +175,11 @@ display(plot(p2, p4, title="Analytical vs Calculated y Positions"))
 
 # plot momenta
 p5 = plot(xlabel = "Time", ylabel = "momentum")
-plot!(p5, data_reference.t, data_reference[:,5], label = "EarthRef xMom")
+plot!(p5, data_reference.t, data_reference.q[:,5], label = "EarthRef xMom")
 plot!(p5, data_sindy.t, data_sindy.q[:,5], label = "EarthId xMom")
 
 p7 = plot(xlabel = "Time", ylabel = "momentum")
-plot!(p7, data_reference.t, data_reference[:,7], label = "SunRef xMom")
+plot!(p7, data_reference.t, data_reference.q[:,7], label = "SunRef xMom")
 plot!(p7, data_sindy.t, data_sindy.q[:,7], label = "SunId xMom")
 
 
@@ -187,11 +187,11 @@ plot!(xlabel = "Time", ylabel = "x_mom", size=(1000,1000))
 display(plot(p5, p7, title="Analytical vs Calculated x Momenta"))
 
 p6 = plot(xlabel = "Time", ylabel = "momentum")
-plot!(p6, data_reference.t, data_reference[:,6], label = "EarthRef yMom")
+plot!(p6, data_reference.t, data_reference.q[:,6], label = "EarthRef yMom")
 plot!(p6, data_sindy.t, data_sindy.q[:,6], label = "EarthId yMom")
 
 p8 = plot(xlabel = "Time", ylabel = "momentum")
-plot!(p8, data_reference.t, data_reference[:,8], label = "SunRef yMom")
+plot!(p8, data_reference.t, data_reference.q[:,8], label = "SunRef yMom")
 plot!(p8, data_sindy.t, data_sindy.q[:,8], label = "SunId yMom")
 
 plot!(xlabel = "Time", ylabel = "y_mom", size=(1000,1000))
