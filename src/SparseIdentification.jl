@@ -2,6 +2,7 @@ module SparseIdentification
 
 using RuntimeGeneratedFunctions
 using Symbolics
+using GeometricIntegrators
 using DifferentialEquations
 using ODE
 using Base.Threads
