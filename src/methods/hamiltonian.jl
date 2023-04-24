@@ -75,6 +75,8 @@ function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
         end
     end
 
+    println(collect(a .* ham))
+
     ham = sum(collect(a .* ham))
     return ham
 

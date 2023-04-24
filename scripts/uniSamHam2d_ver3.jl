@@ -72,8 +72,8 @@ ẋ = [grad_H_ana(_x) for _x in x]
 
 # choose SINDy method
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-# integrator_timeStep chosen randomly for now
-method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, integrator_timeStep = 0.05, 
+# noiseGen_timeStep chosen randomly for now
+method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05, 
                             polyorder = polyorder, trigonometric = trig_wave_num, diffs_power = diffs_power)
 
 # generate noisy references data at next time step

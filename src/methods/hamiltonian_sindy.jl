@@ -3,7 +3,7 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
 
     λ::T # Sparsification Parameter
     noise_level::T
-    integrator_timeStep::T # Time step for the integrator to get noisy data #TODO: change name to noiseRef_timeStep or noiseGen_timeStep
+    noiseGen_timeStep::T # Time step for the integrator to get noisy data #TODO: change name to noiseGen_timeStep or noiseGen_timeStep
     nloops::Int # Sparsification Loops
 
     polyorder::Int
@@ -14,14 +14,14 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
     function HamiltonianSINDy(analytical_fθ::GHT = missing;
         λ::T = DEFAULT_LAMBDA,
         noise_level::T = DEFAULT_NOISE_LEVEL,
-        integrator_timeStep::T = DEFAULT_INTEGRATOR_TIMESTEP, #TODO: change name to noiseRef_timeStep or noiseGen_timeStep
+        noiseGen_timeStep::T = DEFAULT_NOISEGEN_TIMESTEP, #TODO: change name to noiseGen_timeStep or noiseGen_timeStep
         nloops = DEFAULT_NLOOPS,
         polyorder::Int = 3,
         trigonometric::Int = 0,
         diffs_power::Int = 0,
         trig_state_diffs::Int = 0) where {T, GHT <: Union{Base.Callable,Missing}}
 
-        new{T, GHT}(analytical_fθ, λ, noise_level, integrator_timeStep, nloops, polyorder, trigonometric, diffs_power, trig_state_diffs)
+        new{T, GHT}(analytical_fθ, λ, noise_level, noiseGen_timeStep, nloops, polyorder, trigonometric, diffs_power, trig_state_diffs)
     end
 end
 
@@ -90,7 +90,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
 
         println(result)
     end
-    println(coeffs)
+    
     return coeffs
 end
 
@@ -159,7 +159,7 @@ end
 
 function gen_noisy_ref_data(method::HamiltonianSINDy, x)
     # initialize timestep data for analytical solution
-    timeStep = method.integrator_timeStep
+    timeStep = method.noiseGen_timeStep
     tspan = (0.0, timeStep)
     trange = range(tspan[begin], step = timeStep, stop = tspan[end])
 
@@ -221,7 +221,7 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, y, solver)
 
     # define loss function
     function loss(a::AbstractVector)
-        mapreduce(z -> loss_kernel(z..., fθ, a, method.integrator_timeStep), +, zip(x, y))
+        mapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x, y))
     end
     
     # initial guess
@@ -321,11 +321,11 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
     
     # define loss function
     function loss(a::AbstractVector)
-        mapreduce(z -> loss_kernel(z..., fθ, a, method.integrator_timeStep), +, zip(x, y))
+        mapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x, y))
     end
 
     # function ploss(a::AbstractVector)
-    #     pmapreduce(z -> loss_kernel(z..., fθ, a, method.integrator_timeStep), +, zip(x̄, ȳ))
+    #     pmapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x̄, ȳ))
     # end
 
     # loss(coeffs)
