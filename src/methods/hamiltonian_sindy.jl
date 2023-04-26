@@ -121,6 +121,7 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
 
     # Compute Sparse Regression
     #TODO: make sparsify method chooseable through arguments
+    # coeffs = sparsify_two(method, fθ, data.x, data.y, solver)
     # coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
     coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
     
@@ -158,17 +159,16 @@ end
 
 function gen_noisy_ref_data(method::HamiltonianSINDy, x)
     # initialize timestep data for analytical solution
-    timeStep = method.noiseGen_timeStep
-    tspan = (0.0, timeStep)
-    trange = range(tspan[begin], step = timeStep, stop = tspan[end])
+    tstep = method.noiseGen_timeStep
+    tspan = (zero(tstep), tstep)
 
     # # matrix to store solution at next time point
     # data_ref = zero(x)
 
     function next_timestep(x)
-        prob_ref = ODEProblem(method.analytical_fθ, x, tspan)
-        sol = ODE.solve(prob_ref, Tsit5(), dt = timeStep, abstol = 1e-10, reltol = 1e-10, saveat = trange)
-        sol.u[2]
+        prob_ref = ODEProblem((dx, t, x, params) -> dx .= method.analytical_fθ(x, params, t), tspan, tstep, x)
+        sol = integrate(prob_ref, Gauss(2))
+        sol.q[end]
     end
 
     data_ref = [next_timestep(_x) for _x in x]
@@ -290,7 +290,6 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(nparam)
 
-
     function loss_kernel(x₀, x₁, fθ, a, Δt)
         numLoops = 4 # random choice of loop steps
 
@@ -313,26 +312,15 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
             x̃ .= x₀ .+ Δt .* f
         end
 
-        # calcualte square eucilidean distance
+        # calculate square Euclidean distance
         sqeuclidean(x₁,x̃)
     end
 
-    
     # define loss function
     function loss(a::AbstractVector)
         mapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x, y))
     end
 
-    # function ploss(a::AbstractVector)
-    #     pmapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x̄, ȳ))
-    # end
-
-    # loss(coeffs)
-    # @time loss(coeffs)
-    
-    # ploss(coeffs)
-    # @time ploss(coeffs)
-    
     # initial guess
     println("Initial Guess...")
     result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
