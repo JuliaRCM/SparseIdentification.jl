@@ -29,17 +29,6 @@ export sparsify, lorenz, sparsify_hamiltonian_dynamics
 
 include("lorenz.jl")
 
-# export hamilGradient!, hamiltonianFunction
-
-# include("hamiltonianGenerator.jl")
-
-# export hamil_basis_maker, hamiltonian_basis_concat
-
-# include("hamiltonian_basis_maker.jl")
-
-
-
-
 export TrainingData
 
 include("trainingdata.jl")
