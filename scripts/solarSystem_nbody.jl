@@ -46,10 +46,10 @@ println("Setting up...")
 const nd = 8
 
 # search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 3
+const polyorder = 2
 
 # max or min power of state difference basis for function library to explore
-const diffs_power = -3
+const diffs_power = -2
 
 # Get states information of earth and sun
 earth = solar_system[:earth]
@@ -95,7 +95,7 @@ trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
 println("Generate Training Data...")
 
-prob_reference = GeometricIntegrators.ODEProblem((dx, t, x, params) -> gradient_analytical!(dx, x, params, t), tspan, tstep, x₀, parameters = m)
+prob_reference = ODEProblem((dx, t, x, params) -> gradient_analytical!(dx, x, params, t), tspan, tstep, x₀, parameters = m)
 data_reference = integrate(prob_reference, Gauss(2))
 x_ref = data_reference.q
 
@@ -138,14 +138,14 @@ println(vectorfield.coefficients)
 
 println("Plotting...")
 
-tstep = 10000
-tspan = (0.0, 1e5)
+tstep = 1e5
+tspan = (0.0, 1e6)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
-prob_reference = GeometricIntegrators.ODEProblem((dx, t, x, params) -> gradient_analytical!(dx, x, params, t), tspan, tstep, x₀, parameters = m)
+prob_reference = ODEProblem((dx, t, x, params) -> gradient_analytical!(dx, x, params, t), tspan, tstep, x₀, parameters = m)
 data_reference = integrate(prob_reference, Gauss(2))
 
-prob_sindy = GeometricIntegrators.ODEProblem((dx, t, x, params) -> vectorfield(dx, x, params, t), tspan, tstep, x[1])
+prob_sindy = ODEProblem((dx, t, x, params) -> vectorfield(dx, x, params, t), tspan, tstep, x[1])
 data_sindy = integrate(prob_sindy, Gauss(2))
 
 
