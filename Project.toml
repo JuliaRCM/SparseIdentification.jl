@@ -30,6 +30,7 @@ ParallelUtilities = "0.8"
 Plots = "1"
 RuntimeGeneratedFunctions = "0.5"
 Symbolics = "5"
+Zygote = "0.6"
 julia = "1.6"
 
 [extras]
