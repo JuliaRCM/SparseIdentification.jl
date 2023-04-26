@@ -27,6 +27,7 @@ ForwardDiff = "0.10"
 ODE = "2"
 Optim = "1"
 Plots = "1"
+Symbolics = "5"
 julia = "1.6"
 
 [extras]
