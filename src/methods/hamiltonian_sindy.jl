@@ -3,18 +3,18 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
 
     λ::T # Sparsification Parameter
     noise_level::T
-    noiseGen_timeStep::T # Time step for the integrator to get noisy data #TODO: change name to noiseGen_timeStep or noiseGen_timeStep
+    noiseGen_timeStep::T # Time step for the integrator to get noisy data 
     nloops::Int # Sparsification Loops
 
     polyorder::Int
-    trignometric::Int
+    trigonometric::Int
     diffs_power::Int # power of states differences basis, if 0 then no states differences basis is used
-    trig_state_diffs::Int # multiple of states differences basis is used with the trignometric basis
+    trig_state_diffs::Int # multiple of states differences basis is used with the trigonometric basis
 
     function HamiltonianSINDy(analytical_fθ::GHT = missing;
         λ::T = DEFAULT_LAMBDA,
         noise_level::T = DEFAULT_NOISE_LEVEL,
-        noiseGen_timeStep::T = DEFAULT_NOISEGEN_TIMESTEP, #TODO: change name to noiseGen_timeStep or noiseGen_timeStep
+        noiseGen_timeStep::T = DEFAULT_NOISEGEN_TIMESTEP,
         nloops = DEFAULT_NLOOPS,
         polyorder::Int = 3,
         trigonometric::Int = 0,
@@ -33,7 +33,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     nd = size(x[begin],1)
 
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trignometric, method.diffs_power, method.trig_state_diffs)
+    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs)
 
     # coeffs initialized to a vector of zeros b/c easier to optimze zeros for our case
     coeffs = zeros(nparam)
@@ -116,7 +116,7 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     d = size(data.x[begin], 1) ÷ 2
 
     # returns function that builds hamiltonian gradient through symbolics
-    fθ = ΔH_func_builder(d, method.polyorder, method.trignometric, 
+    fθ = ΔH_func_builder(d, method.polyorder, method.trigonometric, 
                 method.diffs_power, method.trig_state_diffs)
 
     # Compute Sparse Regression
@@ -186,7 +186,7 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, y, solver)
     nd = size(x[begin],1)
 
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trignometric, method.diffs_power, method.trig_state_diffs)
+    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs)
 
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(nparam)
@@ -285,7 +285,7 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
     nd = size(x[begin],1)
 
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trignometric, method.diffs_power, method.trig_state_diffs)
+    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs)
 
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(nparam)

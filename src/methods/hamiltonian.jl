@@ -25,7 +25,7 @@ function hamiltonian_poly(z, order, inds...)
 end
 
 
-" collects and sums polynomial, trignometric, and states differences combinations of basis "
+" collects and sums polynomial, trigonometric, and states differences combinations of basis "
 function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
     ham = []
 
@@ -34,7 +34,7 @@ function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
         ham = vcat(ham, hamiltonian_poly(z, i))
     end
 
-    # Trignometric basis
+    # Trigonometric basis
     for k = 1:trig_wave_num
         ham = vcat(ham, vcat(sin.(k*z)), vcat(cos.(k*z)))
     end
@@ -64,7 +64,7 @@ function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
         end
     end
 
-    # Trignometric state differences basis
+    # Trigonometric state differences basis
     if trig_state_diffs > 0
         for k = 1:trig_state_diffs
             ham = vcat(ham, vcat(sin.(diffs) .^ k), vcat(cos.(diffs) .^ k))
