@@ -62,6 +62,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     coeffs .= result.minimizer
 
     println(result)
+    println(coeffs)
 
     for n in 1:method.nloops
         println("Iteration #$n...")
@@ -89,7 +90,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
 
         println(result)
     end
-    
+    println(coeffs)
     return coeffs
 end
 
@@ -178,6 +179,7 @@ function gen_noisy_ref_data(method::HamiltonianSINDy, x)
     data_ref_noisy = [_x .+ method.noise_level .* randn(size(_x)) for _x in data_ref]
 
     return data_ref_noisy
+
 end
 
 
@@ -276,7 +278,6 @@ end
 
 
 
-
 ################################################################################################
 ################################################################################################
 ################################################################################################
@@ -359,6 +360,7 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
     end
     
     return coeffs
+<<<<<<< HEAD
 end
 
 
