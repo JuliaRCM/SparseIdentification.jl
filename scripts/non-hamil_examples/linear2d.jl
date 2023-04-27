@@ -54,7 +54,6 @@ for i in axes(ẋ,2)
     ẋ[:,i] .= A*x[:,i]
 end
 
-
 # collect training data
 tdata = TrainingData(x, ẋ)
 
