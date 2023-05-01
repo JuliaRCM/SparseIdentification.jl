@@ -170,7 +170,7 @@ function gen_noisy_ref_data(method::HamiltonianSINDy, x)
     # data_ref = zero(x)
 
     function next_timestep(x)
-        prob_ref = ODEProblem((dx, t, x, params) -> dx .= method.analytical_fθ(x, params, t), tspan, tstep, x)
+        prob_ref = ODEProblem((dx, t, x, params) -> method.analytical_fθ(dx, x, params, t), tspan, tstep, x)
         sol = integrate(prob_ref, Gauss(2))
         sol.q[end]
     end
