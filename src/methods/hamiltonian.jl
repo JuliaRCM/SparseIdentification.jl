@@ -25,8 +25,9 @@ function hamiltonian_poly(z, order, inds...)
 end
 
 
+
 " collects and sums polynomial, trigonometric, and states differences combinations of basis "
-function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
+function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs, exp_diff)
     ham = []
 
     # Polynomial basis
@@ -39,8 +40,8 @@ function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
         ham = vcat(ham, vcat(sin.(k*z)), vcat(cos.(k*z)))
     end
 
-    # For States difference power basis or trigonometric power states difference basis
-    if diffs_power != 0 || trig_state_diffs != 0
+    # For States difference power basis, trigonometric or exponential power states difference basis
+    if diffs_power != 0 || trig_state_diffs != 0 || exp_diff != 0
         diffs = Vector{Num}()
         idx = 1
         for i in eachindex(z)
@@ -75,6 +76,17 @@ function hamiltonian(z, a, order, trig_wave_num, diffs_power, trig_state_diffs)
         end
     end
 
+    # exponential state differences basis
+    if exp_diff > 0
+        for k = 1:exp_diff
+            ham = vcat(ham, vcat(exp.(diffs) .^ k))
+        end
+    elseif exp_diff < 0
+        for k = 1:abs(exp_diff)
+            ham = vcat(ham, vcat(exp.(diffs) .^ -k))
+        end
+    end
+
     ham = sum(collect(a .* ham))
     return ham
 
@@ -83,12 +95,12 @@ end
 
 
 " returns a function that can build the gradient of the hamiltonian "
-function ΔH_func_builder(d, polyorder, trig_wave_num, diffs_power, trig_state_diffs) 
+function ΔH_func_builder(d, polyorder, trig_wave_num, diffs_power, trig_state_diffs, exp_diff) 
     # nd is the total number of dimensions of all the states, e.g. if q,p each of 3 dims, that is 6 dims in total
     nd = 2d
     
     # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, polyorder, trig_wave_num, diffs_power, trig_state_diffs)
+    nparam = calculate_nparams(nd, polyorder, trig_wave_num, diffs_power, trig_state_diffs, exp_diff)
 
     # symbolic variables
     @variables a[1:nparam]
@@ -98,7 +110,7 @@ function ΔH_func_builder(d, polyorder, trig_wave_num, diffs_power, trig_state_d
     Dz = Differential.(z)
     
     # make a basis library
-    ham = hamiltonian(z, a, polyorder, trig_wave_num, diffs_power, trig_state_diffs)
+    ham = hamiltonian(z, a, polyorder, trig_wave_num, diffs_power, trig_state_diffs, exp_diff)
     
     # gives derivative of the hamiltonian, but not the skew-symmetric true one
     f = [expand_derivatives(dz(ham)) for dz in Dz]
