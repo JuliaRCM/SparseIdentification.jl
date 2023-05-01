@@ -126,8 +126,8 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     # Compute Sparse Regression
     #TODO: make sparsify method chooseable through arguments
     # coeffs = sparsify_two(method, fθ, data.x, data.y, solver)
-    # coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
-    coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
+    coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
+    # coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
     
     HamiltonianSINDyVectorField(coeffs, fθ)
 end
@@ -394,7 +394,7 @@ function sparsify_encoder(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
    nd = size(x[begin],1)
 
    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs)
+   nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs, method.exp_diffs)
 
    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
    coeffs = zeros(nparam)
