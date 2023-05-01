@@ -40,8 +40,9 @@ m = 1
 # Gradient function of the 2D hamiltonian
 # grad_H_ana(x) = [x[3]; x[4]; -2ϵ * x[1]; -2ϵ * x[2]]
 grad_H_ana(x) = [x[3]; x[4]; sin(x[1]); sin(x[2])]
-grad_H_ana(x, p, t) = grad_H_ana(x)
-
+function grad_H_ana!(dx, x, p, t)
+    dx .= grad_H_ana(x)
+end
 # ------------------------------------------------------------
 # Training Data
 # ------------------------------------------------------------
@@ -62,7 +63,10 @@ s = collect(Iterators.product(fill(samp_range, nd)...))
 
 # compute vector field from x state values
 x = [collect(s[i]) for i in eachindex(s)]
-ẋ = [grad_H_ana(_x) for _x in x]
+dx = zeros(nd)
+p = 0
+t = 0
+ẋ = [grad_H_ana!(copy(dx), _x, p, t) for _x in x]
 
 
 # ----------------------------------------
@@ -72,7 +76,7 @@ ẋ = [grad_H_ana(_x) for _x in x]
 # choose SINDy method
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
 # noiseGen_timeStep chosen randomly for now
-method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05, 
+method = HamiltonianSINDy(grad_H_ana!, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05, 
                             polyorder = polyorder, trigonometric = trig_wave_num, diffs_power = diffs_power)
 
 # generate noisy references data at next time step
@@ -95,12 +99,11 @@ println("Plotting...")
 
 tstep = 0.01
 tspan = (0.0,25.0)
-trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
 for i in 1:5
     idx = rand(1:length(s))
 
-    prob_reference = ODEProblem((dx, t, x, params) -> dx .= grad_H_ana(x, params, t), tspan, tstep, x[idx])
+    prob_reference = ODEProblem((dx, t, x, params) -> grad_H_ana!(dx, x, params, t), tspan, tstep, x[idx])
     data_reference = integrate(prob_reference, Gauss(2))
 
     prob_sindy = ODEProblem((dx, t, x, params) -> vectorfield(dx, x, params, t), tspan, tstep, x[idx])
