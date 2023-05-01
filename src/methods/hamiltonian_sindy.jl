@@ -360,7 +360,6 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
     end
     
     return coeffs
-<<<<<<< HEAD
 end
 
 
