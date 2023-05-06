@@ -1,9 +1,8 @@
-# This script solves the 2D n-body problem for a number of planets
+# This script solves the Toda lattice problem
 
 ###############################################################################
 ##################################THEORY#######################################
 ###############################################################################
-
 
 
 using Distributions
@@ -16,21 +15,11 @@ using SparseIdentification
 gr()
 
 
-
 # --------------------
 # Setup
 # --------------------
 
 println("Setting up...")
-
-# search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 2
-
-# search space up to exponential power state differences (highest state differences power order)
-const exp_diffs = 2
-
-# mass of each particle
-m = 1
 
 # Analytical Gradient
 function gradient_analytical!(dx, x, p, t) 
@@ -49,16 +38,24 @@ function gradient_analytical!(dx, x, p, t)
     return dx
 end
 
+# (q₁,q₂,q₃,q₄,p₁,p₂,p₃,p₄) 4 particle system
+num_particles = 4
+num_samples = 1000
+
+z = get_z_vector(num_particles)
+polynomial = polynomial_basis(z, polyorder=2)
+z_diff = primal_operator_basis(z, -)
+exponential_diff  = exponential_basis(z_diff, polyorder=1)
+z_power = primal_power_basis(exponential_diff, 2)
+basis = get_basis_set(polynomial, z_power)
+test = get_numCoeffs(basis)
+
 
 # ------------------------------------------------------------
 # Training Data
 # ------------------------------------------------------------
 
 println("Generate Training Data...")
-
-# (q₁,q₂,q₃,q₄,p₁,p₂,p₃,p₄) 4 particle system
-num_particles = 4
-num_samples = 1000
 
 # x reference state data 
 x = [randn(2*num_particles) for i in 1:num_samples]
@@ -75,7 +72,7 @@ ẋ = [gradient_analytical!(copy(dx), _x, p, t) for _x in x]
 # ----------------------------------------
 
 # choose SINDy method
-method = HamiltonianSINDy(gradient_analytical!, λ = 0.08, noise_level = 0.00, polyorder = polyorder, exp_diffs = exp_diffs)
+method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.00)
 
 # generate noisy references data at next time step
 y = SparseIdentification.gen_noisy_ref_data(method, x)
@@ -87,7 +84,7 @@ tdata = TrainingData(x, ẋ, y)
 vectorfield = VectorField(method, tdata, solver = BFGS()) 
 
 println(vectorfield.coefficients)
-
+coeff = vectorfield.coefficients
 
 # ----------------------------------------
 # Plot Results
