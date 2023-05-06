@@ -33,6 +33,14 @@ function primal_operator_basis(z, operator)
     return Vector{Symbolics.Num}([operator(z[i], z[j]) for i in 1:length(z)-1 for j in i+1:length(z)] ∪ [operator(z[j], z[i]) for i in 1:length(z)-1 for j in i+1:length(z)])
 end
 
+function primal_power_basis(z, max_power::Int)
+    if max_power > 0
+        return Vector{Symbolics.Num}(vcat([z.^i for i in 1:max_power]...))
+    elseif max_power < 0
+        return Vector{Symbolics.Num}(vcat([z.^-i for i in 1:abs(max_power)]...))
+    end
+end
+
 
 
 ##########################################################

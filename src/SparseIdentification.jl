@@ -38,7 +38,7 @@ export SINDy, SINDyVectorField
 
 include("methods/sindy.jl")
 
-export poly_combos, primal_monomial_basis, primal_coeff_basis, primal_operator_basis
+export poly_combos, primal_monomial_basis, primal_coeff_basis, primal_operator_basis, primal_power_basis
 export polynomial_basis, trigonometric_basis, exponential_basis, logarithmic_basis, mixed_states_basis
 
 include("hamiltonian_basis.jl")

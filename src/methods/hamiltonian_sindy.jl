@@ -109,7 +109,7 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     fθ = ΔH_func_builder(d, method.z, method.basis)
 
     # Compute Sparse Regression
-    #TODO: make sparsify method chooseable through arguments
+    #TODO: make sparsify method choosable through arguments
     # coeffs = sparsify_two(method, fθ, data.x, data.y, solver)
     # coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
     coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
