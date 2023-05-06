@@ -8,7 +8,7 @@ using Symbolics
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
 
-export calculate_nparams
+export get_z_vector, get_numCoeffs, get_basis_set
 
 include("util.jl")
 
@@ -38,9 +38,14 @@ export SINDy, SINDyVectorField
 
 include("methods/sindy.jl")
 
+export poly_combos, primal_monomial_basis, primal_coeff_basis, primal_operator_basis
+export polynomial_basis, trigonometric_basis, exponential_basis, logarithmic_basis, mixed_states_basis
+
+include("hamiltonian_basis.jl")
+
 export HamiltonianSINDy, HamiltonianSINDyVectorField
 
-include("methods/hamiltonian.jl")
 include("methods/hamiltonian_sindy.jl")
+include("methods/hamiltonian.jl")
 
 end

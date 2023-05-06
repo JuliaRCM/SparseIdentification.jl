@@ -1,29 +1,21 @@
 struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
+    basis::Vector{Symbolics.Num} # the augmented basis for sparsification
     analytical_fθ::GHT
-
+    z::Vector{Symbolics.Num} 
     λ::T # Sparsification Parameter
-    noise_level::T
+    noise_level::T # Noise amplitude added to the data
     noiseGen_timeStep::T # Time step for the integrator to get noisy data 
     nloops::Int # Sparsification Loops
-
-    polyorder::Int
-    trigonometric::Int
-    diffs_power::Int # power of states differences basis, if 0 then no states differences basis is used
-    trig_state_diffs::Int # multiple of states differences basis is used with the trigonometric basis
-    exp_diffs::Int # multiple of states differences basis is used with the exponential basis
-
-    function HamiltonianSINDy(analytical_fθ::GHT = missing;
+    
+    function HamiltonianSINDy(basis::Vector{Symbolics.Num},
+        analytical_fθ::GHT = missing,
+        z::Vector{Symbolics.Num} = get_z_vector(2);
         λ::T = DEFAULT_LAMBDA,
         noise_level::T = DEFAULT_NOISE_LEVEL,
         noiseGen_timeStep::T = DEFAULT_NOISEGEN_TIMESTEP,
-        nloops = DEFAULT_NLOOPS,
-        polyorder::Int = 3,
-        trigonometric::Int = 0,
-        diffs_power::Int = 0,
-        trig_state_diffs::Int = 0,
-        exp_diffs::Int = 0) where {T, GHT <: Union{Base.Callable,Missing}}
+        nloops = DEFAULT_NLOOPS) where {T, GHT <: Union{Base.Callable,Missing}}
 
-        new{T, GHT}(analytical_fθ, λ, noise_level, noiseGen_timeStep, nloops, polyorder, trigonometric, diffs_power, trig_state_diffs, exp_diffs)
+        new{T, GHT}(basis, analytical_fθ, z, λ, noise_level, noiseGen_timeStep, nloops)
     end
 end
 
@@ -31,14 +23,8 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     # add noise
     ẋnoisy = [_ẋ .+ method.noise_level .* randn(size(_ẋ)) for _ẋ in ẋ]
 
-    # dimension of system
-    nd = size(x[begin],1)
-
-    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs, method.exp_diffs)
-
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-    coeffs = zeros(nparam)
+    coeffs = zeros(get_numCoeffs(method.basis))
     
     # define loss function
     function loss_kernel(x₀, x̃, fθ, a)
@@ -48,7 +34,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         # gradient at current (x) values
         fθ(f, x₀, a)
 
-        # calcualte square eucilidean distance
+        # calculate square euclidean distance
         sqeuclidean(f,x̃)
     
     end
@@ -120,14 +106,13 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     d = size(data.x[begin], 1) ÷ 2
 
     # returns function that builds hamiltonian gradient through symbolics
-    fθ = ΔH_func_builder(d, method.polyorder, method.trigonometric, 
-                method.diffs_power, method.trig_state_diffs, method.exp_diffs)
+    fθ = ΔH_func_builder(d, method.z, method.basis)
 
     # Compute Sparse Regression
     #TODO: make sparsify method chooseable through arguments
     # coeffs = sparsify_two(method, fθ, data.x, data.y, solver)
-    coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
-    # coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
+    # coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
+    coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
     
     HamiltonianSINDyVectorField(coeffs, fθ)
 end
@@ -186,15 +171,8 @@ end
 
 
 function sparsify_two(method::HamiltonianSINDy, fθ, x, y, solver)
-
-    # dimension of system
-    nd = size(x[begin],1)
-
-    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs, method.exp_diffs)
-
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-    coeffs = zeros(nparam)
+    coeffs = zeros(get_numCoeffs(method.basis))
     
     # define loss function
     function loss_kernel(x₀, x₁, fθ, a, Δt)
@@ -219,7 +197,7 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, y, solver)
             x̃ .= x₀ .+ Δt .* f
         end
 
-        # calcualte square eucilidean distance
+        # calculate square euclidean distance
         sqeuclidean(x₁,x̃)
     end
 
@@ -285,15 +263,8 @@ end
 ################################################################################################
 ################################################################################################
 function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
-
-    # dimension of system
-    nd = size(x[begin],1)
-
-    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs, method.exp_diffs)
-
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-    coeffs = zeros(nparam)
+    coeffs = zeros(get_numCoeffs(method.basis))
 
     function loss_kernel(x₀, x₁, fθ, a, Δt)
         numLoops = 4 # random choice of loop steps
@@ -389,15 +360,8 @@ end
 # 4. reverse autoencoder to actual variables
 # 5. find loss function
 function sparsify_encoder(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
-
-   # dimension of system
-   nd = size(x[begin],1)
-
-   # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-   nparam = calculate_nparams(nd, method.polyorder, method.trigonometric, method.diffs_power, method.trig_state_diffs, method.exp_diffs)
-
-   # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-   coeffs = zeros(nparam)
+    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
+    coeffs = zeros(get_numCoeffs(method.basis))
    
    function loss_kernel(x₀, x₁, fθ, a, Δt)
         numLoops = 4 # random choice of loop steps
