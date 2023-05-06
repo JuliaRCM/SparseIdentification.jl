@@ -1,4 +1,4 @@
-#This file uses uniform sampling to find the SINDy solution of a hamiltonian system in 1D and 2D
+# This file uses uniform sampling to find the SINDy solution of a hamiltonian system in 1D and 2D
 
 using Distributions
 using GeometricIntegrators
@@ -20,15 +20,11 @@ println("Setting up...")
 # 2D system with 4 variables [q₁, q₂, p₁, p₂]
 const nd = 4
 
-# search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 3 
-
-# maximum wave number of trig basis for function library to explore
-const trig_wave_num = 2
-
-# max or min power of state difference basis for function library to explore
-const diffs_power = 1
-
+z = get_z_vector(nd/2)
+polynomial = polynomial_basis(z, polyorder=3)
+trigonometric  = trigonometric_basis(z, max_coeff=1)
+prime_diff = primal_operator_basis(z, -)
+basis = get_basis_set(polynomial, trigonometric, prime_diff)
 # initialize analytical function, keep λ smaller than ϵ so system is identifiable
 ϵ = 0.5
 m = 1
@@ -76,8 +72,7 @@ ẋ = [grad_H_ana!(copy(dx), _x, p, t) for _x in x]
 # choose SINDy method
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
 # noiseGen_timeStep chosen randomly for now
-method = HamiltonianSINDy(grad_H_ana!, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05, 
-                            polyorder = polyorder, trigonometric = trig_wave_num, diffs_power = diffs_power)
+method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05)
 
 # generate noisy references data at next time step
 y = SparseIdentification.gen_noisy_ref_data(method, x)
