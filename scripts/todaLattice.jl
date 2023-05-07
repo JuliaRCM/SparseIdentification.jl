@@ -48,7 +48,6 @@ z_diff = primal_operator_basis(z, -)
 exponential_diff  = exponential_basis(z_diff, polyorder=1)
 z_power = primal_power_basis(exponential_diff, 2)
 basis = get_basis_set(polynomial, z_power)
-test = get_numCoeffs(basis)
 
 
 # ------------------------------------------------------------
@@ -84,7 +83,7 @@ tdata = TrainingData(x, ẋ, y)
 vectorfield = VectorField(method, tdata, solver = BFGS()) 
 
 println(vectorfield.coefficients)
-coeff = vectorfield.coefficients
+
 
 # ----------------------------------------
 # Plot Results
