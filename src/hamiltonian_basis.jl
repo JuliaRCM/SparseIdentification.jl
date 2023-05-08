@@ -67,7 +67,7 @@ end
 
 function logarithmic_basis(z::Vector{Symbolics.Num} = get_z_vector(2); polyorder::Int = 0, operator=nothing, max_coeff::Int = 0)
     primes = polynomial_basis(z, polyorder = polyorder, operator = operator, max_coeff = max_coeff)
-    return log.(primes)
+    return log.(abs.(primes))
 end
 
 function mixed_states_basis(basis::Vector{Symbolics.Num}...)
