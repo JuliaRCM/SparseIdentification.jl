@@ -24,7 +24,7 @@ function get_basis_set(basis::Vector{Symbolics.Num}...)
     basis = vcat(basis...)
     
     # removes duplicates
-    basis = Vector{Symbolics.Num}(collect(Set(basis)))
+    basis = Vector{Symbolics.Num}(collect(unique(basis)))
 
     return basis
 end
