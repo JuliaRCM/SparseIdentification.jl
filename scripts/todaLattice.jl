@@ -103,51 +103,49 @@ for i in 1:5
     prob_sindy = ODEProblem((dx, t, x, params) -> vectorfield(dx, x, params, t), tspan, tstep, x[idx])
     data_sindy = integrate(prob_sindy, Gauss(2))
 
-    # plot positions
-    p1 = plot(xlabel = "Time", ylabel = "position")
-    plot!(p1, data_reference.t, data_reference.q[:,1], markershape=:star5, label = "particle one Ref_pos")
-    plot!(p1, data_sindy.t, data_sindy.q[:,1], markershape=:xcross, label = "particle one Iden_pos")
+    p1 = plot(xlabel = "Time", ylabel = "q₁")
+    plot!(p1, data_reference.t, data_reference.q[:,1], markershape=:star5, label = "Ref q₁")
+    plot!(p1, data_sindy.t, data_sindy.q[:,1], markershape=:xcross, label = "Identified q₁")
 
-    p3 = plot(xlabel = "Time", ylabel = "position")
-    plot!(p3, data_reference.t, data_reference.q[:,3], markershape=:star5, label = "particle two Ref_pos")
-    plot!(p3, data_sindy.t, data_sindy.q[:,3], markershape=:xcross, label = "particle two Iden_pos")
+    p3 = plot(xlabel = "Time", ylabel = "p₁")
+    plot!(p3, data_reference.t, data_reference.q[:,3], markershape=:star5, label = "Ref p₁")
+    plot!(p3, data_sindy.t, data_sindy.q[:,3], markershape=:xcross, label = "Identified p₁")
 
-    plot!(xlabel = "Time", ylabel = "x_pos", size=(1000,1000))
-    display(plot(p1, p3, title="Analytical vs Calculated x Positions"))
+    plot!(size=(1000,1000))
+    display(plot(p1, p3, title="Numerical vs SINDy q₁ & p₁"))
 
-    p2 = plot(xlabel = "Time", ylabel = "position")
-    plot!(p2, data_reference.t, data_reference.q[:,2], markershape=:star5, label = "particle three Ref_pos")
-    plot!(p2, data_sindy.t, data_sindy.q[:,2], markershape=:xcross, label = "particle three Iden_pos")
+    p2 = plot(xlabel = "Time", ylabel = "q₂")
+    plot!(p2, data_reference.t, data_reference.q[:,2], markershape=:star5, label = "Ref q₂")
+    plot!(p2, data_sindy.t, data_sindy.q[:,2], markershape=:xcross, label = "Identified q₂")
 
-    p4 = plot(xlabel = "Time", ylabel = "position")
-    plot!(p4, data_reference.t, data_reference.q[:,4], markershape=:star5, label = "particle four Ref_pos")
-    plot!(p4, data_sindy.t, data_sindy.q[:,4], markershape=:xcross, label = "particle four Iden_pos")
+    p4 = plot(xlabel = "Time", ylabel = "p₂")
+    plot!(p4, data_reference.t, data_reference.q[:,4], markershape=:star5, label = "Ref p₂")
+    plot!(p4, data_sindy.t, data_sindy.q[:,4], markershape=:xcross, label = "Identified p₂")
 
-    plot!(xlabel = "Time", ylabel = "y_pos", size=(1000,1000))
-    display(plot(p2, p4, title="Analytical vs Calculated y Positions"))
+    plot!(size=(1000,1000))
+    display(plot(p2, p4, title="Numerical vs SINDy q₂ & p₂"))
 
-    # plot momenta
-    p5 = plot(xlabel = "Time", ylabel = "momentum")
-    plot!(p5, data_reference.t, data_reference.q[:,5], markershape=:star5, label = "particle one Ref_mom")
-    plot!(p5, data_sindy.t, data_sindy.q[:,5], markershape=:xcross, label = "particle one Iden_mom")
+    p5 = plot(xlabel = "Time", ylabel = "q₂")
+    plot!(p5, data_reference.t, data_reference.q[:,5], markershape=:star5, label = "Ref q₃")
+    plot!(p5, data_sindy.t, data_sindy.q[:,5], markershape=:xcross, label = "Identified q₃")
 
-    p7 = plot(xlabel = "Time", ylabel = "momentum")
-    plot!(p7, data_reference.t, data_reference.q[:,7], markershape=:star5, label = "particle two Ref_mom")
-    plot!(p7, data_sindy.t, data_sindy.q[:,7], markershape=:xcross, label = "particle two Iden_mom")
+    p7 = plot(xlabel = "Time", ylabel = "p₂")
+    plot!(p7, data_reference.t, data_reference.q[:,7], markershape=:star5, label = "Ref p₃")
+    plot!(p7, data_sindy.t, data_sindy.q[:,7], markershape=:xcross, label = "Identified p₃")
 
 
-    plot!(xlabel = "Time", ylabel = "x_mom", size=(1000,1000))
-    display(plot(p5, p7, title="Analytical vs Calculated x Momenta"))
+    plot!(size=(1000,1000))
+    display(plot(p5, p7, title="Numerical vs SINDy q₃ & p₃"))
 
-    p6 = plot(xlabel = "Time", ylabel = "momentum")
-    plot!(p6, data_reference.t, data_reference.q[:,6], markershape=:star5, label = "particle three Ref_mom")
-    plot!(p6, data_sindy.t, data_sindy.q[:,6], markershape=:xcross, label = "particle three Iden_mom")
+    p6 = plot(xlabel = "Time", ylabel = "q₄")
+    plot!(p6, data_reference.t, data_reference.q[:,6], markershape=:star5, label = "Ref q₄")
+    plot!(p6, data_sindy.t, data_sindy.q[:,6], markershape=:xcross, label = "Identified q₄")
 
-    p8 = plot(xlabel = "Time", ylabel = "momentum")
-    plot!(p8, data_reference.t, data_reference.q[:,8], markershape=:star5, label = "particle four Ref_mom")
-    plot!(p8, data_sindy.t, data_sindy.q[:,8], markershape=:xcross, label = "particle four Iden_mom")
+    p8 = plot(xlabel = "Time", ylabel = "p₄")
+    plot!(p8, data_reference.t, data_reference.q[:,8], markershape=:star5, label = "Ref p₄")
+    plot!(p8, data_sindy.t, data_sindy.q[:,8], markershape=:xcross, label = "Identified p₄")
 
-    plot!(xlabel = "Time", ylabel = "y_mom", size=(1000,1000))
-    display(plot(p6, p8, title="Analytical vs Calculated y Momenta"))
+    plot!(size=(1000,1000))
+    display(plot(p6, p8, title="Numerical vs SINDy q₄ & p₄"))
 
 end
