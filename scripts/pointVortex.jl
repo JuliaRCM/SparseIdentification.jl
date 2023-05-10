@@ -22,8 +22,9 @@ gr()
 
 println("Setting up...")
 
-# ∂H/∂rᵢ = -Γᵢ ∑ⱼ₌₁ᴺ Γⱼ (rᵢ - rⱼ)/|rᵢ - rⱼ|^2
-# ∂H/∂Γᵢ = 1/2 ∑ⱼ₌₁ᴺ Γⱼ log|rᵢ - rⱼ| + Γᵢ ∑ⱼ₌₁ᴺ ≠ᵢ Γⱼ log|rᵢ - rⱼ|
+# H = 1/2 ∑ᵢ₌₁ᴺ ∑ⱼ₌₁ᴺ ΓᵢΓⱼ log|rᵢ - rⱼ|
+# drᵢ/dt = ∂H/∂Γᵢ = 1/2 ∑ⱼ₌₁ᴺ Γⱼ log|rᵢ - rⱼ|                 #+ Γᵢ ∑ⱼ₌₁ᴺ ≠ᵢ Γⱼ log|rᵢ - rⱼ|
+# dΓᵢ/dt = -∂H/∂rᵢ = -Γᵢ ∑ⱼ₌₁ᴺ Γⱼ (rᵢ - rⱼ)/|rᵢ - rⱼ|^2
 
 # Analytical Gradient
 function gradient_analytical!(dx, x, param, t) 
@@ -33,16 +34,34 @@ function gradient_analytical!(dx, x, param, t)
     p = x[n + 1:end]
 
     for i in 1:n
-        dx[i] = -p[i] * sum(p[j] * (q[i] - q[j]) / abs(q[i] - q[j])^2 for j in 1:n if j != i)
-        dx[n + i] = 0.5 * sum(p[j] * log(abs(q[i] - q[j])) for j in 1:n if j != i) + p[i] * sum(p[j] * log(abs(q[i] - q[j])) for j in 1:n if j != i)
+        dx[i] = 0.5 * sum(p[j] * log(abs(q[i] - q[j])) for j in 1:n if j != i) #+ p[i] * sum(p[j] * log(abs(q[i] - q[j])) for j in 1:n if j != i)
+        dx[n + i] = - p[i] * sum(p[j] * (q[i] - q[j]) / abs(q[i] - q[j])^2 for j in 1:n if j != i)
     end
     return dx
 end
 
+
+# # H = - Σ pᵢpⱼ/(4π) * log|qᵢ-qⱼ| for i != j (http://www.cds.caltech.edu/~marsden/wiki/uploads/cds140b-08/home/Joris_LectWk4.pdf)
+# function gradient_analytical!(dx, x, param, t) 
+#     # number of Vortices (n)
+#     n = div(length(x), 2)
+#     q = x[1:n]
+#     p = x[n + 1:end]
+
+#     for i in 1:n
+#         # dqᵢ/dt = ∂H/∂pᵢ = - Σpⱼ/(4π) * log|qᵢ-qⱼ| for i != j
+#         dx[i] = - sum(p[j]/(4π) * log(abs(q[i] - q[j])) for j in 1:n if j != i)
+
+#         # dpᵢ/dt = -∂H/∂qᵢ = Σpᵢpⱼ/(4π)  * 1/|qᵢ-qⱼ| * sign(qᵢ-qⱼ) for i != j
+#         dx[n + i] = sum(p[i]*p[j]/(4π) * 1/(q[i] - q[j]) for j in 1:n if j != i)
+#     end
+#     return dx
+# end
+
 # (q₁,q₂,q₃,q₄,p₁,p₂,p₃,p₄) 4 vortex system
 # (q₁,q₂,p₁,p₂) 2 vortex system
 num_vortices = 2
-num_samples = 4000
+num_samples = 3000
 
 z = get_z_vector(num_vortices)
 polynomial = polynomial_basis(z, polyorder=2)
@@ -74,7 +93,7 @@ ẋ = [gradient_analytical!(copy(dx), _x, param, t) for _x in x]
 # ----------------------------------------
 
 # choose SINDy method
-method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.4, noise_level = 0.00)
+method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.3, noise_level = 0.00)
 
 # generate noisy references data at next time step
 y = SparseIdentification.gen_noisy_ref_data(method, x)
