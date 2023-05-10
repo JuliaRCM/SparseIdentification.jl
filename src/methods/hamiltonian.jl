@@ -20,6 +20,9 @@ function ΔH_func_builder(d::Int, z::Vector{Symbolics.Num} = get_z_vector(d), ba
     
     # gives derivative of the hamiltonian, but not the skew-symmetric true one
     f = [expand_derivatives(dz(ham)) for dz in Dz]
+
+    #simplify the expression potentially to make it faster
+    f = simplify(f)
     
     # line below makes the vector into a hamiltonian vector field by multiplying with the skew-symmetric matrix
     ∇H = vcat(f[d+1:2d], -f[1:d])
