@@ -60,8 +60,8 @@ end
 
 # (q₁,q₂,q₃,q₄,p₁,p₂,p₃,p₄) 4 vortex system
 # (q₁,q₂,p₁,p₂) 2 vortex system
-num_vortices = 2
-num_samples = 3000
+num_vortices = 3
+num_samples = 1000
 
 z = get_z_vector(num_vortices)
 polynomial = polynomial_basis(z, polyorder=2)
@@ -93,7 +93,7 @@ ẋ = [gradient_analytical!(copy(dx), _x, param, t) for _x in x]
 # ----------------------------------------
 
 # choose SINDy method
-method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.3, noise_level = 0.00)
+method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.05, noise_level = 0.00)
 
 # generate noisy references data at next time step
 y = SparseIdentification.gen_noisy_ref_data(method, x)
@@ -136,19 +136,28 @@ for i in 1:5
     plot!(p3, data_reference.t, data_reference.q[:,3], markershape=:star5, label = "Vortex two Ref_pos")
     plot!(p3, data_sindy.t, data_sindy.q[:,3], markershape=:xcross, label = "Vortex two Iden_pos")
 
-    plot!(xlabel = "Time", ylabel = "x_pos", size=(1000,1000))
-    display(plot(p1, p3, title="Analytical vs Calculated x Positions"))
+    p5 = plot(xlabel = "Time", ylabel = "position")
+    plot!(p5, data_reference.t, data_reference.q[:,5], markershape=:star5, label = "Vortex one Ref_mom")
+    plot!(p5, data_sindy.t, data_sindy.q[:,5], markershape=:xcross, label = "Vortex one Iden_mom")
 
-    p2 = plot(xlabel = "Time", ylabel = "position")
+    plot!(xlabel = "Time", ylabel = "Position", size=(1000,1000))
+    display(plot(p1, p3, p5, title="Analytical vs Calculated Positions"))
+
+    # plot momenta
+    p2 = plot(xlabel = "Time", ylabel = "momentum")
     plot!(p2, data_reference.t, data_reference.q[:,2], markershape=:star5, label = "Vortex three Ref_pos")
     plot!(p2, data_sindy.t, data_sindy.q[:,2], markershape=:xcross, label = "Vortex three Iden_pos")
 
-    p4 = plot(xlabel = "Time", ylabel = "position")
+    p4 = plot(xlabel = "Time", ylabel = "momentum")
     plot!(p4, data_reference.t, data_reference.q[:,4], markershape=:star5, label = "Vortex four Ref_pos")
     plot!(p4, data_sindy.t, data_sindy.q[:,4], markershape=:xcross, label = "Vortex four Iden_pos")
 
-    plot!(xlabel = "Time", ylabel = "y_pos", size=(1000,1000))
-    display(plot(p2, p4, title="Analytical vs Calculated y Positions"))
+    p6 = plot(xlabel = "Time", ylabel = "momentum")
+    plot!(p6, data_reference.t, data_reference.q[:,6], markershape=:star5, label = "Vortex three Ref_mom")
+    plot!(p6, data_sindy.t, data_sindy.q[:,6], markershape=:xcross, label = "Vortex three Iden_mom")
+
+    plot!(xlabel = "Time", ylabel = "y_mom", size=(1000,1000))
+    display(plot(p2, p4, p6, title="Analytical vs Calculated Momenta"))
 
 end
 
