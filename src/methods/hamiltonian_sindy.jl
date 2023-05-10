@@ -50,7 +50,6 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     coeffs .= result.minimizer
 
     println(result)
-    println(coeffs)
 
     for n in 1:method.nloops
         println("Iteration #$n...")
@@ -78,7 +77,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
 
         println(result)
     end
-    println(coeffs)
+
     return coeffs
 end
 
