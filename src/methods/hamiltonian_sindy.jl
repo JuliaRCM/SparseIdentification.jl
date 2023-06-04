@@ -59,6 +59,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         biginds = .~smallinds
 
         # check if there are any small coefficients != 0 left
+        #TODO: is the code expected to exit the loop here usually?
         all(coeffs[smallinds] .== 0) && break
 
         # set all small coefficients to zero
@@ -71,6 +72,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
             loss(c)
         end
 
+        # b is a reference to coeffs[biginds]
         b = coeffs[biginds]
         result = Optim.optimize(sparseloss, b, solver, Optim.Options(show_trace=true); autodiff = :forward)
         b .= result.minimizer
@@ -297,103 +299,6 @@ function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
     println("Initial Guess...")
     result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
     
-    coeffs .= result.minimizer
-
-    println(result)
-
-    for n in 1:method.nloops
-        println("Iteration #$n...")
-
-        # find coefficients below λ threshold
-        smallinds = abs.(coeffs) .< method.λ
-        biginds = .~smallinds
-
-        # check if there are any small coefficients != 0 left
-        all(coeffs[smallinds] .== 0) && break
-
-        # set all small coefficients to zero
-        coeffs[smallinds] .= 0
-
-        # Regress dynamics onto remaining terms to find sparse coeffs
-        function sparseloss(b::AbstractVector)
-            c = zeros(eltype(b), axes(coeffs))
-            c[biginds] .= b
-            loss(c)
-        end
-
-        b = coeffs[biginds]
-        result = Optim.optimize(sparseloss, b, solver, Optim.Options(show_trace=true); autodiff = :forward)
-        b .= result.minimizer
-
-        println(result)
-    end
-    
-    return coeffs
-end
-
-
-
-
-
-
-
-
-
-
-
-################################################################################################
-################################################################################################
-################################################################################################
-################################################################################################
-
-# TODO: For autoencoder 
-# 0. before this step, pre-decide on size of reduced dims (d) to give to ΔH. 
-    # 0.1 reduced-dim size must be even number for hamiltonians (confirm with Dr. Michael)
-# 1. find SINDY graident function on reduced dims (after encoding), 
-    # 1.1 find also nparam and coeffs on reduced dims
-# 2. use autoencoder to reduce dims i.e less numbers of q,p
-# 3. calculate x using SINDY method
-# 4. reverse autoencoder to actual variables
-# 5. find loss function
-function sparsify_encoder(method::HamiltonianSINDy, ∇H, x, ẋ, solver)
-    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-    coeffs = zeros(get_numCoeffs(method.basis))
-   
-   function loss_kernel(x₀, x₁, fθ, a, Δt)
-        numLoops = 4 # random choice of loop steps
-
-        # solution of SINDy Hamiltonian problem
-        local x̄ = zeros(eltype(a), axes(x₁))
-        local x̃ = zeros(eltype(a), axes(x₁))
-        local f = zeros(eltype(a), axes(x₁))
-
-        # gradient at current (x) values
-        fθ(f, x₀, a)
-
-        # for first guess use explicit euler
-        x̃ .= x₀ .+ Δt .* f
-        
-        for _ in 1:numLoops
-            x̄ .= (x₀ .+ x̃) ./ 2
-            # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
-            fθ(f, x̄, a)
-            # mid point rule for integration to next step
-            x̃ .= x₀ .+ Δt .* f
-        end
-
-        # calculate square Euclidean distance
-        sqeuclidean(x₁,x̃)
-    end
-
-    # define loss function
-    function loss(a::AbstractVector)
-        mapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x, y))
-    end
-   
-    # initial guess
-    println("Initial Guess...")
-    result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
-   
     coeffs .= result.minimizer
 
     println(result)
