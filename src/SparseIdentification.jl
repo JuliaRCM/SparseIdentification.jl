@@ -16,8 +16,8 @@ export PolynomialBasis, TrigonometricBasis, CompoundBasis
 
 include("basis.jl")
 
-export JuliaLeastSquare, OptimSolver
-export solve
+export JuliaLeastSquare, OptimSolver, NNSolver
+export solve, sparse_solve
 
 include("solvers.jl")
 
