@@ -67,30 +67,21 @@ end
 # add noise
 ẋ = ẋ + eps*rand(Normal(), size(ẋ))
 
-# ------------------------------------------------------------
-# Pool Data (evaluate library of candidate basis functions on training data)
-# ------------------------------------------------------------
+# collect training data
+tdata = TrainingData(x, ẋ)
 
-println("Pool Data...")
-
-Θ = evaluate(x, basis)
+# choose SINDy method
+method = SINDy(lambda = 0.05, noise_level = 0.05)
 
 
-# ----------------------------------------
-# Compute Sparse Regression
-# ----------------------------------------
+println("Computing Vector Field...")
 
-println("Sparsify Dynamics...")
+# compute vector field using least squares regression (/) solver
+vectorfield = VectorField(method, basis, tdata)
 
-#Ξ = sparsify_dynamics(Θ, ẋ, lambda)
-Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
+#Using BFGS() solver
+# vectorfield = VectorField(method, basis, tdata, solver = OptimSolver())
 
-#println(Ξ)
-
-#println("   maximum(Ξ) = ", maximum(Ξ))
-
-# To look at data output of pool
-poolDataLIST(["x", "y", "z"], Ξ, nd, polyorder, usesine)
 
 # ----------------------------------------
 # Integrate Identified System
@@ -101,16 +92,19 @@ println("Integrate Identified System...")
 # With T_end=20.0
 # FIGURE 1: LORENZ for T in[0,20]
 # True model:
-tspan = (0.0, 20.0)
+tstep = 0.001
+tspan = (0.001, 20.0)
+trange = range(tspan[begin], step = tstep, stop = tspan[end])
+
 p = (sigma, beta, rho)
 prob = ODEProblem(lorenz, x₀, tspan, p)
 # stored as dims [states x iters] matrix 
 xA = ODE.solve(prob, Tsit5(), abstol=1e-12, reltol=1e-12) 
 
 # Approximate model:
-p = (Ξ = Ξ, basis = basis)
-prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
-xB = ODE.solve(prob_approx, Tsit5(), abstol=1e-12, reltol=1e-12)
+prob_approx = ODEProblem(vectorfield, x₀, tspan)
+xB = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
+
 
 # ----------------------------------------
 # Plot Results
@@ -135,19 +129,22 @@ display(plot(p3, p4, layout=(1,2), show = true, reuse = false, size=(1000,1000),
 
 savefig("Fig2_ex2_lorenz.png")
 
+
 println("Integrating and Plotting Figure 3...")
 
 # With T_end=250.0
 # True model:
-tspan = (0.0, 250.0)
+tstep = 0.001
+tspan = (0.001, 250.0)
+trange = range(tspan[begin], step = tstep, stop = tspan[end])
+
 p = (sigma, beta, rho)
 prob = ODEProblem(lorenz, x₀, tspan, p)
 xA = ODE.solve(prob, abstol=1e-6, reltol=1e-6) #stored as dims [3 x iters] matrix 
 
 # Approximate model:
-p = (Ξ = Ξ, basis = basis)
-prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
-xB = ODE.solve(prob_approx, Tsit5(), abstol=1e-6, reltol=1e-6)
+prob_approx = ODEProblem(vectorfield, x₀, tspan)
+xB = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
 
 # Figure 3:
 dtA = [0; diff(xA.t)]
@@ -157,3 +154,25 @@ p6 = plot(xB[1,:], xB[2,:], xB[3,:], zcolor=dtB, xlabel="x", ylabel="y", zlabel=
 display(plot(p5, p6, layout=(1,2), show = true, reuse = false, size=(1000,1000)))
 
 savefig("Fig3_ex2_lorenz.png")
+
+
+#*******************************************************************#
+#*******************************************************************#
+#*******************************************************************#
+# New plotting code copied from linear2d.jl
+println("Plotting Extra...")
+
+p1 = plot()
+plot!(p1, xA.t, data[1,:], label = "Data")
+plot!(p1, xid.t, xid[1,:], label = "Identified")
+
+p2 = plot()
+plot!(p2, xA.t, data[2,:], label = "Data")
+plot!(p2, xid.t, xid[2,:], label = "Identified")
+
+plot(p1, p2)
+
+p3 = plot(xA[1,:], xA[2,:], label="true", linestyle =:dash)
+p3 = scatter!(xB[1,:], xB[2,:], label="approx", linestyle =:dash, mc=:red, ms=2, ma=0.5, xlabel ="X1", ylabel="X2")
+display(plot(p3, show = true, reuse = false))
+savefig("linear2d_fig2.png")

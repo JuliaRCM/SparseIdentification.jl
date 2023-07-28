@@ -46,7 +46,7 @@ POD_coeff_alphaS = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_alphaS.csv"), Da
 x = [POD_coeff_alpha[1:5000, 1:r] POD_coeff_alphaS[1:5000, 1]]
 
 # convert to matrix
-x = Matrix(x)
+x = Matrix{Float64}(x)
 
 # transpose x to match other test cases
 x = x'
@@ -71,8 +71,11 @@ POD_coeff_run1_alphaS = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_run1_alphaS
 
 x1 = [POD_coeff_run1_alpha[1:3000, 1:r] POD_coeff_run1_alphaS[1:3000, 1]]
 
+# Assuming you have a DataFrame named df
+x1 = dropmissing(x1)
+
 # convert to matrix
-x1 = Matrix(x1)
+x1 = Matrix{Float64}(x1)
 
 # transpose x1 to match other test cases
 x1 = x1'
@@ -97,9 +100,9 @@ ẋ = [ẋ ẋ_one]
 
 println("Pool Data...")
 
-Θ = evaluate(x, basis)
+# Θ = evaluate(x, basis)
 
-m = size(Θ, 2)
+# m = size(Θ, 2)
 
 ẋ = ẋ[:, 1:end]
 
@@ -110,8 +113,20 @@ ẋ = ẋ[:, 1:end]
 
 println("Sparsify Dynamics...")
 
+# collect training data
+tdata = TrainingData(x, ẋ)
+
+# choose SINDy method
+method = SINDy(lambda = lambda, noise_level = 0.05)
+
+# generate basis
+basis = CompoundBasis()
+
+# compute vector field
+vectorfield = VectorField(method, basis, tdata)
+
 #Ξ = sparsify_dynamics(Θ, ẋ, lambda)
-Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
+# Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
 
 
 ######Test to check if Theta and dx from matlab are equal to theta and dx obtained in Julia
@@ -134,7 +149,7 @@ println("Sparsify Dynamics...")
 # Note: There are constant order terms... this is because fixed points
 # are not at (0,0,0) for this data
 # To look at data output of pool
-poolDataLIST(["x", "y", "z"], Ξ, M, polyorder, usesine)
+# poolDataLIST(["x", "y", "z"], Ξ, M, polyorder, usesine)
 
 # second figure: initial portion
 # Figure(1)
@@ -149,10 +164,14 @@ tspan = (0.0, 100.0)
 
 x₀ = x[:, 1]
 
-p = (Ξ = Ξ, basis = basis)
+# p = (Ξ = Ξ, basis = basis)
 
-prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
-xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
+# prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
+# xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
+
+# Approximate model:
+prob_approx = ODEProblem(vectorfield, x₀, tspan)
+xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10)
 
 # ----------------------------------------
 # Plot Results
@@ -176,8 +195,8 @@ println("Integrate Identified System Two...")
 tspan = (0.0, 95.0)
 x₀ = x[:, 5001]
 
-prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
-xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
+prob_approx = ODEProblem(vectorfield, x₀, tspan)
+xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10)
 
 # ----------------------------------------
 # Plot Results
