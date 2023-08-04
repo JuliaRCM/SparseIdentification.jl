@@ -60,6 +60,29 @@ function (vf::SINDyVectorField)(dy, y, p, t)
 end
 
  
+# Initialize a model with random parameters and Ξ = 0
+function set_model(data, Ξ)
+    encoder = Chain(
+    Dense(size(data.x)[1] => 16, sigmoid), 
+    Dense(16 => 8, sigmoid), 
+    Dense(8 => 4, sigmoid),
+    Dense(4 => size(data.x)[1])
+    )
+
+    decoder = Chain(
+    Dense(size(data.x)[1] => 16, sigmoid),  
+    Dense(16 => 8, sigmoid),
+    Dense(8 => 4, sigmoid),
+    Dense(4 => size(data.x)[1])
+    )
+
+    model = ( 
+        (W = encoder,),
+        (W = decoder,),
+        (W = Ξ, ),
+    )
+    return model
+end
 
 function sparsify_NN(method::SINDy, basis, tdata, solver)
     # add noise to transpose of ẋ b/c we will need the transpose later
@@ -69,56 +92,42 @@ function sparsify_NN(method::SINDy, basis, tdata, solver)
     data = TrainingData(tdata.x, ẋnoisy)
 
     # Pool Data (evaluate library of candidate basis functions on training data)
+    # Values of basis functions on all samples of the training data states
     Θ = basis(data.x)
 
     # Ξ is the coefficients of the bases(Θ)
     Ξ = zeros(size(Θ,2), size(data.ẋ, 2))
 
-    function set_model(data, Ξ)
-        ld = size(data.x)[1]
-        ndim = size(data.x)[1]
-        model = ( 
-            (W = rand(ld, ndim), b = zeros(ndim)),
-            (W = rand(ndim, ld), b = zeros(ld)),
-            (W = Ξ, ),
-        )
-        return model
-    end
-
     # initialize parameters
-    initial_model = set_model(data, Ξ)
+    model = set_model(data, Ξ)
 
     # initial optimization for parameters
-    model = solve(basis, data, initial_model, solver)
+    # model = solve(basis, data, initial_model, solver)
+    model = solve(data, model, basis, solver)
     Ξ = model[3].W
+
+    # Make a new training data structure just to be able to pass ẋnoisy to the solve function
+    sdata = TrainingData(tdata.x, Matrix(ẋnoisy'))
 
     for n in 1:method.nloops
         println("Iteration #$n...")
         println()
         # find coefficients below λ threshold
-        smallinds = abs.(Ξ) .< method.λ
-        biginds = .~smallinds
+        smallinds = abs.(model[3].W) .< method.λ
 
         # check if there are any small coefficients != 0 left
-        all(Ξ[smallinds] .== 0) && break
-
-        println("Ξ in sparsification before zeroing: $Ξ")
-        println()
+        all(model[3].W[smallinds] .== 0) && break
 
         # set all small coefficients to zero
-        Ξ[smallinds] .= 0
-        println("Ξ in sparsification after zeroing: $Ξ")
-        println()
-        println("model[3].W in sparsification after Ξ zeroing: $(model[3].W)")
-        println()
+        model[3].W[smallinds] .= 0
         
         # Solver for sparsified coefficients
-        model = sparse_solve(basis, tdata, model, smallinds)
-        Ξ = model[3].W
-        println("Sparse Coefficients: $Ξ")
+        model = sparse_solve(basis, sdata, model, smallinds)
+        
+        println("Sparse Coefficients: $(model[3].W)")
         println()
     end
-
+    Ξ = model[3].W
     return Ξ, model
 end
 

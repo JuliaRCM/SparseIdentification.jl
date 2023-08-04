@@ -34,7 +34,7 @@ export SparsificationMethod, VectorField
 include("methods/method.jl")
 include("methods/vectorfield.jl")
 
-export SINDy, SINDyVectorField
+export SINDy, SINDyVectorField, set_model
 
 include("methods/sindy.jl")
 
