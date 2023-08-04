@@ -92,7 +92,7 @@ end
     CompoundBasis(bases)
 
 Holds a basis composed of several different basis functions,
-e.g. polynomials of vardatag degree and/or trigonometric functions.
+e.g. polynomials of variable data degree and/or trigonometric functions.
 """
 struct CompoundBasis{BT <: Tuple} <: AbstractBasis
     bases::BT
