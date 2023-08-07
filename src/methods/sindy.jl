@@ -115,6 +115,9 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     # initial optimization for parameters
     model = solve(data, model, basis, solver)
 
+    # Initialize smallinds before the loop
+    smallinds = falses(size(model[3].W))
+    
     for n in 1:method.nloops
         println("Iteration #$n...")
         println()
@@ -137,6 +140,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     end
 
     # Iterate once more for optimization without sparsification
+    println("Final Iteration...")
     model = sparse_solve(basis, data, model, Ξ, smallinds)
     
     Ξ = model[3].W

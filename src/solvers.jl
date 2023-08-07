@@ -109,7 +109,7 @@ function solve(data, model, basis, solver::NNSolver, batch_size = floor(Int, 0.1
         # Mean of the coefficients averaged
         L_c = sum(abs.(model[3].W))/length(model[3].W)
 
-        batch_loss_average = batchLoss / size(x_batch, 2) + 0.065 * L_c
+        batch_loss_average = batchLoss / size(x_batch, 2) + 0.06 * L_c
     
         return batch_loss_average
     end
@@ -213,7 +213,7 @@ function sparse_solve(basis, data, model, Ξ, smallinds)
     
         # Mean of the coefficients averaged
         L_c = sum(abs.(model[3].W)) / length(model[3].W)
-        return loss_sum / size(x, 2) + 0.065 * L_c
+        return loss_sum / size(x, 2) + 0.06 * L_c
     end
     
     # Array to store the losses

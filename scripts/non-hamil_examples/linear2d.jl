@@ -85,7 +85,6 @@ tdata = TrainingData(x, ẋnoisy)
 vectorfield, model = VectorField(method, basis, tdata, solver = NNSolver())
 
 
-
 # ----------------------------------------
 # Integrate Identified System
 # ----------------------------------------
