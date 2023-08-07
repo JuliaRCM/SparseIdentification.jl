@@ -1,8 +1,8 @@
 using Flux
 
 struct SINDy{T} <: SparsificationMethod
-    λ::T
-    ϵ::T
+    lambda::T
+    noise_level::T
     nloops::Int
 
     function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS) where {T}
@@ -13,14 +13,14 @@ end
 "sequential least squares"
 function sparsify(method::SINDy, Θ, ẋ, solver)
     # add noise
-    ẋnoisy = ẋ .+ method.ϵ .* randn(size(ẋ))
+    ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
 
     # initial guess: least-squares
     Ξ = solve(Θ, ẋnoisy', solver)
 
     for _ in 1:method.nloops
-        # find coefficients below λ threshold
-        smallinds = abs.(Ξ) .< method.λ
+        # find coefficients below lambda threshold
+        smallinds = abs.(Ξ) .< method.lambda
 
         # check if there are any small coefficients != 0 left
         all(Ξ[smallinds] .== 0) && break
@@ -31,6 +31,8 @@ function sparsify(method::SINDy, Θ, ẋ, solver)
         # Regress dynamics onto remaining terms to find sparse Ξ
         for ind in axes(ẋnoisy,1)
             biginds = .~(smallinds[:,ind])
+
+            #TODO: maybe this needs to be ẋnoisy' i.e. transpose
             Ξ[biginds,ind] .= solve(Θ[:,biginds], ẋnoisy[ind,:], solver)
         end
     end
@@ -84,36 +86,40 @@ function set_model(data, Ξ)
     return model
 end
 
-function sparsify_NN(method::SINDy, basis, tdata, solver)
-    # add noise to transpose of ẋ b/c we will need the transpose later
-    ẋnoisy = (tdata.ẋ)' .+ method.ϵ .* randn(size((tdata.ẋ)'))
+function separate_coeffs(model_W, smallinds)
+    # Ξ = Tuple{Vector{Float64}, Vector{Float64}}[]
+    Ξ = Vector{Vector{Float64}}()
 
-    # Make a new training data structure just to be able to pass ẋnoisy to the solve function
-    data = TrainingData(tdata.x, ẋnoisy)
+    for ind in 1:size(model_W, 2)
+        column = model_W[:, ind]
+        non_zero_indices = findall(.~smallinds[:, ind])
+        non_zero_values = column[non_zero_indices]
+        push!(Ξ, non_zero_values)
+    end
+    
+    return Ξ
+end
 
+function sparsify_NN(method::SINDy, basis, data, solver)
     # Pool Data (evaluate library of candidate basis functions on training data)
     # Values of basis functions on all samples of the training data states
     Θ = basis(data.x)
 
-    # Ξ is the coefficients of the bases(Θ)
-    Ξ = zeros(size(Θ,2), size(data.ẋ, 2))
+    # Ξ is the coefficients of the bases(Θ), it depends on the number of 
+    # features (bases), and the number of states for those features to act on
+    Ξ = zeros(size(Θ,2), size(data.ẋ, 1))
 
     # initialize parameters
     model = set_model(data, Ξ)
 
     # initial optimization for parameters
-    # model = solve(basis, data, initial_model, solver)
     model = solve(data, model, basis, solver)
-    Ξ = model[3].W
-
-    # Make a new training data structure just to be able to pass ẋnoisy to the solve function
-    sdata = TrainingData(tdata.x, Matrix(ẋnoisy'))
 
     for n in 1:method.nloops
         println("Iteration #$n...")
         println()
         # find coefficients below λ threshold
-        smallinds = abs.(model[3].W) .< method.λ
+        smallinds = abs.(model[3].W) .< method.lambda
 
         # check if there are any small coefficients != 0 left
         all(model[3].W[smallinds] .== 0) && break
@@ -121,12 +127,18 @@ function sparsify_NN(method::SINDy, basis, tdata, solver)
         # set all small coefficients to zero
         model[3].W[smallinds] .= 0
         
+        Ξ = separate_coeffs(model[3].W, smallinds)
+
         # Solver for sparsified coefficients
-        model = sparse_solve(basis, sdata, model, smallinds)
+        model = sparse_solve(basis, data, model, Ξ, smallinds)
         
         println("Sparse Coefficients: $(model[3].W)")
         println()
     end
+
+    # Iterate once more for optimization without sparsification
+    model = sparse_solve(basis, data, model, Ξ, smallinds)
+    
     Ξ = model[3].W
     return Ξ, model
 end

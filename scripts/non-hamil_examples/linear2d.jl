@@ -62,8 +62,14 @@ for i in axes(ẋ,2)
     ẋ[:,i] .= A*x[:,i]
 end
 
+# choose SINDy method
+method = SINDy(lambda = 0.05, noise_level = 0.0)
+
+# add noise to ẋ
+ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
+
 # collect training data
-tdata = TrainingData(x, ẋ)
+tdata = TrainingData(x, ẋnoisy)
 
 # println("x = ", tdata.x)
 # println("ẋ = ", tdata.ẋ)
@@ -72,9 +78,6 @@ tdata = TrainingData(x, ẋ)
 # ----------------------------------------
 # Identify SINDy Vector Field
 # ----------------------------------------
-
-# choose SINDy method
-method = SINDy(lambda = 0.05, noise_level = 0.00)
 
 # compute vector field
 # vectorfield = VectorField(method, basis, tdata)
@@ -90,7 +93,7 @@ vectorfield, model = VectorField(method, basis, tdata, solver = NNSolver())
 println("Integrate Identified System...")
 
 tstep = 0.01
-tspan = (0.0,25.0)
+tspan = (0.0, 25.0)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
 # prob_reference = GeometricIntegrators.ODEProblem((dx, t, x, params) -> rhs(dx,t,x), tspan, tstep, x₀)
