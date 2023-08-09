@@ -167,7 +167,7 @@ function solve(data, model, basis, solver::NNSolver, batch_size = floor(Int, 0.1
             println()
         end
     end
-    return model
+    return model, epoch_loss_array
 end
 
 
@@ -265,5 +265,5 @@ function sparse_solve(basis, data, model, Ξ, smallinds, batch_size = floor(Int,
             println()
         end
     end
-    return model
+    return model, epoch_loss_array
 end
