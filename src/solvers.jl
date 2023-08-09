@@ -114,11 +114,11 @@ function solve(data, model, basis, solver::NNSolver, batch_size = floor(Int, 0.1
         return batch_loss_average
     end
 
-    # Set up the optimizer's state
-    opt_state = Flux.setup(Adam(), model)
-
     # Array to store the losses
     epoch_loss_array = Vector{Float64}()
+
+    # Set up the optimizer's state
+    opt_state = Flux.setup(Adam(), model)
 
     for epoch in 1:500
         epoch_loss = 0.0
@@ -172,18 +172,18 @@ end
 
 
 
-function sparse_solve(basis, data, model, Ξ, smallinds)
+function sparse_solve(basis, data, model, Ξ, smallinds, batch_size = floor(Int, 0.1*size(data.x, 2)))
+    
+    total_samples = size(data.x)[2]
+    num_batches = ceil(Int, total_samples / batch_size)
+
     # Flux gradient has problem working with the structure data
     x = Float32.(data.x)
     ẋ = Float32.(data.ẋ)
 
-    # Derivatives dz/dx and dx/dz for all samples (must be outside of loss function because of the way Flux.gradient works)
-    enc_jac = [(layer_derivative(model[1].W, Float32.(xᵢₙ)))[1] for xᵢₙ in eachcol(x)]
-    dec_jac = [(layer_derivative(model[2].W, Float32.(xᵢₙ)))[1] for xᵢₙ in eachcol(x)]
-    
     # Total loss
     function sparse_loss(enc_paras, dec_paras, Ξ, model, basis, smallinds, x, ẋ, enc_jac, dec_jac, method)
-        loss_sum = 0
+        batchLoss = 0
 
         dz_dt = dzdt(smallinds, Ξ, model[1].W, x, basis)
 
@@ -207,13 +207,13 @@ function sparse_solve(basis, data, model, Ξ, smallinds)
                 
                 L_ẋ = 0.95 * sum(((dec_jac[i] * dz_dt[:,i])[ind, :] .- ẋ[ind, i]).^2)   
 
-                loss_sum += L_r + L_ż + L_ẋ
+                batchLoss += L_r + L_ż + L_ẋ
             end
         end
     
         # Mean of the coefficients averaged
         L_c = sum(abs.(model[3].W)) / length(model[3].W)
-        return loss_sum / size(x, 2) + 0.06 * L_c
+        return batchLoss / size(x, 2) + 0.06 * L_c
     end
     
     # Array to store the losses
@@ -221,22 +221,41 @@ function sparse_solve(basis, data, model, Ξ, smallinds)
 
     # Set up the optimizer's state
     opt_state = Flux.setup(Adam(), (model[1].W, model[2].W, Ξ))
+
     for epoch in 1:500
-        # Compute gradients using Flux
-        gradients = Flux.gradient((enc_paras, dec_paras, Ξ) -> sparse_loss(enc_paras, dec_paras, Ξ, model, basis, smallinds, x, ẋ, enc_jac, dec_jac, method), model[1].W, model[2].W, Ξ)
+        epoch_loss = 0.0
+        # Shuffle the data indices for each epoch
+        shuffled_indices = shuffle(1:total_samples)
 
-        # Update the parameters
-        Flux.Optimise.update!(opt_state, (model[1].W, model[2].W, Ξ), gradients)
+        for batch in 1:num_batches
+            # Get the indices for the current batch
+            batch_start = (batch - 1) * batch_size + 1
+            batch_end = min(batch * batch_size, total_samples)
+            batch_indices = shuffled_indices[batch_start:batch_end]
+
+            # Extract the data for the current batch
+            x_batch = x[:, batch_indices]
+            ẋ_batch = ẋ[:, batch_indices]
+
+            # Derivatives of the encoder and decoder
+            enc_jac_batch = [(layer_derivative(model[1].W, Float32.(in)))[1] for in in eachcol(x_batch)]
+            dec_jac_batch = [(layer_derivative(model[2].W, Float32.(in)))[1] for in in eachcol(x_batch)]
+            
+            # Compute gradients using Flux
+            gradients = Flux.gradient((enc_paras, dec_paras, Ξ) -> sparse_loss(enc_paras, dec_paras, Ξ, model, basis, smallinds, x_batch, ẋ_batch, enc_jac_batch, dec_jac_batch, method), model[1].W, model[2].W, Ξ)
+
+            # Update the parameters
+            Flux.Optimise.update!(opt_state, (model[1].W, model[2].W, Ξ), gradients)
+
+            update_model_coeffs!(model[3].W, smallinds, Ξ)
+
+            # Accumulate the loss for the current batch
+            epoch_loss += sparse_loss(model[1].W, model[2].W, Ξ, model, basis, smallinds, x_batch, ẋ_batch, enc_jac_batch, dec_jac_batch, method)
+        end
+        # Compute the average loss for the epoch
+        epoch_loss /= num_batches
         
-    
-        # Derivatives dz/dx and dx/dz for all samples (must be outside of loss function because of the way Flux.gradient works)
-        enc_jac = [(layer_derivative(model[1].W, Float32.(xᵢₙ)))[1] for xᵢₙ in eachcol(x)]
-        dec_jac = [(layer_derivative(model[2].W, Float32.(xᵢₙ)))[1] for xᵢₙ in eachcol(x)]
-
-        update_model_coeffs!(model[3].W, smallinds, Ξ)
-
         # Store the epoch loss
-        epoch_loss = sparse_loss(model[1].W, model[2].W, Ξ, model, basis, smallinds, x, ẋ, enc_jac, dec_jac, method)
         push!(epoch_loss_array, epoch_loss)
 
         # Print loss after some iterations
