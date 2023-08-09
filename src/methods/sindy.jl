@@ -1,4 +1,5 @@
 using Flux
+using Plots
 
 struct SINDy{T} <: SparsificationMethod
     lambda::T
@@ -113,10 +114,16 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     model = set_model(data, Ξ)
 
     # initial optimization for parameters
-    model = solve(data, model, basis, solver)
+    model, loss_vec = solve(data, model, basis, solver)
+
+    # Plot the initial loss array
+    display(plot(log.(loss_vec), label = "Initial Optimization Loss"))
 
     # Initialize smallinds before the loop
     smallinds = falses(size(model[3].W))
+
+    # Array to store the losses of each SINDy loop
+    SINDy_loss_array = Vector{Vector{Float64}}()  # Store vectors of losses
     
     for n in 1:method.nloops
         println("Iteration #$n...")
@@ -133,15 +140,28 @@ function sparsify_NN(method::SINDy, basis, data, solver)
         Ξ = separate_coeffs(model[3].W, smallinds)
 
         # Solver for sparsified coefficients
-        model = sparse_solve(basis, data, model, Ξ, smallinds)
+        model, sparse_loss = sparse_solve(basis, data, model, Ξ, smallinds)
+
+        # Store the SINDy loop loss
+        push!(SINDy_loss_array, sparse_loss)
         
         println("Sparse Coefficients: $(model[3].W)")
         println()
     end
 
+    # Convert vector of vectors to a single vector
+    SINDy_loss_array = vcat(SINDy_loss_array...)
+
+    # Plot the SINDy loss array
+    display(plot(log.(SINDy_loss_array), label = "SINDy Optimization Loss"))
+
     # Iterate once more for optimization without sparsification
     println("Final Iteration...")
-    model = sparse_solve(basis, data, model, Ξ, smallinds)
+    println()
+
+    model, final_loss = sparse_solve(basis, data, model, Ξ, smallinds)
+
+    display(plot(log.(final_loss), label = "Final Optimization Loss"))
     
     Ξ = model[3].W
     return Ξ, model
