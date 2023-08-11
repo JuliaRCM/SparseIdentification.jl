@@ -5,9 +5,10 @@ struct SINDy{T} <: SparsificationMethod
     lambda::T
     noise_level::T
     nloops::Int
+    coeff::Float64
 
-    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS) where {T}
-        new{T}(lambda, noise_level, nloops)
+    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS, coeff = 0.6) where {T}
+        new{T}(lambda, noise_level, nloops, coeff)
     end
 end
 
@@ -66,16 +67,16 @@ end
 # Initialize a model with random parameters and Ξ = 0
 function set_model(data, Ξ)
     encoder = Chain(
-    Dense(size(data.x)[1] => 16, sigmoid), 
-    Dense(16 => 8, sigmoid), 
-    Dense(8 => 4, sigmoid),
+    Dense(size(data.x)[1] => 4, sigmoid), 
+    # Dense(4 => 4, sigmoid), 
+    # Dense(32 => 8, sigmoid),
     Dense(4 => size(data.x)[1])
     )
 
     decoder = Chain(
-    Dense(size(data.x)[1] => 16, sigmoid),  
-    Dense(16 => 8, sigmoid),
-    Dense(8 => 4, sigmoid),
+    Dense(size(data.x)[1] => 4, sigmoid),  
+    # Dense(64 => 32, sigmoid),
+    # Dense(32 => 8, sigmoid),
     Dense(4 => size(data.x)[1])
     )
 
@@ -114,7 +115,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     model = set_model(data, Ξ)
 
     # initial optimization for parameters
-    model, loss_vec = solve(data, model, basis, solver)
+    model, loss_vec = solve(data, method, model, basis, solver)
 
     # Plot the initial loss array
     display(plot(log.(loss_vec), label = "Initial Optimization Loss"))
@@ -140,7 +141,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
         Ξ = separate_coeffs(model[3].W, smallinds)
 
         # Solver for sparsified coefficients
-        model, sparse_loss = sparse_solve(basis, data, model, Ξ, smallinds)
+        model, sparse_loss = sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolver)
 
         # Store the SINDy loop loss
         push!(SINDy_loss_array, sparse_loss)
@@ -159,7 +160,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     println("Final Iteration...")
     println()
 
-    model, final_loss = sparse_solve(basis, data, model, Ξ, smallinds)
+    model, final_loss = sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolver)
 
     display(plot(log.(final_loss), label = "Final Optimization Loss"))
     
