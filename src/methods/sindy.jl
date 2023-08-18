@@ -6,9 +6,10 @@ struct SINDy{T} <: SparsificationMethod
     noise_level::T
     nloops::Int
     coeff::Float64
+    batch_size::Int
 
-    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS, coeff = 0.6) where {T}
-        new{T}(lambda, noise_level, nloops, coeff)
+    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS, coeff = 0.6, batch_size::Int) where {T}
+        new{T}(lambda, noise_level, nloops, coeff, batch_size)
     end
 end
 
@@ -67,17 +68,15 @@ end
 # Initialize a model with random parameters and Ξ = 0
 function set_model(data, Ξ)
     encoder = Chain(
-    Dense(size(data.x)[1] => 4, sigmoid), 
-    # Dense(4 => 4, sigmoid), 
-    # Dense(32 => 8, sigmoid),
-    Dense(4 => size(data.x)[1])
+    Dense(size(data.x)[1] => 2, sigmoid), 
+    # Dense(64 => 32, sigmoid), 
+    Dense(2 => size(data.x)[1])
     )
 
     decoder = Chain(
-    Dense(size(data.x)[1] => 4, sigmoid),  
+    Dense(size(data.x)[1] => 2, sigmoid),  
     # Dense(64 => 32, sigmoid),
-    # Dense(32 => 8, sigmoid),
-    Dense(4 => size(data.x)[1])
+    Dense(2 => size(data.x)[1])
     )
 
     model = ( 
@@ -89,7 +88,6 @@ function set_model(data, Ξ)
 end
 
 function separate_coeffs(model_W, smallinds)
-    # Ξ = Tuple{Vector{Float64}, Vector{Float64}}[]
     Ξ = Vector{Vector{Float64}}()
 
     for ind in 1:size(model_W, 2)
@@ -105,7 +103,8 @@ end
 function sparsify_NN(method::SINDy, basis, data, solver)
     # Pool Data (evaluate library of candidate basis functions on training data)
     # Values of basis functions on all samples of the training data states
-    Θ = basis(data.x)
+    # Only one sample is needed since we just need to compute the size of Ξ
+    Θ = basis(data.x[:,1])
 
     # Ξ is the coefficients of the bases(Θ), it depends on the number of 
     # features (bases), and the number of states for those features to act on
