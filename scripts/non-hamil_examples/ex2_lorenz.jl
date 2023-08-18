@@ -49,12 +49,27 @@ lambda = 0.025
 
 println("Generate Training Data...")
 
-p = (sigma, beta, rho)
-prob = ODEProblem(lorenz, x₀, tspan, p)
+# p = (sigma, beta, rho)
+# prob = ODEProblem(lorenz, x₀, tspan, p)
 
-# stored as dims [states x iters] matrix
-data = ODE.solve(prob, Tsit5(), abstol=1e-12, reltol=1e-12, saveat = trange, tstops = trange) 
-x = Array(data)
+# # stored as dims [states x iters] matrix
+# data = ODE.solve(prob, Tsit5(), abstol=1e-12, reltol=1e-12, saveat = trange, tstops = trange) 
+# x = Array(data)
+
+
+num_samp = 15
+
+# samples in p and q space
+samp_range = LinRange(-20, 20, num_samp)
+
+# initialize vector of matrices to store ODE solve output
+# s depend on size of nd (total dims), 4 in the case here so we use samp_range x samp_range x samp_range x samp_range
+s = collect(Iterators.product(fill(samp_range, nd)...))
+
+# compute vector field from x state values
+x = [collect(s[i]) for i in eachindex(s)]
+
+x = hcat(x...)
 
 # compute Derivative
 
@@ -68,10 +83,10 @@ end
 ẋ = ẋ + eps*rand(Normal(), size(ẋ))
 
 # collect training data
-tdata = TrainingData(x, ẋ)
+tdata = TrainingData(Float32.(x), Float32.(ẋ))
 
 # choose SINDy method
-method = SINDy(lambda = 0.05, noise_level = 0.05)
+method = SINDy(lambda = 0.05, noise_level = 0.0)
 
 
 println("Computing Vector Field...")
