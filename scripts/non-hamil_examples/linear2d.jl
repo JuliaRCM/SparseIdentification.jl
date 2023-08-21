@@ -40,7 +40,7 @@ println("Generate Training Data...")
 # x = Array(data)
 # stored as matrix with dims [nd,ntime]
 
-num_samp = 10
+num_samp = 12
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
@@ -62,7 +62,7 @@ for i in axes(ẋ,2)
 end
 
 # choose SINDy method
-method = SINDy(lambda = 0.05, noise_level = 0.0, coeff = 0.52, batch_size = 32)
+method = SINDy(lambda = 0.05, noise_level = 0.0, coeff = 0.52, batch_size = 18)
 
 # add noise to ẋ
 ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
