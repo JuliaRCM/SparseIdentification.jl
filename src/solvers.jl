@@ -51,20 +51,26 @@ end
 
 
 # Needed because Flux.gradient can't handle Flux.jacobian
-function layer_derivative(model_layer, x)
-    # Compute the Jacobian matrix
-    return Flux.jacobian(model_layer, x)
+function batched_jacobian(model_layer, x_batch)
+    output_dim = size(model_layer(x_batch[:, 1]))[1]
+    batch_size = size(x_batch, 2)
+    
+    batch_jac = zeros(output_dim, batch_size, size(x_batch, 1))
+    
+    for i in 1:batch_size
+        x_input = x_batch[:, i]
+        jac = Flux.jacobian(model_layer, x_input)[1]
+        batch_jac[:, i, :] = jac
+    end
+    
+    return batch_jac
 end
 
-function loss_kernel(xᵢₙ, ẋᵢₙ, enc_jacob, dec_jacob, Θ, model, alphas)
-    #Reconstruction loss from encoded-decoded xᵢₙ
-    L_r = sqeuclidean(model[2].W(model[1].W(xᵢₙ)), xᵢₙ)
-
-    L_ż = alphas/10 * sum(((enc_jacob * ẋᵢₙ) .- (Θ * model[3].W)).^2)
-
-    L_ẋ = alphas * sum(((Θ * (model[3].W * dec_jacob)) .- ẋᵢₙ).^2)
-    
-    return L_r + L_ż + L_ẋ
+# Evaluate basis functions for all xᵢₙ in batch
+function evaluate_basis_batch(basis, data_batch)
+    bases(b::CompoundBasis) = b.bases
+    basis_output = [b(data_batch) for b in bases(basis)]
+    return hcat(basis_output...)
 end
 
 function update_model_coeffs!(model_W, smallinds, Ξ)
@@ -90,6 +96,24 @@ function dzdt(smallinds, Ξ, model_enc, x, basis)
     return copy(dz_dt)
 end
 
+# Get ż from encoder derivative and ẋ
+function enc_ż(enc_jac_batch, ẋ_batch)
+    enc_mult_ż = Zygote.Buffer(ẋ_batch)
+    for i in 1:size(enc_jac_batch, 2)
+        enc_mult_ż[:, i] = (enc_jac_batch[:,i,:] * (ẋ_batch[:,i]))
+    end
+    return copy(enc_mult_ż)
+end
+
+# Get ẋ from decoder derivative and ż
+function dec_ẋ(dec_jac_batch, ż)
+    dec_mult_ẋ = Zygote.Buffer(ż')
+    for i in 1:size(dec_jac_batch, 2)
+        dec_mult_ẋ[:, i] = dec_jac_batch[:,i,:] * ż[i,:]
+    end
+    return copy(dec_mult_ẋ)
+end
+
 
 function solve(data, method, model, basis, solver::NNSolver)
     
@@ -104,14 +128,27 @@ function solve(data, method, model, basis, solver::NNSolver)
     alphas = round(sum(abs2, x) / sum(abs2, ẋ), sigdigits = 3)
 
     function loss(model, x_batch, ẋ_batch, enc_jac_batch, dec_jac_batch, Θ_batch, method, alphas)
-        # Initialize the loss
-        batchLoss = 0.0
-        
-        for i in 1:size(x_batch, 2)
-            batchLoss += loss_kernel(x_batch[:, i], ẋ_batch[:, i], enc_jac_batch[i], dec_jac_batch[i], Θ_batch[i], model, alphas)
-        end
+        # Compute the reconstruction loss for the entire batch
+        L_r = sum((model[2].W(model[1].W(x_batch)) .- x_batch) .^ 2)
+
+        # Compute the loss terms involving enc_jac_batch and Θ_batch
+        enc_mult_ż = enc_ż(enc_jac_batch, ẋ_batch)
+
+        # Loss from difference between encoded variables through SINDy and reference
+        L_ż = alphas / 10 * sum((enc_mult_ż .- (Θ_batch * model[3].W)') .^ 2)
+
+        # Compute the loss terms involving dec_jac_batch and Θ_batch
+        ż = Θ_batch * model[3].W
+        dec_mult_ẋ = dec_ẋ(dec_jac_batch, ż)
+
+        # Loss from difference between decoded variables through SINDy and reference
+        L_ẋ = alphas * sum((dec_mult_ẋ  .- ẋ_batch).^2)
+
+        # Compute the total loss for the entire batch
+        batchLoss = L_r + L_ż + L_ẋ
+
         # Mean of the coefficients averaged
-        L_c = sum(abs.(model[3].W))/length(model[3].W)
+        L_c = sum(abs.(model[3].W)) / length(model[3].W)
 
         batch_loss_average = batchLoss / size(x_batch, 2) + method.coeff * L_c
     
@@ -123,6 +160,13 @@ function solve(data, method, model, basis, solver::NNSolver)
 
     # Set up the optimizer's state
     opt_state = Flux.setup(solver.optimizer, model)
+
+    # Initialize inplace storage
+    x_batch = zeros(size(x,1), method.batch_size)
+    ẋ_batch = zeros(size(x,1), method.batch_size)
+    enc_jac_batch  = zeros(size(x,1), method.batch_size, size(x,1))
+    dec_jac_batch  = zeros(size(x,1), method.batch_size, size(x,1))
+    Θ_batch = zeros(method.batch_size, size(basis(x[:,1]),2))
 
     for epoch in 1:2000
         epoch_loss = 0.0
@@ -136,15 +180,15 @@ function solve(data, method, model, basis, solver::NNSolver)
             batch_indices = shuffled_indices[batch_start:batch_end]
 
             # Extract the data for the current batch
-            x_batch = x[:, batch_indices]
-            ẋ_batch = ẋ[:, batch_indices]
+            x_batch .= x[:, batch_indices]
+            ẋ_batch .= ẋ[:, batch_indices]
 
             # Derivatives of the encoder and decoder
-            enc_jac_batch = [(layer_derivative(model[1].W, xᵢₙ))[1] for xᵢₙ in eachcol(x_batch)]
-            dec_jac_batch = [(layer_derivative(model[2].W, model[1].W(xᵢₙ)))[1] for xᵢₙ in eachcol(x_batch)]
-            
+            enc_jac_batch .= batched_jacobian(model[1].W, x_batch)
+            dec_jac_batch .= batched_jacobian(model[2].W, model[1].W(x_batch))
+        
             # Values of basis functions on all samples of the encoded training data states
-            Θ_batch = [basis(model[1].W(xᵢₙ)) for xᵢₙ in eachcol(x_batch)]
+            Θ_batch .= evaluate_basis_batch(basis, model[1].W(x_batch))
 
             # Compute gradients using Flux
             gradients = Flux.gradient(model -> loss(model, x_batch, ẋ_batch, enc_jac_batch, dec_jac_batch, Θ_batch, method, alphas), model)[1]
@@ -189,30 +233,31 @@ function sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolve
     function sparse_loss(enc_paras, dec_paras, Ξ, model, basis, smallinds, x, ẋ, enc_jac, dec_jac, method, alphas)
         batchLoss = 0
 
-        dz_dt = dzdt(smallinds, Ξ, model[1].W, x, basis)
+        # Get the encoded derivative: ż
+        enc_mult_ż = enc_ż(enc_jac, ẋ)
+        # Get the decoded derivative ẋ from ż and dx\dz
+        SINDy_ẋ = (hcat([dec_jac[:, i, :] * enc_mult_ż[:, i] for i in axes(enc_mult_ż, 2)]...))
 
-        # Loop over samples
-        for i in axes(x, 2)
-            # Loop over each state
-            for ind in axes(x, 1)
-                # non-zero coefficients of the ind state
-                biginds = .~(smallinds[:, ind])
-    
-                # Reconstruction loss from encoded-decoded xᵢₙ
-                L_r = sqeuclidean(dec_paras(enc_paras(x[:, i]))[ind], x[ind, i])
-    
-                # Values of basis functions on the current sample of the encoded training data states at biginds coefficients
-                Θ = (basis(enc_paras(x[:, i])))[:, biginds]
+        # Values of basis functions on the current sample of the encoded training data states
+        Θ = (basis(enc_paras(x)))
 
-                # Ξ[ind]: gives the values of the coefficients of a state to be 
-                # multiplied with the Θ biginds basis functions at that state, 
-                # to give the gradients from the SINDy method 
-                L_ż = alphas/10 * sum(((enc_jac[i] * ẋ[:, i])[ind, :] .- (Θ * Ξ[ind])).^2)
-                
-                L_ẋ = alphas * sum(((dec_jac[i] * dz_dt[:,i])[ind, :] .- ẋ[ind, i]).^2)   
+        # Loop over each state
+        for ind in axes(x, 1)
+            # non-zero coefficients of the ind state
+            biginds = .~(smallinds[:, ind])
 
-                batchLoss += L_r + L_ż + L_ẋ
-            end
+            # Reconstruction loss from encoded-decoded xᵢₙ
+            L_r = sum((dec_paras(enc_paras(x)) .- x)[ind,:].^ 2)
+
+            # Ξ[ind]: gives the values of the coefficients of a state to be 
+            # multiplied with the Θ biginds basis functions at that state, 
+            # to give the encoded gradients from the SINDy method 
+            L_ż = alphas / 10 * sum(((enc_mult_ż)[ind, :] .- (Θ[:, biginds] * Ξ[ind])) .^ 2)
+            
+            # Decoded gradients from SINDy and reference
+            L_ẋ = alphas * sum((SINDy_ẋ .- ẋ)[ind, :].^2)
+
+            batchLoss += L_r + L_ż + L_ẋ
         end
     
         # Mean of the coefficients averaged
@@ -226,6 +271,13 @@ function sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolve
     # Set up the optimizer's state
     opt_state = Flux.setup(solver.optimizer, (model[1].W, model[2].W, Ξ))
 
+    # Initialize inplace storage
+    x_batch = zeros(size(x,1), method.batch_size)
+    ẋ_batch = zeros(size(x,1), method.batch_size)
+    # Derivatives of the encoder and decoder
+    enc_jac_batch = zeros(size(x,1), method.batch_size, size(x,1))
+    dec_jac_batch = zeros(size(x,1), method.batch_size, size(x,1))
+
     for epoch in 1:500
         epoch_loss = 0.0
         # Shuffle the data indices for each epoch
@@ -238,13 +290,13 @@ function sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolve
             batch_indices = shuffled_indices[batch_start:batch_end]
 
             # Extract the data for the current batch
-            x_batch = x[:, batch_indices]
-            ẋ_batch = ẋ[:, batch_indices]
+            x_batch .= x[:, batch_indices]
+            ẋ_batch .= ẋ[:, batch_indices]
 
             # Derivatives of the encoder and decoder
-            enc_jac_batch = [(layer_derivative(model[1].W, xᵢₙ))[1] for xᵢₙ in eachcol(x_batch)]
-            dec_jac_batch = [(layer_derivative(model[2].W, model[1].W(xᵢₙ)))[1] for xᵢₙ in eachcol(x_batch)]
-            
+            enc_jac_batch .= batched_jacobian(model[1].W, x_batch)
+            dec_jac_batch .= batched_jacobian(model[2].W, model[1].W(x_batch))
+        
             # Compute gradients using Flux
             gradients = Flux.gradient((enc_paras, dec_paras, Ξ) -> sparse_loss(enc_paras, dec_paras, Ξ, model, basis, smallinds, x_batch, ẋ_batch, enc_jac_batch, dec_jac_batch, method, alphas), model[1].W, model[2].W, Ξ)
 
