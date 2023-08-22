@@ -22,6 +22,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/JuliaRCM/SparseIdentification.jl",
-    devbranch="main",
+    repo   = "github.com/JuliaRCM/SparseIdentification.jl",
+    devurl = "latest",
+    devbranch = "main",
 )
