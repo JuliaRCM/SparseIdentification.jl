@@ -76,22 +76,6 @@ function update_model_coeffs!(model_W, smallinds, Ξ)
     end
 end
 
-function dzdt(smallinds, Ξ, model_enc, x, basis)
-    num_states = size(x, 1)
-    num_samples = size(x, 2)
-    dz_dt = Zygote.Buffer(x)
-    
-    for i in 1:num_samples
-        for ind in 1:num_states
-            biginds = .~(smallinds[:, ind])
-            Θ = (basis(model_enc(x[:, i])))[:, biginds]
-            dz_dt[ind, i] = (Θ * Ξ[ind])[1]
-        end
-    end
-    
-    return copy(dz_dt)
-end
-
 # Get ż from dz/dx and ẋ
 function enc_ż(enc_jac_batch, ẋ_batch)
     # Size is equal to encoded features and number of batches
@@ -113,9 +97,9 @@ function dec_ẋ(dec_jac_batch, ż)
 end
 
 # Get ż from SINDy coefficients and basis functions
-function set_ż_SINDY(x_batch, Θ, Ξ, smallinds)
-    ż_SINDy = Zygote.Buffer(zeros(size(x_batch, 1), size(Θ,1)))
-    for ind in axes(x_batch, 1)
+function set_ż_SINDY(enc_x_batch, Θ, Ξ, smallinds)
+    ż_SINDy = Zygote.Buffer(zeros(size(enc_x_batch, 1), size(Θ,1)))
+    for ind in axes(enc_x_batch, 1)
         # non-zero coefficients of the ind state
         biginds = .~(smallinds[:, ind])
         ż_SINDy[ind,:] = Θ[:, biginds] * Ξ[ind]
@@ -239,7 +223,8 @@ function sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolve
         Θ = basis(enc_paras(x_batch))
 
         # Encoded SINDy gradient
-        ż_SINDy = set_ż_SINDY(x_batch, Θ, Ξ, smallinds)
+        enc_x_batch = enc_paras(x_batch)
+        ż_SINDy = set_ż_SINDY(enc_x_batch, Θ, Ξ, smallinds)
 
         # Decoded SINDy gradient
         ẋ_SINDy = dec_ẋ(dec_jac, ż_SINDy)
