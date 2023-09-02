@@ -40,7 +40,7 @@ println("Generate Training Data...")
 # x = Array(data)
 # stored as matrix with dims [nd,ntime]
 
-num_samp = 12
+num_samp = 15
 
 # samples in p and q space
 samp_range = LinRange(-20, 20, num_samp)
@@ -78,6 +78,8 @@ tdata = TrainingData(Float32.(x), Float32.(ẋnoisy))
 # Identify SINDy Vector Field
 # ----------------------------------------
 
+println("Computing Vector Field...")
+
 # compute vector field
 # vectorfield = VectorField(method, basis, tdata)
 # vectorfield = VectorField(method, basis, data; solver = OptimSolver())
@@ -100,10 +102,12 @@ trange = range(tspan[begin], step = tstep, stop = tspan[end])
 prob = ODEProblem(rhs, x₀, tspan)
 data = ODE.solve(prob, abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
 
-
+#----------------------------------------
+# Note: Use Rx₀ instead of x₀ in prob_approx if just x₀ doesn't work
 R = x₀ / model[1].W(x₀)
-# encoded_data = model[1].W(x₀)
-prob_approx = ODEProblem(vectorfield, R*x₀, tspan)
+#----------------------------------------
+
+prob_approx = ODEProblem(vectorfield, x₀, tspan)
 # prob_approx = ODEProblem(vectorfield, x₀, tspan)
 xid = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 

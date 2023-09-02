@@ -66,18 +66,23 @@ end
 
  
 # Initialize a model with random parameters and Ξ = 0
-function set_model(data, Ξ)
+function set_model(data, basis)
     encoder = Chain(
-    Dense(size(data.x)[1] => 2, sigmoid), 
-    # Dense(64 => 32, sigmoid), 
-    Dense(2 => size(data.x)[1])
+    Dense(size(data.x)[1] => 2), 
+    # Dense(2 => 2), 
     )
 
     decoder = Chain(
-    Dense(size(data.x)[1] => 2, sigmoid),  
-    # Dense(64 => 32, sigmoid),
-    Dense(2 => size(data.x)[1])
+    Dense(2 => size(data.x)[1]),  
+    # Dense(2 => size(data.x)[1])
     )
+
+    # Encode all states at first sample to initialize basis
+    Θ = basis(encoder(data.x[:,1]))
+
+    # Ξ is the coefficients of the bases(Θ), it depends on the number of 
+    # features (encoded bases), and the number of states for those features to act on
+    Ξ = zeros(size(Θ,2), size(encoder(data.ẋ), 1))
 
     model = ( 
         (W = encoder,),
@@ -101,17 +106,8 @@ function separate_coeffs(model_W, smallinds)
 end
 
 function sparsify_NN(method::SINDy, basis, data, solver)
-    # Pool Data (evaluate library of candidate basis functions on training data)
-    # Values of basis functions on all samples of the training data states
-    # Only one sample is needed since we just need to compute the size of Ξ
-    Θ = basis(data.x[:,1])
-
-    # Ξ is the coefficients of the bases(Θ), it depends on the number of 
-    # features (bases), and the number of states for those features to act on
-    Ξ = zeros(size(Θ,2), size(data.ẋ, 1))
-
     # initialize parameters
-    model = set_model(data, Ξ)
+    model = set_model(data, basis)
 
     # initial optimization for parameters
     model, loss_vec = solve(data, method, model, basis, solver)
@@ -124,12 +120,12 @@ function sparsify_NN(method::SINDy, basis, data, solver)
 
     # Array to store the losses of each SINDy loop
     SINDy_loss_array = Vector{Vector{Float64}}()  # Store vectors of losses
-    
+
     for n in 1:method.nloops
         println("Iteration #$n...")
         println()
         # find coefficients below λ threshold
-        smallinds = abs.(model[3].W) .< method.lambda
+        smallinds .= abs.(model[3].W) .< method.lambda
 
         # check if there are any small coefficients != 0 left
         all(model[3].W[smallinds] .== 0) && break
@@ -159,6 +155,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     println("Final Iteration...")
     println()
 
+    Ξ = separate_coeffs(model[3].W, smallinds)
     model, final_loss = sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolver)
 
     display(plot(log.(final_loss), label = "Final Optimization Loss"))
