@@ -38,9 +38,9 @@ lambda = 0.00002
 println("Getting Training Data...")
 
 # load data from first run and compute derivative
-POD_coeff_alpha = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_alpha.csv"), DataFrame; delim=",")
+POD_coeff_alpha = CSV.read(joinpath(@__DIR__, "..",  "data\\POD_coeff_alpha.csv"), DataFrame; delim=",")
 
-POD_coeff_alphaS = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_alphaS.csv"), DataFrame)
+POD_coeff_alphaS = CSV.read(joinpath(@__DIR__, "..",  "data\\POD_coeff_alphaS.csv"), DataFrame)
 
 # need to provide column headers in datafiles first to avoid first line of data being counted as column heads
 x = [POD_coeff_alpha[1:5000, 1:r] POD_coeff_alphaS[1:5000, 1]]
@@ -65,9 +65,9 @@ for i=3:size(x, 2)-3
 end  
 
 # load data from second run and compute derivative
-POD_coeff_run1_alpha = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_run1_alpha.csv"), DataFrame; delim=",")
+POD_coeff_run1_alpha = CSV.read(joinpath(@__DIR__, "..",  "data\\POD_coeff_run1_alpha.csv"), DataFrame; delim=",")
 
-POD_coeff_run1_alphaS = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_run1_alphaS.csv"), DataFrame)
+POD_coeff_run1_alphaS = CSV.read(joinpath(@__DIR__, "..",  "data\\POD_coeff_run1_alphaS.csv"), DataFrame)
 
 x1 = [POD_coeff_run1_alpha[1:3000, 1:r] POD_coeff_run1_alphaS[1:3000, 1]]
 
@@ -117,7 +117,7 @@ println("Sparsify Dynamics...")
 tdata = TrainingData(x, ẋ)
 
 # choose SINDy method
-method = SINDy(lambda = lambda, noise_level = 0.05)
+method = SINDy(lambda = lambda, noise_level = 0.05, batch_size = 0)
 
 # generate basis
 basis = CompoundBasis()
@@ -179,8 +179,8 @@ xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10)
 
 println("Plotting Fig One...")
 
-p1 = plot(x[1,1:end-6], x[2,1:end-6], x[3,1:end-6], xlabel="x", ylabel="y", zlabel="z")
-p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z")
+p1 = plot(x[1,1:end-6], x[2,1:end-6], x[3,1:end-6], xlabel="x", ylabel="y", zlabel="z", label="Data", color="black")
+p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z", label="Identified", color="red")
 l = @layout [a b]
 display(plot(p1, p2, layout = l))
 
@@ -204,7 +204,7 @@ xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10)
 
 println("Plotting Fig Two...")
 
-p1 = plot(x[1,5001:end], x[2,5001:end], x[3,5001:end], xlabel="x", ylabel="y", zlabel="z")
-p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z")
+p1 = plot(x[1,5001:end], x[2,5001:end], x[3,5001:end], xlabel="x", ylabel="y", zlabel="z", label="Data", color="black")
+p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z", label="Identified", color="red")
 l = @layout [a b]
 display(plot(p1, p2, layout = l))
