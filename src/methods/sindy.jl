@@ -8,7 +8,7 @@ struct SINDy{T} <: SparsificationMethod
     coeff::Float64
     batch_size::Int
 
-    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS, coeff = 0.6, batch_size::Int) where {T}
+    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS, coeff = 0.6, batch_size::Int = 1) where {T}
         new{T}(lambda, noise_level, nloops, coeff, batch_size)
     end
 end

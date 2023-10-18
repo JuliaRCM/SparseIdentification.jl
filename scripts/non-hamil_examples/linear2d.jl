@@ -62,7 +62,7 @@ for i in axes(ẋ,2)
 end
 
 # choose SINDy method
-method = SINDy(lambda = 0.05, noise_level = 0.0, coeff = 0.52, batch_size = 18)
+method = SINDy(lambda = 0.05, noise_level = 0.0, coeff = 0.52, batch_size = 32)
 
 # add noise to ẋ
 ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
@@ -107,10 +107,12 @@ data = ODE.solve(prob, abstol=1e-10, reltol=1e-10, saveat = trange, tstops = tra
 R = x₀ / model[1].W(x₀)
 #----------------------------------------
 
-prob_approx = ODEProblem(vectorfield, x₀, tspan)
-# prob_approx = ODEProblem(vectorfield, x₀, tspan)
+# use encoder to get the gradient
+prob_approx = ODEProblem(vectorfield, model[1].W(x₀), tspan)
 xid = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
+# use decoder to get the solution at each timestep
+xsol = hcat([model[2].W(xid[:,i]) for i in axes(xid,2)]...)
 
 # ----------------------------------------
 # Plot Results
@@ -125,16 +127,16 @@ println("Plotting...")
 
 p1 = plot()
 plot!(p1, data.t, data[1,:], label = "Data")
-plot!(p1, xid.t, xid[1,:], label = "Identified")
+plot!(p1, xid.t, xsol[1,:], label = "Identified")
 
 p2 = plot()
 plot!(p2, data.t, data[2,:], label = "Data")
-plot!(p2, xid.t, xid[2,:], label = "Identified")
+plot!(p2, xid.t, xsol[2,:], label = "Identified")
 
 display(plot(p1, p2))
 savefig("linear2d.png")
 
 p3 = plot(data[1,:], data[2,:], label="true")
-p3 = scatter!(xid[1,:], xid[2,:], label="approx", linestyle =:dash, mc=:red, ms=2, ma=0.5, xlabel ="X1", ylabel="X2")
+p3 = scatter!(xsol[1,:], xsol[2,:], label="approx", linestyle =:dash, mc=:red, ms=2, ma=0.5, xlabel ="X1", ylabel="X2")
 display(plot(p3, show = true, reuse = false))
 savefig("linear2d_fig2.png")
