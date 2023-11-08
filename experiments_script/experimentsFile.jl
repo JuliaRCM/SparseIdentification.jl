@@ -11,7 +11,6 @@ using Symbolics
 using Plots
 using RuntimeGeneratedFunctions
 using LinearAlgebra
-# For saving vectors to file
 using DelimitedFiles
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
@@ -203,6 +202,28 @@ function trig_B6_basis(a)
     Vector{Symbolics.Num}(out)
 end
 
+function trig_B7_basis(a)
+    z = get_z_vector(2)
+    out = []
+    out = vcat(out, sum(collect(a[1:2] .* z[1:2])))
+    out = vcat(out, sum(collect(a[3:4] .* z[1:2])))
+    out = vcat(out, sum(collect(a[5:6] .* z[3:4])))
+    out = vcat(out, sum(collect(a[7:8] .* z[3:4])))
+    out = vcat(out, sum(collect(a[1:2] .* z[1:2])).^2)
+    out = vcat(out, sum(collect(a[3:4] .* z[1:2])).^2)
+    out = vcat(out, sum(collect(a[5:6] .* z[3:4])).^2)
+    out = vcat(out, sum(collect(a[7:8] .* z[3:4])).^2)
+    out = vcat(out, sin.(sum(collect(a[1:2] .* (z[1:2])))))
+    out = vcat(out, sin.(sum(collect(a[3:4] .* (z[1:2])))))
+    out = vcat(out, cos.(sum(collect(a[1:2] .* (z[1:2])))))
+    out = vcat(out, cos.(sum(collect(a[3:4] .* (z[1:2])))))
+    out = vcat(out, sin.(sum(collect(a[5:6] .* (z[3:4])))))
+    out = vcat(out, sin.(sum(collect(a[7:8] .* (z[3:4])))))
+    out = vcat(out, cos.(sum(collect(a[5:6] .* (z[3:4])))))
+    out = vcat(out, cos.(sum(collect(a[7:8] .* (z[3:4])))))
+    Vector{Symbolics.Num}(out)
+end
+
 # %%
 function poly_basis_maker(z, nd, polyorder)
     
@@ -221,16 +242,19 @@ function B3(z, d, trig_polyorder, basis)
 end
 
 function B4(z, d, trig_polyorder, basis)
-    num_trig_arg = 2*(binomial(2d + trig_polyorder, trig_polyorder) - 1) # one coeffs for the freq and one the amplitude of each basis
+    num_trig_arg = 2*(binomial(2d + trig_polyorder, trig_polyorder) - 1) # multiply by 2 to get coefficients for both sin and cos bases
 
     # code for half trig argument bases
     halfz = [(z[1]+z[2])/2, (z[3]+z[4])/2]
-    num_half_trig_args = 2*length(halfz) # one coeffs for the freq and one the amplitude of each basis
+    num_half_trig_args = 2*length(halfz) # multiply by 2 to get coefficients for both sin and cos bases
 
     total_trig_args = num_trig_arg + num_half_trig_args
 
+    # basis for fractional polynomial bases up to the second power (without variable mixing)
+    half_poly_basis = get_basis_set(halfz, halfz.^2)
+    
     # collects and sums combinations of basis and coefficients  
-    @variables a[1:2*total_trig_args+length(basis)] # use multiply by 2 to account for amplitude coefficients also
+    @variables a[1:2*total_trig_args+length(basis)+length(half_poly_basis)] # use multiply by 2 to account for amplitude coefficients also
 
     # code for trig argument bases
     trig_basis = trigonometric_basis(z, a[1:num_trig_arg], trig_polyorder)
@@ -240,41 +264,67 @@ function B4(z, d, trig_polyorder, basis)
     poly_halfTrig_basis = polynomial_basis(half_trig_basis, polyorder = 1)
 
     # basis = get_basis_set(basis, poly_trig_basis)
-    basis = get_basis_set(basis, poly_trig_basis, poly_halfTrig_basis)
+    basis = get_basis_set(basis, half_poly_basis, poly_trig_basis, poly_halfTrig_basis)
     return basis, a, total_trig_args
 end
 
 function B5(z, d, trig_polyorder, basis)
-    num_trig_arg = 2*(binomial(2d + trig_polyorder, trig_polyorder) - 1) # one coeffs for the freq and one the amplitude of each basis
-    num_half_trig_args  = 12 # one coeffs for the freq and one the amplitude of each basis
+    num_trig_arg = 2*(binomial(2d + trig_polyorder, trig_polyorder) - 1) # multiply by 2 to get coefficients for both sin and cos bases
+    num_half_trig_args  = 12 # get argument coefficients for both sin and cos bases
     total_trig_args = num_trig_arg + num_half_trig_args
 
+    # code for half trig argument bases
+    halfz = [(z[1]+z[2])/2, (z[1]+z[3])/2, (z[1]+z[4])/2, (z[2]+z[3])/2, (z[2]+z[4])/2, (z[3]+z[4])/2]
+    half_poly_basis = get_basis_set(halfz, halfz.^2)
+
     # collects and sums combinations of basis and coefficients  
-    # @variables a[1:length(basis)+2*num_trig_arg] # add a variable for each coefficient of the trig basis and also for each trig argument
-    @variables a[1:2*total_trig_args+length(basis)] # use multiply by 2 to account for amplitude coefficients also
+    @variables a[1:2*total_trig_args+length(basis)+length(half_poly_basis)] # multiply by trig_args by 2 to account for amplitude coefficients also
 
     # code for trig argument bases
     trig_basis = trigonometric_basis(z, a[1:num_trig_arg], trig_polyorder)
     poly_trig_basis = polynomial_basis(trig_basis, polyorder = 1)
 
-    # code for half trig argument bases
-    halfz = [(z[1]+z[2])/2, (z[1]+z[3])/2, (z[1]+z[4])/2, (z[2]+z[3])/2, (z[2]+z[4])/2, (z[3]+z[4])/2]
+    # get trigonometric bases from halfz basis
     half_trig_basis = trigonometric_basis(halfz, a[num_trig_arg+1:total_trig_args], trig_polyorder)
     poly_halfTrig_basis = polynomial_basis(half_trig_basis, polyorder = 1)
 
-    # basis = get_basis_set(basis, poly_trig_basis)
-    basis = get_basis_set(basis, poly_trig_basis, poly_halfTrig_basis)
+    basis = get_basis_set(basis, half_poly_basis, poly_trig_basis, poly_halfTrig_basis)
     return basis, a, total_trig_args
 end
 
 function B6(z, d, trig_polyorder, basis)
-    total_trig_args = 2d 
-    @variables a[1:length(basis)+16+total_trig_args]
+    basis_one_trig_args = 2*(binomial(2d + trig_polyorder, trig_polyorder) - 1) # multiply by 2 for sin and cos terms
+    basis_six_trig_args = 2d
+    total_trig_args = basis_one_trig_args + basis_six_trig_args
+
+    basis_six_amplitude_coeffs = 16
+
+    @variables a[1:length(basis) + 2*basis_one_trig_args + basis_six_amplitude_coeffs + basis_six_trig_args] # 2*basis_one_trig_args multiply by 2 to account for amplitude coefficients
+    
     trig_basis = trig_B6_basis(a)
-    basis = get_basis_set(basis, trig_basis)
+    basis_one_trig_basis = trigonometric_basis(z, a[basis_six_trig_args+1:total_trig_args], trig_polyorder)
+
+    basis = get_basis_set(basis, basis_one_trig_basis, trig_basis)
     return basis, a, total_trig_args
 end
+
+function B7(z, d, trig_polyorder, basis)
+    basis_one_trig_args = 2*(binomial(2d + trig_polyorder, trig_polyorder) - 1) # multiply by 2 for sin and cos terms
+    basis_six_trig_args = 4d
+    total_trig_args = basis_one_trig_args + basis_six_trig_args
+
+    basis_six_amplitude_coeffs = 16
+
+    @variables a[1:length(basis) + 2*basis_one_trig_args + basis_six_amplitude_coeffs + basis_six_trig_args] # 2*basis_one_trig_args multiply by 2 to account for amplitude coefficients
     
+    trig_basis = trig_B7_basis(a)
+    basis_one_trig_basis = trigonometric_basis(z, a[basis_six_trig_args+1:total_trig_args], trig_polyorder)
+    
+    basis = get_basis_set(basis, basis_one_trig_basis, trig_basis)
+    return basis, a, total_trig_args
+end
+
+# Wrapper for selecting the correct trig basis function
 function basis_func_maker(trig_basis_case, z, d, trig_polyorder, poly_basis)
     if trig_basis_case == 1 || trig_basis_case == 2 || trig_basis_case == 3
         return B3(z, d, trig_polyorder, poly_basis)
@@ -284,14 +334,16 @@ function basis_func_maker(trig_basis_case, z, d, trig_polyorder, poly_basis)
         return B5(z, d, trig_polyorder, poly_basis)
     elseif trig_basis_case == 6
         return B6(z, d, trig_polyorder, poly_basis)
+    elseif trig_basis_case == 7
+        return B7(z, d, trig_polyorder, poly_basis)
     else
-        error("case can be integer from 1 to 6 only")
+        error("case can be integer from 1 to 7 only")
     end
 end
 
 
 # %%
-# returns a function that can build the gradient of the hamiltonian
+# returns a function that can build the augmented gradient of the hamiltonian
 function ΔH_func_builder(d::Int, z::Vector{Symbolics.Num}, poly_basis::Vector{Symbolics.Num}, trig_polyorder::Int, trig_basis_case::Int) 
     # nd is the total number of dimensions of all the states, e.g. if q,p each of 3 dims, that is 6 dims in total
     nd = 2d
@@ -300,12 +352,12 @@ function ΔH_func_builder(d::Int, z::Vector{Symbolics.Num}, poly_basis::Vector{S
     basis, a, total_trig_args =  basis_func_maker(trig_basis_case, z, d, trig_polyorder, poly_basis)
     
     # collect and sum combinations of basis and coefficients
-    ham = sum(collect(a[total_trig_args+1:end] .* basis)) #start count of (a) coefficients from after the number of trig arguments
+    ham = sum(collect(a[total_trig_args+1:end] .* basis)) # start count of (a) coefficients from after the number of trig arguments
     
     # gives derivative of the hamiltonian, but not the skew-symmetric true one
     f = [expand_derivatives(dz(ham)) for dz in Dz]
 
-    #simplify the expression potentially to make it faster
+    # simplify the expression potentially to make it faster
     f = simplify(f)
     
     # line below makes the vector into a hamiltonian vector field by multiplying with the skew-symmetric matrix
@@ -318,19 +370,6 @@ function ΔH_func_builder(d::Int, z::Vector{Symbolics.Num}, poly_basis::Vector{S
 end
 
 # %%
-# --------------------
-# Setup
-# --------------------
-
-println("Setting up...")
-
-# 2D system with 4 variables [q₁, q₂, p₁, p₂]
-const nd = 4
-
-# initialize analytical function, keep λ smaller than ϵ so system is identifiable
-ϵ = 0.5
-m = 1
-
 # two-dim simple harmonic oscillator (not used anywhere only in case some testing needed)
 # H_ana(x, p, t) = ϵ * x[1]^2 + ϵ * x[2]^2 + 1/(2*m) * x[3]^2 + 1/(2*m) * x[4]^2
 # H_ana(x, p, t) = cos(x[1]) + cos(x[2]) + 1/(2*m) * x[3]^2 + 1/(2*m) * x[4]^2
@@ -342,7 +381,7 @@ function grad_H_ana!(dx, x, p, t)
     dx .= grad_H_ana(x)
 end
 
-function generate_training_data(num_samp = 10, input_range = 20, nd = 4)
+function generate_training_data(num_samp, input_range, nd)
     # samples in p and q space
     samp_range = LinRange(-input_range, input_range, num_samp)
 
@@ -363,28 +402,6 @@ function generate_training_data(num_samp = 10, input_range = 20, nd = 4)
     tdata = TrainingData(Float32.(x), Float32.(ẋ))
     return tdata
 end
-
-# dimension of each variable in the system
-d = nd ÷ 2
-
-# Symbolic variables for the states
-z = get_z_vector(nd/2)
-
-# %%
-# poly_basis = poly_basis_maker(z, 2d, 1)
-# returns function that builds hamiltonian gradient through symbolics
-# fθ = ΔH_func_builder(d, z, poly_basis, trig_polyorder, trig_basis_case)
-
-# %%
-# bases_collect = []
-# coeffs_collect = []
-# augmented_bases_funcs = []
-
-
-# %%
-# push!(augmented_bases_funcs, fθ)
-# push!(bases_collect, method.basis)
-# push!(coeffs_collect, a)
 
 # %% [markdown]
 # #### Define all training functions
@@ -444,13 +461,14 @@ function Diff_ẋ(dec_jac_batch, grad_fθ, ẋ_ref)
     return sum(abs2, (ẋ_SINDy - ẋ_ref))
 end
 
+# set the values of the model coeffs to the values of the Ξ vector for each state
 function set_coeffs(model_Coeffs, Ξ, biginds)
     coeffs = zero(model_Coeffs)
     coeffs[biginds] = Ξ
     return coeffs
 end
 
-function loss(model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method)
+function loss(model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, basis_coeff)
     enc_x_batch = model[1].W(x_batch)
 
     coeffs = model[3].W
@@ -478,7 +496,7 @@ function loss(model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, m
     # Mean of the coefficients averaged
     L_c = sum(abs, coeffs) / length(coeffs)
 
-    batch_loss_average = batchLoss / size(x_batch, 2) + method.basis_coeff * L_c
+    batch_loss_average = batchLoss / size(x_batch, 2) + basis_coeff * L_c
     
     return batch_loss_average
 end
@@ -505,18 +523,18 @@ function set_model(data, num_coeff, initial_coeffs::String)
             (W = decoder,),
             (W = zeros(Float32, num_coeff),), 
         )
-    end
-
-    if initial_coeffs == "ones"
+    elseif initial_coeffs == "ones"
         model = ( 
             (W = encoder,),
             (W = decoder,),
             (W = ones(Float32, num_coeff),),
         )
+    else
+        error("initial_coeffs can be zeros or ones only")
     end
 
     # set initial encoder/decoder weights to identity
-    # TODO: try not setting these to identity and see how well it works
+    #TODO: try not setting these to identity and see how well it works
     model[1].W.layers[1].weight .= Matrix(LinearAlgebra.I, ndim, ld)
     model[2].W.layers[1].weight .= Matrix(LinearAlgebra.I, ld, ndim)
     
@@ -536,62 +554,97 @@ function setup_test(data, method, model, alphas)
     Initial_loss_array = Vector{Float32}()
 
     # Store the epoch loss
-    push!(Initial_loss_array, loss(model, data.x, data.ẋ, ż_ref, dec_jac, alphas, method))
+    push!(Initial_loss_array, loss(model, data.x, data.ẋ, ż_ref, dec_jac, alphas, method.basis_coeff))
     return Initial_loss_array
+end
+
+# %%
+function initialModelUpdate!(model_type, model, model_gradients, opt_state)
+    # Update the parameters
+    if model_type == "fixed"
+        Flux.Optimise.update!(opt_state[3], model[3], model_gradients[3])
+    elseif  model_type == "symmetric"
+        Flux.Optimise.update!(opt_state, model, model_gradients)
+        # Only q's effect q's and only p's effect p's
+        # Due to the [A, 0; 0, A] structure the effect of q on q is the same as the effect of p on p
+        temp1 = (model[1].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] + model[1].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end]) / 2
+        model[1].W.layers[1].weight .= zeros(size(model[1].W.layers[1].weight))
+        model[1].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] .= temp1
+        model[1].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end] .= temp1
+        model[1].W.layers[1].bias .= 0
+
+        temp2 = (model[2].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] + model[2].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end]) / 2
+        model[2].W.layers[1].weight .= zeros(size(model[2].W.layers[1].weight))
+        model[2].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] .= temp2
+        model[2].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end] .= temp2
+        model[2].W.layers[1].bias .= 0
+    elseif model_type == "general"
+        Flux.Optimise.update!(opt_state, model, model_gradients)
+    else
+        error("model_type must be fixed, symmetric, or general")
+    end
+end
+
+# %%
+function initial_gradient_update!(model, model_gradients, total_samples, num_batches, method, data, alphas, opt_state, model_type, Initial_loss_array)
+    epoch_loss = 0.0
+    # Shuffle the data indices for each epoch
+    shuffled_indices = shuffle(1:total_samples)
+    for batch in 1:num_batches
+        # Get the indices for the current batch
+        batch_start = (batch - 1) * method.batch_size + 1
+        batch_end = min(batch * method.batch_size, total_samples)
+        batch_indices = shuffled_indices[batch_start:batch_end]
+
+        # Extract the data for the current batch
+        x_batch = data.x[:, batch_indices]
+        ẋ_batch = data.ẋ[:, batch_indices]
+
+        # Derivatives of the encoder and decoder
+        enc_jac_batch = batched_jacobian(model[1].W, x_batch)
+        dec_jac_batch = batched_jacobian(model[2].W, model[1].W(x_batch))
+        
+        # Get the encoded derivative: ż
+        ż_ref_batch = enc_ż(enc_jac_batch, ẋ_batch)
+        
+        # Compute gradients using Enzyme
+        function calculateGradient!()
+            Enzyme.autodiff(Reverse, (model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, basis_coeff) -> loss(model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, basis_coeff), Active, Duplicated(model, model_gradients), Const(x_batch), Const(ẋ_batch), Const(ż_ref_batch), Const(dec_jac_batch), Const(alphas), Const(method.basis_coeff))
+        end
+        calculateGradient!()
+        
+        # Update the parameters
+        initialModelUpdate!(model_type, model, model_gradients, opt_state)
+
+        # Accumulate the loss for the current batch
+        epoch_loss += loss(model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method.basis_coeff)
+    end
+    # Compute the average loss for the epoch
+    epoch_loss /= num_batches
+
+    # Store the epoch loss
+    push!(Initial_loss_array, epoch_loss)
 end
 
 # %%
 function initial_loop(model, method, data, total_samples, num_batches, alphas, opt, model_type, Initial_loss_array)
     opt_state = Flux.setup(opt, model)
     for epoch in 1:1000
-        model_gradients = deepcopy(model)
-        epoch_loss = 0.0
-        # Shuffle the data indices for each epoch
-        shuffled_indices = shuffle(1:total_samples)
-        for batch in 1:num_batches
-            # Get the indices for the current batch
-            batch_start = (batch - 1) * method.batch_size + 1
-            batch_end = min(batch * method.batch_size, total_samples)
-            batch_indices = shuffled_indices[batch_start:batch_end]
-
-            # Extract the data for the current batch
-            x_batch = data.x[:, batch_indices]
-            ẋ_batch = data.ẋ[:, batch_indices]
-
-            # Derivatives of the encoder and decoder
-            enc_jac_batch = batched_jacobian(model[1].W, x_batch)
-            dec_jac_batch = batched_jacobian(model[2].W, model[1].W(x_batch))
-            
-            # Get the encoded derivative: ż
-            ż_ref_batch = enc_ż(enc_jac_batch, ẋ_batch)
-            
-            # Compute gradients using Enzyme
-            Enzyme.autodiff(Reverse, (model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method) -> loss(model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method), Active, Duplicated(model, model_gradients), Const(x_batch), Const(ẋ_batch), Const(ż_ref_batch), Const(dec_jac_batch), Const(alphas), Const(method))
-
-            # Update the parameters
-            # Flux.Optimise.update!(opt_state, model, model_gradients)
-
-            # Update the parameters
-            if model_type == "fixed"
-                Flux.Optimise.update!(opt_state[3], model[3], model_gradients[3])
-            else
-                Flux.Optimise.update!(opt_state, model, model_gradients)
-            end
-
-            # Accumulate the loss for the current batch
-            epoch_loss += loss(model, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method)
+        model_gradients = deepcopy(model) # Performs properly when it is inside the loop, otherwise loss increases
+        initial_gradient_update!(model, model_gradients, total_samples, num_batches, method, data, alphas, opt_state, model_type, Initial_loss_array)
+        
+        # Print loss after some iterations
+        if epoch % 200 == 0
+            println("Epoch $epoch: Average Loss: $(Initial_loss_array[end])")
+            println("Epoch $epoch: Coefficents: $(model[3].W)")
+            println()
         end
-        # Compute the average loss for the epoch
-        epoch_loss /= num_batches
-
-        # Store the epoch loss
-        push!(Initial_loss_array, epoch_loss)
     end
     return model, Initial_loss_array
 end
 
 # %%
-function sparse_loss(enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref, dec_jac_batch, alphas, method, biginds)
+function sparse_loss(enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref, dec_jac_batch, alphas, basis_coeff, biginds)
     coeffs = set_coeffs(model_Coeffs, Ξ, biginds)
 
     enc_x_batch = enc_paras(x_batch)
@@ -618,9 +671,92 @@ function sparse_loss(enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch,
     # Mean of the coefficients averaged
     L_c = sum(abs, model_Coeffs) / length(model_Coeffs)
 
-    batch_loss_average = batchLoss / size(x_batch, 2) + method.basis_coeff * L_c
+    batch_loss_average = batchLoss / size(x_batch, 2) + basis_coeff * L_c
     
     return batch_loss_average
+end
+
+# %%
+function sindyModelUpdate!(model_type, model, Ξ, grad_W1, grad_W2, grad_W3, opt_state)
+    # Update the parameters
+    if model_type == "fixed"
+        Flux.Optimise.update!(opt_state[3], Ξ, grad_W3)
+    elseif  model_type == "symmetric"
+        Flux.Optimise.update!(opt_state, (model[1].W, model[2].W, Ξ), (grad_W1, grad_W2, grad_W3))
+        # Only q's effect q's and only p's effect p's
+        # Due to the [A, 0; 0, A] structure the effect of q on q is the same as the effect of p on p
+        temp1 = (model[1].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] + model[1].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end]) / 2
+        model[1].W.layers[1].weight .= zeros(size(model[1].W.layers[1].weight))
+        model[1].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] .= temp1
+        model[1].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end] .= temp1
+        model[1].W.layers[1].bias .= 0
+
+        temp2 = (model[2].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] + model[2].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end]) / 2
+        model[2].W.layers[1].weight .= zeros(size(model[2].W.layers[1].weight))
+        model[2].W.layers[1].weight[1:Int(end/2), 1:Int(end/2)] .= temp2
+        model[2].W.layers[1].weight[Int(end/2)+1:end, Int(end/2)+1:end] .= temp2
+        model[2].W.layers[1].bias .= 0
+    elseif model_type == "general"
+        Flux.Optimise.update!(opt_state, (model[1].W, model[2].W, Ξ), (grad_W1, grad_W2, grad_W3))
+    else
+        error("model_type must be fixed, symmetric, or general")
+    end
+end
+
+# %%
+function copy_model(model, Ξ)
+    # Gradients of the encoder, decoder and model coefficients
+    grad_W1 = deepcopy(model[1].W)
+    grad_W2 = deepcopy(model[2].W)
+    grad_W3 = deepcopy(Ξ)
+    return grad_W1, grad_W2, grad_W3
+end
+
+function sindy_gradient_update!(model, Ξ, total_samples, num_batches, method, data, alphas, opt_state, model_type, biginds, epoch_loss_array)
+    epoch_loss = 0.0
+    # Shuffle the data indices for each epoch
+    shuffled_indices = shuffle(1:total_samples)
+
+    for batch in 1:num_batches
+        # Get the indices for the current batch
+        batch_start = (batch - 1) * method.batch_size + 1
+        batch_end = min(batch * method.batch_size, total_samples)
+        batch_indices = shuffled_indices[batch_start:batch_end]
+
+        # Extract the data for the current batch
+        x_batch = data.x[:, batch_indices]
+        ẋ_batch = data.ẋ[:, batch_indices]
+
+        # Derivatives of the encoder and decoder
+        enc_jac_batch = batched_jacobian(model[1].W, x_batch)
+        dec_jac_batch = batched_jacobian(model[2].W, model[1].W(x_batch))
+        
+        # Get the encoded derivative: ż
+        ż_ref_batch = enc_ż(enc_jac_batch, ẋ_batch)
+
+        # Gradients of the encoder, decoder and model coefficients
+        grad_W1, grad_W2, grad_W3 = copy_model(model, Ξ)
+
+        # Compute gradients using Enzyme
+        function calculateGradient2!()
+            Enzyme.autodiff(Reverse, (enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, basis_coeff, biginds) -> sparse_loss(enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, basis_coeff, biginds), Active, Duplicated(model[1].W, grad_W1), Duplicated(model[2].W, grad_W2), Duplicated(Ξ, grad_W3), Const(model[3].W), Const(x_batch), Const(ẋ_batch), Const(ż_ref_batch), Const(dec_jac_batch), Const(alphas), Const(method.basis_coeff), Const(biginds))
+        end
+        calculateGradient2!()
+        
+        # Update the parameters
+        sindyModelUpdate!(model_type, model, Ξ, grad_W1, grad_W2, grad_W3, opt_state)
+
+        # Accumulate the loss for the current batch
+        epoch_loss += sparse_loss(model[1].W, model[2].W, Ξ, model[3].W, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method.basis_coeff, biginds)
+    end
+
+    model[3].W[biginds] .= Ξ
+
+    # Compute the average loss for the epoch
+    epoch_loss /= num_batches
+    
+    # Store the epoch loss
+    push!(epoch_loss_array, epoch_loss)
 end
 
 # %%
@@ -632,6 +768,9 @@ function sindy_loop(model, method, data, total_samples, num_batches, alphas, opt
     smallinds = falses(size(model[3].W))
 
     for n in 1:method.nloops
+        println("Iteration #$n...")
+        println()
+
         # find coefficients below λ threshold
         smallinds .= abs.(model[3].W) .< method.λ
 
@@ -649,65 +788,25 @@ function sindy_loop(model, method, data, total_samples, num_batches, alphas, opt
         # Array to store the losses of each epoch
         epoch_loss_array = Vector{Float64}()
 
-        # Set up the optimizer's state
+        # Set up the optimizer's state (outside loop because it uses previous epoch information while updating)
         opt_state = Flux.setup(opt, (model[1].W, model[2].W, Ξ))
-        # if model_type == "fixed"
-        #     Flux.Optimisers.freeze!(opt_state[1])
-        #     Flux.Optimisers.freeze!(opt_state[2])
-        # end
 
         for epoch in 1:500
-            # Gradients of the encoder, decoder and model coefficients
-            grad_W1 = deepcopy(model[1].W)
-            grad_W2 = deepcopy(model[2].W)
-            grad_W3 = deepcopy(Ξ)
+            sindy_gradient_update!(model, Ξ, total_samples, num_batches, method, data, alphas, opt_state, model_type, biginds, epoch_loss_array)
             
-            epoch_loss = 0.0
-            # Shuffle the data indices for each epoch
-            shuffled_indices = shuffle(1:total_samples)
-
-            for batch in 1:num_batches
-                # Get the indices for the current batch
-                batch_start = (batch - 1) * method.batch_size + 1
-                batch_end = min(batch * method.batch_size, total_samples)
-                batch_indices = shuffled_indices[batch_start:batch_end]
-
-                # Extract the data for the current batch
-                x_batch = data.x[:, batch_indices]
-                ẋ_batch = data.ẋ[:, batch_indices]
-
-                # Derivatives of the encoder and decoder
-                enc_jac_batch = batched_jacobian(model[1].W, x_batch)
-                dec_jac_batch = batched_jacobian(model[2].W, model[1].W(x_batch))
-                
-                # Get the encoded derivative: ż
-                ż_ref_batch = enc_ż(enc_jac_batch, ẋ_batch)
-
-                # Compute gradients using Enzyme
-                Enzyme.autodiff(Reverse, (enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method, biginds) -> sparse_loss(enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method, biginds), Active, Duplicated(model[1].W, grad_W1), Duplicated(model[2].W, grad_W2), Duplicated(Ξ, grad_W3), Const(model[3].W), Const(x_batch), Const(ẋ_batch), Const(ż_ref_batch), Const(dec_jac_batch), Const(alphas), Const(method), Const(biginds))
-
-                # Update the parameters
-                if model_type == "fixed"
-                    Flux.Optimise.update!(opt_state[3], Ξ, grad_W3)
-                else
-                    Flux.Optimise.update!(opt_state, (model[1].W, model[2].W, Ξ), (grad_W1, grad_W2, grad_W3))
-                end
-
-                # Accumulate the loss for the current batch
-                epoch_loss += sparse_loss(model[1].W, model[2].W, Ξ, model[3].W, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method, biginds)
+            # Print loss after some iterations
+            if epoch % 200 == 0
+                println("Epoch $epoch: Average Loss: $(epoch_loss_array[end])")
+                println("Epoch $epoch: Coefficents: $(model[3].W)")
+                println()
             end
-
-            model[3].W[biginds] .= Ξ
-
-            # Compute the average loss for the epoch
-            epoch_loss /= num_batches
-            
-            # Store the epoch loss
-            push!(epoch_loss_array, epoch_loss)
         end
 
         # Store the SINDy loop loss
         push!(SINDy_loss_array, epoch_loss_array)
+        GC.gc()
+        GC.gc()
+        GC.gc()
     end
 
     # Convert vector of vectors to a single vector
@@ -731,78 +830,62 @@ function final_loop(model, method, data, total_samples, num_batches, alphas, opt
 
     # Set up the optimizer's state
     opt_state = Flux.setup(opt, (model[1].W, model[2].W, Ξ))
-    # if model_type == "fixed"
-    #     Flux.Optimisers.freeze!(opt_state[1])
-    #     Flux.Optimisers.freeze!(opt_state[2])
-    # end
 
-    for epoch in 1:1000
-        # Gradients of the encoder, decoder and model coefficients
-        grad_W1 = deepcopy(model[1].W)
-        grad_W2 = deepcopy(model[2].W)
-        grad_W3 = deepcopy(Ξ)
+    for epoch in 1:500
+        sindy_gradient_update!(model, Ξ, total_samples, num_batches, method, data, alphas, opt_state, model_type, biginds, final_loss_array)
         
-        epoch_loss = 0.0
-        # Shuffle the data indices for each epoch
-        shuffled_indices = shuffle(1:total_samples)
-
-        for batch in 1:num_batches
-            # Get the indices for the current batch
-            batch_start = (batch - 1) * method.batch_size + 1
-            batch_end = min(batch * method.batch_size, total_samples)
-            batch_indices = shuffled_indices[batch_start:batch_end]
-
-            # Extract the data for the current batch
-            x_batch = data.x[:, batch_indices]
-            ẋ_batch = data.ẋ[:, batch_indices]
-
-            # Derivatives of the encoder and decoder
-            enc_jac_batch = batched_jacobian(model[1].W, x_batch)
-            dec_jac_batch = batched_jacobian(model[2].W, model[1].W(x_batch))
-            
-            # Get the encoded derivative: ż
-            ż_ref_batch = enc_ż(enc_jac_batch, ẋ_batch)
-
-            # Compute gradients using Enzyme
-            Enzyme.autodiff(Reverse, (enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method, biginds) -> sparse_loss(enc_paras, dec_paras, Ξ, model_Coeffs, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method, biginds), Active, Duplicated(model[1].W, grad_W1), Duplicated(model[2].W, grad_W2), Duplicated(Ξ, grad_W3), Const(model[3].W), Const(x_batch), Const(ẋ_batch), Const(ż_ref_batch), Const(dec_jac_batch), Const(alphas), Const(method), Const(biginds))
-
-            # Update the parameters
-            if model_type == "fixed"
-                Flux.Optimise.update!(opt_state[3], Ξ, grad_W3)
-            else
-                Flux.Optimise.update!(opt_state, (model[1].W, model[2].W, Ξ), (grad_W1, grad_W2, grad_W3))
-            end
-
-            # Accumulate the loss for the current batch
-            epoch_loss += sparse_loss(model[1].W, model[2].W, Ξ, model[3].W, x_batch, ẋ_batch, ż_ref_batch, dec_jac_batch, alphas, method, biginds)
+        # Print loss after some iterations
+        if epoch % 200 == 0
+            println("Epoch $epoch: Average Loss: $(final_loss_array[end])")
+            println("Epoch $epoch: Coefficents: $(model[3].W)")
+            println()
         end
-
-        model[3].W[biginds] .= Ξ
-
-        # Compute the average loss for the epoch
-        epoch_loss /= num_batches
-        
-        # Store the epoch loss
-        push!(final_loss_array, epoch_loss)
     end
     return model, final_loss_array
 end
 
 # %%
-function save_plot(basis_directory, name, model_type, input_range, batch_size, loss_array, log_plot)
+function save_plot!(basis_directory, name, model_type, input_range, batch_size, loss_array, log_plot, initial_coeffs)
     # Construct the file name based on loop variables
-    loss_plot = joinpath(basis_directory, "$(name)_model_$(model_type)_$(input_range)_$batch_size.png")
+    loss_plot = joinpath(basis_directory, "$(name)_model_$(model_type)_$(input_range)_$(batch_size)_$(initial_coeffs).png")
     # Save the plot to the file
     if log_plot == true
         plot(log.(loss_array), label = "$(name) Optimization Loss", xlabel = "Iterations", ylabel = "Log Loss")
     else
-        plot(log.(loss_array), label = "$(name) Optimization Loss", xlabel = "Iterations", ylabel = "Loss")
+        plot((loss_array), label = "$(name) Optimization Loss", xlabel = "Iterations", ylabel = "Loss")
     end
     savefig(loss_plot)
 end
 
 # %%
-function running_loop(data, method, model, model_type, input_range, basis_directory)   
+function save_model_parameters!(models_basis_directory, model, model_type, input_range, batch_size, initial_coeffs)
+    # Specify the file paths for the model parameters
+    model_encoder_file = joinpath(models_basis_directory, "modelEncoders_$(model_type)_$(input_range)_$(batch_size)_$(initial_coeffs).csv")
+    model_coeffs_file = joinpath(models_basis_directory, "modelCoeffs_$(model_type)_$(input_range)_$(batch_size)_$(initial_coeffs).csv")
+    model_decoder_file = joinpath(models_basis_directory, "modelDecoders_$(model_type)_$(input_range)_$(batch_size)_$(initial_coeffs).csv")
+
+    # Initialize the models' arrays
+    model_encoder_array = []
+    model_coeffs_array = []
+    model_decoder_array = []
+
+    push!(model_encoder_array, model[1].W.layers[1].weight)
+    push!(model_encoder_array, model[1].W.layers[1].bias)
+    # Save the encoder parameters to the file
+    writedlm(model_encoder_file, model_encoder_array, ',')
+
+    push!(model_coeffs_array, model[3].W)
+    # Save the coefficients to the file
+    writedlm(model_coeffs_file, model_coeffs_array, ',')
+
+    push!(model_decoder_array, model[2].W.layers[1].weight)
+    push!(model_decoder_array, model[2].W.layers[1].bias)
+    # Save the decoder parameters to the file
+    writedlm(model_decoder_file, model_decoder_array, ',')
+end
+
+# %%
+function running_loop!(data, method, model, model_type, input_range, basis_directory, initial_coeffs)   
     total_samples = size(data.x)[2]
     num_batches = ceil(Int, total_samples / method.batch_size)
 
@@ -814,92 +897,112 @@ function running_loop(data, method, model, model_type, input_range, basis_direct
     # Set up the optimizer's state
     # TODO: could try different learning rates
     opt = Adam(0.001, (0.9, 0.8))
-    # opt_state_initial = Flux.setup(opt, model)
-    # if model_type == "fixed"
-    #     Flux.Optimisers.freeze!(opt_state_initial[1])
-    #     Flux.Optimisers.freeze!(opt_state_initial[2])
-    # end
 
     log_plot = true
-    println("initial loss calculation...")
+    println("Calculating Initial Loss...")
     model, Initial_loss_array = initial_loop(model, method, data, total_samples, num_batches, alphas, opt, model_type, Initial_loss_array)
-    println("plotting initial loss calculation...")
-    save_plot(basis_directory, "initial", model_type, input_range, method.batch_size, Initial_loss_array, log_plot)
+    println("Initial Augmented Coefficients: ", model[3].W)
+    GC.gc()
+    GC.gc()
+    GC.gc()
+    println()
 
-    println("sindy loss calculation...")
+    println("Calculating Sindy Loss...")
     model, SINDy_loss_array = sindy_loop(model, method, data, total_samples, num_batches, alphas, opt, model_type)
-    println("plotting sindy loss calculation...")
-    save_plot(basis_directory, "sindy", model_type, input_range, method.batch_size, SINDy_loss_array, log_plot)
+    println("SINDy Augmented Coefficients: ", model[3].W)
+    GC.gc()
+    GC.gc()
+    GC.gc()
+    println()
 
     # reduce learning rate before final loss calculation
     opt = Adam(0.0001, (0.9, 0.8))
-    
+
     log_plot = false
-    println("final loss calculation...")
+    println("Calculating Final Loss...")
     model, final_loss_array = final_loop(model, method, data, total_samples, num_batches, alphas, opt, model_type)
-    println("plotting final loss calculation...")
-    save_plot(basis_directory, "final", model_type, input_range, method.batch_size, final_loss_array, log_plot)
-    return model
+    println("Final Augmented Coefficients: ", model[3].W)
+    GC.gc()
+    GC.gc()
+    GC.gc()
+    println()
+
+    println("Plotting initial loss...")
+    save_plot!(basis_directory, "initial", model_type, input_range, method.batch_size, Initial_loss_array, log_plot, initial_coeffs)
+    println("Plotting sindy loss...")
+    save_plot!(basis_directory, "sindy", model_type, input_range, method.batch_size, SINDy_loss_array, log_plot, initial_coeffs)
+    println("Plotting final loss...")
+    save_plot!(basis_directory, "final", model_type, input_range, method.batch_size, final_loss_array, log_plot, initial_coeffs)
 end
 
 # %% [markdown]
 # #  Running Loop
 
 # %%
-basis_cases = [
+function main()
+    # %%
+    # --------------------
+    # Setup
+    # --------------------
+
+    println("Setting up...")
+
+    # 2D system with 4 variables [q₁, q₂, p₁, p₂]
+    nd = 4
+
+    # initialize analytical function, keep λ smaller than ϵ so system is identifiable
+    ϵ = 0.5
+    m = 1
+
+    # dimension of each variable in the system
+    d = nd ÷ 2
+
+    # Symbolic variables for the states
+    z = get_z_vector(nd ÷ 2)
+
+    basis_cases = [
     # (trig_basis_case, poly_basis_power, trig_basis_power)
     (1, 2, 1),
     (2, 3, 1),
     (3, 3, 2),
     (4, 2, 1),
     (5, 2, 1),
-    (6, 2, -1), # -1 here because it is unused in this case
-]
-model_types = ["general", "fixed"]
-sample_ranges = [5, 10, 20]
-batch_sizes = [256, 512, 1024]
+    (6, 2, 1),
+    (7, 2, 1)
+    ]
+    model_types = ["general", "fixed", "symmetric"]
+    sample_ranges = [5, 10, 20]
+    batch_sizes = [256, 512, 1024]
 
-# %%
-# Initialize the runtime function
-fθ = ΔH_func_builder(d, z, poly_basis_maker(z, nd, 2), 1, 1)
+    # Initialize the runtime function
+    fθ = ΔH_func_builder(d, z, poly_basis_maker(z, nd, 2), 1, 1)
 
-# Initialize the models' arrays
-model_encoder_array = []
-model_coeffs_array = []
-model_decoder_array = []
+    # Create a directory to save the plots
+    plots_directory = "plots"
+    if !isdir(plots_directory)
+        mkdir(plots_directory)
+    end
 
-# Specify the file paths
-model_encoder_file = "modelEncoders.csv"
-model_coeffs_file = "modelCoeffs.csv"
-model_decoder_file = "modelDecoders.csv"
+    # Create a directory to save the model parameters
+    models_directory = "model_params"
+    if !isdir(models_directory)
+        mkdir(models_directory)
+    end
 
-# Create a directory to save the plots
-output_directory = "plots"
-if !isdir(output_directory)
-    mkdir(output_directory)
-end
+    # Initialize the mutable method struct
+    method = HamiltonianSINDy(z, grad_H_ana!, z, λ = 0.05, noise_level = 0.0, noiseGen_timeStep = 0.0, batch_size = 1, basis_coeff = 0.62)
 
-
-# %% [markdown]
-# # Start the Testing Loop
-
-# %%
-method = HamiltonianSINDy(z, grad_H_ana!, z, λ = 0.05, noise_level = 0.0, noiseGen_timeStep = 0.0, batch_size = 1, basis_coeff = 0.62)
-
-# *********************************************
-# *********************************************
-# Run the testing loop
-# *********************************************
-# *********************************************
-
-@time begin
     for (trig_basis_case, poly_basis_power, trig_basis_power) in basis_cases
-        # Create a directory for the current basis_case
-        basis_directory = joinpath(output_directory, "basis_$trig_basis_case")
-        if !isdir(basis_directory)
-            mkdir(basis_directory)
+        # Create a directory for the current basis_case plots
+        plots_basis_directory = joinpath(plots_directory, "basis_$trig_basis_case")
+        if !isdir(plots_basis_directory)
+            mkdir(plots_basis_directory)
         end
-
+        # Create a directory for the current basis_case model parameters
+        models_basis_directory = joinpath(models_directory, "basis_$trig_basis_case")
+        if !isdir(models_basis_directory)
+            mkdir(models_basis_directory)
+        end
         poly_basis = poly_basis_maker(z, nd, poly_basis_power)
         # returns function that builds hamiltonian gradient through symbolics
         global fθ = ΔH_func_builder(d, z, poly_basis, trig_basis_power, trig_basis_case)
@@ -907,39 +1010,30 @@ method = HamiltonianSINDy(z, grad_H_ana!, z, λ = 0.05, noise_level = 0.0, noise
         method.basis = basis
         for input_range in sample_ranges
             #TODO: could also try bigger or smaller num_samp
-            num_samp = 12 # number of samples are then actually 12*12*12*12 = 20736 for 4 variables
+            num_samp = 10 # number of samples are then actually 12*12*12*12 = 20736 for 4 variables
             tdata = generate_training_data(num_samp, input_range, nd)
             #TODO: could also set basis_coeff to different values and see what happens
             # method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.0, noiseGen_timeStep = 0.0, batch_size = batch_size, basis_coeff = 0.62)
             for batch_size in batch_sizes 
                 method.batch_size = batch_size
                 for model_type in model_types
-                    println()
                     #TODO: could also set initialization to "zeros" and see what happens
-                    ###### Define here because each combination should have a new model
-                    model = set_model(tdata, length(a), "ones")
-                    println("basis_$trig_basis_case, model_type:$model_type, sample_domain: (-$input_range, $input_range), batch_size: $batch_size")
+                    initial_coeffs = "ones"
+                    model = set_model(tdata, length(a), initial_coeffs)
+                    println("basis_$trig_basis_case, model_type: $model_type, sample_domain: (-$input_range, $input_range), batch_size: $batch_size, initial_coefficients: $initial_coeffs")
 
                     elapsed_time = @elapsed begin
-                        model = running_loop(tdata, method, model, model_type, input_range, basis_directory)  
+                        running_loop!(tdata, method, model, model_type, input_range, plots_basis_directory, initial_coeffs)  
                     end
                     println("Elapsed time: $elapsed_time seconds")
-
-                    push!(model_encoder_array, model[1].W.layers[1].weight)
-                    push!(model_encoder_array, model[1].W.layers[1].bias)
-                    # Save the vector to the encoder file
-                    writedlm(model_encoder_file, model_encoder_array, ',')
-                    
-                    push!(model_coeffs_array, model[3].W)
-                    # Save the vector to the coeffs file
-                    writedlm(model_coeffs_file, model_coeffs_array, ',')
-
-                    push!(model_decoder_array, model[2].W.layers[1].weight)
-                    push!(model_decoder_array, model[2].W.layers[1].bias)
-                    # Save the vector to the decoder file
-                    writedlm(model_decoder_file, model_decoder_array, ',')
+                    save_model_parameters!(models_basis_directory, model, model_type, input_range, batch_size, initial_coeffs)
+                    println()
                 end
             end
         end
     end
 end
+
+@time main()
+
+
