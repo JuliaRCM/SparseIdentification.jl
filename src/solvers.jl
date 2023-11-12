@@ -27,7 +27,7 @@ struct OptimSolver <: NonlinearSolver
 end
 
 function optimize(loss, x₀, solver::OptimSolver)
-    result = Optim.optimize(loss, x₀, solver.method, Optim.Options(iterations=483)) #TODO: do i still need to specify iterations
+    result = Optim.optimize(loss, x₀, solver.method, Optim.Options(iterations=500))
     println(result)
     return result.minimizer
 end
@@ -36,8 +36,11 @@ end
 function solve(Θ, ẋ, solver::NonlinearSolver)
     x₀ = zeros(size(Θ,2), size(ẋ,2))
     loss(x) = mapreduce( y -> y^2, +, ẋ .- Θ * x )
-    optimize(loss, x₀, solver)
+    # input coefficients as a vector
+    result = optimize(x->loss(reshape(x, size(x₀))), x₀[:], solver)
+    return reshape(result, size(x₀))
 end
+
 
 
 
