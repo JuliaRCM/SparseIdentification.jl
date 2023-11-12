@@ -20,9 +20,9 @@ println("Setting up...")
 # 2D system with 4 variables [q₁, q₂, p₁, p₂]
 const nd = 4
 
-z = get_z_vector(nd/2)
-polynomial = polynomial_basis(z, polyorder=3)
-trigonometric  = trigonometric_basis(z, max_coeff=1)
+z = get_z_vector(Int(nd/2))
+polynomial = polynomial_basis(z, polyorder=4)
+trigonometric  = trigonometric_basis(z, max_coeff=2)
 prime_diff = primal_operator_basis(z, -)
 basis = get_basis_set(polynomial, trigonometric, prime_diff)
 # initialize analytical function, keep λ smaller than ϵ so system is identifiable
@@ -75,13 +75,13 @@ ẋ = [grad_H_ana!(copy(dx), _x, p, t) for _x in x]
 method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05)
 
 # generate noisy references data at next time step
-y = SparseIdentification.gen_noisy_ref_data(method, x)
+y = gen_noisy_ref_data(method, x)
 
 # collect training data
 tdata = TrainingData(x, ẋ, y)
 
 # compute vector field
-vectorfield = VectorField(method, tdata)
+vectorfield = VectorField(method, tdata, solver=BFGS())
 
 println(vectorfield.coefficients)
 
