@@ -43,7 +43,7 @@ export polynomial_basis, trigonometric_basis, exponential_basis, logarithmic_bas
 
 include("hamiltonian_basis.jl")
 
-export HamiltonianSINDy, HamiltonianSINDyVectorField
+export HamiltonianSINDy, HamiltonianSINDyVectorField, gen_noisy_ref_data, VectorField
 
 include("methods/hamiltonian_sindy.jl")
 include("methods/hamiltonian.jl")
