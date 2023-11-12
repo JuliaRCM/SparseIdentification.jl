@@ -25,10 +25,10 @@ function ΔH_func_builder(d::Int, z::Vector{Symbolics.Num} = get_z_vector(d), ba
     f = simplify(f)
     
     # line below makes the vector into a hamiltonian vector field by multiplying with the skew-symmetric matrix
-    ∇H = vcat(f[d+1:2d], -f[1:d])
+    ΔH = vcat(f[d+1:2d], -f[1:d])
     
     # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
-    ∇H_eval = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(∇H, z, a)[2]))
+    ΔH_eval = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(ΔH, z, a)[2]))
     
-    return ∇H_eval
+    return ΔH_eval
 end
