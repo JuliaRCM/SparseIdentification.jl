@@ -34,8 +34,6 @@ function sparsify(method::SINDy, Θ, ẋ, solver)
         # Regress dynamics onto remaining terms to find sparse Ξ
         for ind in axes(ẋnoisy,1)
             biginds = .~(smallinds[:,ind])
-
-            #TODO: maybe this needs to be ẋnoisy' i.e. transpose
             Ξ[biginds,ind] .= solve(Θ[:,biginds], ẋnoisy[ind,:], solver)
         end
     end
