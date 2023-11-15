@@ -14,7 +14,7 @@ gr()
 # Setup
 # --------------------
 
-# search space up to fifth order polynomials
+# search space up to third order polynomials
 polyorder = 3
 
 # no trigonometric functions
