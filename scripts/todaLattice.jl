@@ -40,7 +40,7 @@ end
 
 # (q₁,q₂,q₃,q₄,p₁,p₂,p₃,p₄) 4 particle system
 num_particles = 4
-num_samples = 1000
+num_samples = 2000
 
 z = get_z_vector(num_particles)
 polynomial = polynomial_basis(z, polyorder=2)
@@ -71,16 +71,16 @@ ẋ = [gradient_analytical!(copy(dx), _x, p, t) for _x in x]
 # ----------------------------------------
 
 # choose SINDy method
-method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.00)
+method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.01, noiseGen_timeStep = 0.01)
 
 # generate noisy references data at next time step
-y = SparseIdentification.gen_noisy_ref_data(method, x)
+y = gen_noisy_ref_data(method, x)
 
 # collect training data
 tdata = TrainingData(x, ẋ, y)
 
 # compute vector field
-vectorfield = VectorField(method, tdata, solver = BFGS()) 
+vectorfield = VectorField(method, tdata, solver = BFGS(), algorithm = "sparsify_two") 
 
 println(vectorfield.coefficients)
 
