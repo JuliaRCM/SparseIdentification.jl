@@ -5,11 +5,12 @@ struct SINDy{T} <: SparsificationMethod
     lambda::T
     noise_level::T
     nloops::Int
+    l_dim::Int
     coeff::Float64
     batch_size::Int
 
-    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS, coeff = 0.6, batch_size::Int = 1) where {T}
-        new{T}(lambda, noise_level, nloops, coeff, batch_size)
+    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS, l_dim = 1, coeff = 0.6, batch_size::Int = 1) where {T}
+        new{T}(lambda, noise_level, nloops, l_dim, coeff, batch_size)
     end
 end
 
@@ -64,15 +65,13 @@ end
 
  
 # Initialize a model with random parameters and Ξ = 0
-function set_model(data, basis)
+function set_model(data, basis, l_dim)
     encoder = Chain(
-    Dense(size(data.x)[1] => 2), 
-    # Dense(2 => 2), 
+    Dense(size(data.x)[1] => l_dim), 
     )
 
     decoder = Chain(
-    Dense(2 => size(data.x)[1]),  
-    # Dense(2 => size(data.x)[1])
+    Dense(l_dim => size(data.x)[1]),  
     )
 
     # Encode all states at first sample to initialize basis
@@ -105,7 +104,7 @@ end
 
 function sparsify_NN(method::SINDy, basis, data, solver)
     # initialize parameters
-    model = set_model(data, basis)
+    model = set_model(data, basis, method.l_dim)
 
     # initial optimization for parameters
     model, loss_vec = solve(data, method, model, basis, solver)

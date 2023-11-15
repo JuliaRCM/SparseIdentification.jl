@@ -62,16 +62,13 @@ for i in axes(ẋ,2)
 end
 
 # choose SINDy method
-method = SINDy(lambda = 0.05, noise_level = 0.0, coeff = 0.52, batch_size = 32)
+method = SINDy(lambda = 0.05, noise_level = 0.0, l_dim = size(x, 1), coeff = 0.52, batch_size = 32)
 
 # add noise to ẋ
 ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
 
 # collect training data
 tdata = TrainingData(Float32.(x), Float32.(ẋnoisy))
-
-# println("x = ", tdata.x)
-# println("ẋ = ", tdata.ẋ)
 
 
 # ----------------------------------------
@@ -102,11 +99,6 @@ trange = range(tspan[begin], step = tstep, stop = tspan[end])
 prob = ODEProblem(rhs, x₀, tspan)
 data = ODE.solve(prob, abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
 
-#----------------------------------------
-# Note: Use Rx₀ instead of x₀ in prob_approx if just x₀ doesn't work
-R = x₀ / model[1].W(x₀)
-#----------------------------------------
-
 # use encoder to get the gradient
 prob_approx = ODEProblem(vectorfield, model[1].W(x₀), tspan)
 xid = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
@@ -119,11 +111,6 @@ xsol = hcat([model[2].W(xid[:,i]) for i in axes(xid,2)]...)
 # ----------------------------------------
 
 println("Plotting...")
-
-# en_data = [model[1].W(x) for x in (data.u)]
-# en_data = hcat(en_data...)
-# en_xid = [model[1].W(x) for x in (xid.u)]
-# en_xid = hcat(en_xid...)
 
 p1 = plot()
 plot!(p1, data.t, data[1,:], label = "Data")
