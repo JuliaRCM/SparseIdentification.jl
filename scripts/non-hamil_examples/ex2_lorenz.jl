@@ -49,7 +49,7 @@ lambda = 0.025
 
 println("Generate Training Data...")
 
-# p = (sigma, beta, rho)
+p = (sigma, beta, rho)
 # prob = ODEProblem(lorenz, x₀, tspan, p)
 
 # # stored as dims [states x iters] matrix
@@ -87,6 +87,7 @@ tdata = TrainingData(Float32.(x), Float32.(ẋ))
 
 # choose SINDy method
 method = SINDy(lambda = 0.05, noise_level = 0.0)
+# method = SINDy(lambda = 0.05, noise_level = 0.0, l_dim = size(tdata.x, 1), coeff = 0.52, batch_size = 32)
 
 
 println("Computing Vector Field...")
@@ -94,9 +95,11 @@ println("Computing Vector Field...")
 # compute vector field using least squares regression (/) solver
 vectorfield = VectorField(method, basis, tdata)
 
-#Using BFGS() solver
+# Using BFGS() solver
 # vectorfield = VectorField(method, basis, tdata, solver = OptimSolver())
 
+# Using the Neural-Network solver
+# @time vectorfield, model = VectorField(method, basis, tdata, solver = NNSolver())
 
 # ----------------------------------------
 # Integrate Identified System
