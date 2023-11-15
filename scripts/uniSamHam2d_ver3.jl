@@ -70,8 +70,8 @@ ẋ = [grad_H_ana!(copy(dx), _x, p, t) for _x in x]
 # ----------------------------------------
 
 # choose SINDy method
-# (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-# noiseGen_timeStep chosen randomly for now
+
+# ** noiseGen_timeStep chosen randomly
 method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05)
 
 # generate noisy references data at next time step
