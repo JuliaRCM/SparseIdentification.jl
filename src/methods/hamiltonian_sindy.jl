@@ -100,8 +100,9 @@ end
 
 
 
-function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newton())
-    # TODO: Check that first dimension x is even
+function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newton(), algorithm = "sparsify")
+    # Check if the first dimension of x is even
+    size(data.x[begin], 1) % 2 == 0 || throw(ArgumentError("The first dimension of x must be even."))
 
     # dimension of system
     d = size(data.x[begin], 1) ÷ 2
@@ -109,11 +110,17 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     # returns function that builds hamiltonian gradient through symbolics
     fθ = ΔH_func_builder(d, method.z, method.basis)
 
-    # Compute Sparse Regression
-    #TODO: make sparsify method choosable through arguments
-    # coeffs = sparsify_two(method, fθ, data.x, data.y, solver)
-    # coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
-    coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
+    # initialize coeffs
+    coeffs = zeros(get_numCoeffs(method.basis))
+    
+    if algorithm == "sparsify"
+        coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
+    elseif algorithm == "sparsify_two"
+        coeffs = sparsify_two(method, fθ, data.x, data.y, solver)
+    elseif algorithm == "sparsify_parallel"
+        coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
+    else throw(ArgumentError("Algorithm must be one of: sparsify, sparsify_two, or sparsify_parallel"))
+    end
     
     HamiltonianSINDyVectorField(coeffs, fθ)
 end
