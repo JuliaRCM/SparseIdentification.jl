@@ -110,7 +110,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     model, loss_vec = solve(data, method, model, basis, solver)
 
     # Plot the initial loss array
-    display(plot(log.(loss_vec), label = "Initial Optimization Loss"))
+    display(plot(log.(loss_vec), label = "Initial Optimization Loss", xlabel="Iterations", ylabel="Log-Loss"))
 
     # Initialize smallinds before the loop
     smallinds = falses(size(model[3].W))
@@ -146,7 +146,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     SINDy_loss_array = vcat(SINDy_loss_array...)
 
     # Plot the SINDy loss array
-    display(plot(log.(SINDy_loss_array), label = "SINDy Optimization Loss"))
+    display(plot(log.(SINDy_loss_array), label = "SINDy Optimization Loss", xlabel="Iterations", ylabel="Log-Loss"))
 
     # Iterate once more for optimization without sparsification
     println("Final Iteration...")
@@ -155,7 +155,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     Ξ = separate_coeffs(model[3].W, smallinds)
     model, final_loss = sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolver)
 
-    display(plot(log.(final_loss), label = "Final Optimization Loss"))
+    display(plot(log.(final_loss), label = "Final Optimization Loss", xlabel="Iterations", ylabel="Log-Loss"))
     
     Ξ = model[3].W
     return Ξ, model
