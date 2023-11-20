@@ -45,3 +45,6 @@ scripts/data/
 
 # Generated data files
 *.csv
+
+# Folder to ignore
+thesis_tests/
