@@ -23,10 +23,8 @@ dt = 0.02
 r = 2
 
 # search space up to fifth order polynomials
-polyorder = 5
-
 # no trigonometric functions
-usesine = false
+basis = CompoundBasis(polyorder = 5, trigonometric = 0)
 
 # lambda parameter
 lambda = 0.00002
@@ -117,7 +115,7 @@ println("Sparsify Dynamics...")
 tdata = TrainingData(x, ẋ)
 
 # choose SINDy method
-method = SINDy(lambda = lambda, noise_level = 0.05, batch_size = 0)
+method = SINDy(lambda = lambda, noise_level = 0.00)
 
 # generate basis
 basis = CompoundBasis()
@@ -166,9 +164,6 @@ x₀ = x[:, 1]
 
 # p = (Ξ = Ξ, basis = basis)
 
-# prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
-# xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
-
 # Approximate model:
 prob_approx = ODEProblem(vectorfield, x₀, tspan)
 xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10)
@@ -179,10 +174,12 @@ xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10)
 
 println("Plotting Fig One...")
 
-p1 = plot(x[1,1:end-6], x[2,1:end-6], x[3,1:end-6], xlabel="x", ylabel="y", zlabel="z", label="Data", color="black")
-p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z", label="Identified", color="red")
+p1 = plot(x[1,1:5000-6], x[2,1:5000-6], x[3,1:5000-6], xlabel="x", ylabel="y", zlabel="z", label="Reference System", color="black")
+p2 = plot(xD[1,1:end-6], xD[2,1:end-6], xD[3,1:end-6], xlabel="x", ylabel="y", zlabel="z", label="Identified System", color="red")
 l = @layout [a b]
-display(plot(p1, p2, layout = l))
+title = plot(title = "Cylinder Wake Trajectory Evolution in Reduced Coordinates", grid = false, showaxis = false, bottom_margin = -50Plots.px)
+display(plot(title, p1, p2, layout = @layout([A{0.01h}; [B C]]), size=(1000, 500), show=true, reuse=false))
+# display(plot(p1, p2, layout = l, title="test"))
 
 #second figure: Lorenz for t=20
 
@@ -204,7 +201,9 @@ xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10)
 
 println("Plotting Fig Two...")
 
-p1 = plot(x[1,5001:end], x[2,5001:end], x[3,5001:end], xlabel="x", ylabel="y", zlabel="z", label="Data", color="black")
-p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z", label="Identified", color="red")
+p1 = plot(x[1,5001:end], x[2,5001:end], x[3,5001:end], xlabel="x", ylabel="y", zlabel="z", label="Reference System", color="black")
+p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z", label="Identified System", color="red")
 l = @layout [a b]
-display(plot(p1, p2, layout = l))
+title = plot(title = "Cylinder Wake Trajectory Evolution", grid = false, showaxis = false, bottom_margin = -50Plots.px)
+display(plot(title, p1, p2, layout = @layout([A{0.01h}; [B C]]), size=(1000, 500), show=true, reuse=false))
+# display(plot(p1, p2, layout = l))
