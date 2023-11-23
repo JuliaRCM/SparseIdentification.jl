@@ -22,7 +22,9 @@ function sparsify(method::SINDy, Θ, ẋ, solver)
     # initial guess: least-squares
     Ξ = solve(Θ, ẋnoisy', solver)
 
-    for _ in 1:method.nloops
+    for n in 1:method.nloops
+        println("Iteration #$n...")
+
         # find coefficients below lambda threshold
         smallinds = abs.(Ξ) .< method.lambda
 
