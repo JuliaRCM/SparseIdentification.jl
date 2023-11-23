@@ -37,6 +37,13 @@ function gradient_analytical!(dx, x, param, t)
         
         # dΓᵢ/dt = -∂H/∂rᵢ = -Γᵢ ∑ⱼ₌₁ᴺ Γⱼ (rᵢ - rⱼ)/|rᵢ - rⱼ|^2
         dx[n + i] = - p[i] * sum(p[j] * (q[i] - q[j]) / abs(q[i] - q[j])^2 for j in 1:n if j != i)
+        
+        # in case of just 2 vortices
+        # dx[1] = 0.5(p[2]*log(abs(-q[1] + q[2])) + p[2]*log(abs(q[1] - q[2])))
+        # dx[2] = 0.5(p[1]*log(abs(-q[1] + q[2])) + p[1]*log(abs(q[1] - q[2])))
+        # dx[3] = -0.5((-p[1]*p[2]*ifelse(signbit(-q[1] + q[2]), -1, 1)) / abs(-q[1] + q[2]) + (p[1]*p[2]*ifelse(signbit(q[1] - q[2]), -1, 1)) / abs(q[1] - q[2]))
+        # dx[4] = -0.5((-p[1]*p[2]*ifelse(signbit(q[1] - q[2]), -1, 1)) / abs(q[1] - q[2]) + (p[1]*p[2]*ifelse(signbit(-q[1] + q[2]), -1, 1)) / abs(-q[1] + q[2]))
+
     end
     return dx
 end
@@ -75,7 +82,7 @@ ẋ = [gradient_analytical!(copy(dx), _x, param, t) for _x in x]
 # ----------------------------------------
 
 # choose SINDy method
-method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.05, noise_level = 0.00)
+method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.00)
 
 # generate noisy references data at next time step
 y = gen_noisy_ref_data(method, x)
@@ -102,10 +109,10 @@ for i in 1:5
     idx = rand(1:length(x))
 
     prob_reference = ODEProblem((dx, t, x, params) -> gradient_analytical!(dx, x, params, t), tspan, tstep, x[idx])
-    data_reference = integrate(prob_reference, Gauss(2))
+    data_reference = integrate(prob_reference, Gauss(3))
 
     prob_sindy = ODEProblem((dx, t, x, params) -> vectorfield(dx, x, params, t), tspan, tstep, x[idx])
-    data_sindy = integrate(prob_sindy, Gauss(2))
+    data_sindy = integrate(prob_sindy, Gauss(3))
 
     p1 = plot(xlabel = "Time", ylabel = "q₁")
     plot!(p1, data_reference.t, data_reference.q[:,1], markershape=:star5, label = "Ref q₁")
@@ -115,7 +122,7 @@ for i in 1:5
     plot!(p3, data_reference.t, data_reference.q[:,3], markershape=:star5, label = "Ref p₁")
     plot!(p3, data_sindy.t, data_sindy.q[:,3], markershape=:xcross, label = "Identified p₁")
 
-    plot!(size=(1000,1000))
+    plot!(size=(800,500))
     display(plot(p1, p3, title="Numerical vs SINDy q₁ & p₁"))
 
     p2 = plot(xlabel = "Time", ylabel = "q₂")
@@ -126,7 +133,7 @@ for i in 1:5
     plot!(p4, data_reference.t, data_reference.q[:,4], markershape=:star5, label = "Ref p₂")
     plot!(p4, data_sindy.t, data_sindy.q[:,4], markershape=:xcross, label = "Identified p₂")
 
-    plot!(size=(1000,1000))
+    plot!(size=(800,500))
     display(plot(p2, p4, title="Numerical vs SINDy q₂ & p₂"))
 
 end
