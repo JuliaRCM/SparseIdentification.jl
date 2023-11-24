@@ -83,51 +83,6 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
 end
 
 
-struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
-    # basis::BT
-    coefficients::CT
-    fθ::GHT
-
-    function HamiltonianSINDyVectorField(coefficients::CT, fθ::GHT) where {DT, CT <: AbstractVector{DT}, GHT <: Base.Callable}
-        new{DT,CT,GHT}(coefficients, fθ)
-    end
-end
-
-function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newton(), algorithm = "sparsify")
-    # Check if the first dimension of x is even
-    size(data.x[begin], 1) % 2 == 0 || throw(ArgumentError("The first dimension of x must be even."))
-
-    # dimension of system
-    d = size(data.x[begin], 1) ÷ 2
-
-    # returns function that builds hamiltonian gradient through symbolics
-    fθ = ΔH_func_builder(d, method.z, method.basis)
-
-    # initialize coeffs
-    coeffs = zeros(get_numCoeffs(method.basis))
-    
-    if algorithm == "sparsify"
-        coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
-    elseif algorithm == "sparsify_picard"
-        coeffs = sparsify_picard(method, fθ, data.x, data.y, solver)
-    else throw(ArgumentError("Algorithm must be either sparsify or sparsify_picard"))
-    end
-    
-    HamiltonianSINDyVectorField(coeffs, fθ)
-end
-
-" wrapper function for generalized SINDY hamiltonian gradient.
-Needs the output of fθ to work! "
-function (vectorfield::HamiltonianSINDyVectorField)(dz, z)
-    vectorfield.fθ(dz, z, vectorfield.coefficients)
-    return dz
-end
-
-(vectorfield::HamiltonianSINDyVectorField)(dz, z, p, t) = vectorfield(dz, z)
-
-
-
-
 function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(get_numCoeffs(method.basis))
@@ -201,3 +156,46 @@ function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
     
     return coeffs
 end
+
+
+struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
+    # basis::BT
+    coefficients::CT
+    fθ::GHT
+
+    function HamiltonianSINDyVectorField(coefficients::CT, fθ::GHT) where {DT, CT <: AbstractVector{DT}, GHT <: Base.Callable}
+        new{DT,CT,GHT}(coefficients, fθ)
+    end
+end
+
+function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newton(), algorithm = "sparsify")
+    # Check if the first dimension of x is even
+    size(data.x[begin], 1) % 2 == 0 || throw(ArgumentError("The first dimension of x must be even."))
+
+    # dimension of system
+    d = size(data.x[begin], 1) ÷ 2
+
+    # returns function that builds hamiltonian gradient through symbolics
+    fθ = ΔH_func_builder(d, method.z, method.basis)
+
+    # initialize coeffs
+    coeffs = zeros(get_numCoeffs(method.basis))
+    
+    if algorithm == "sparsify"
+        coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
+    elseif algorithm == "sparsify_picard"
+        coeffs = sparsify_picard(method, fθ, data.x, data.y, solver)
+    else throw(ArgumentError("Algorithm must be either sparsify or sparsify_picard"))
+    end
+    
+    HamiltonianSINDyVectorField(coeffs, fθ)
+end
+
+" wrapper function for generalized SINDY hamiltonian gradient.
+Needs the output of fθ to work! "
+function (vectorfield::HamiltonianSINDyVectorField)(dz, z)
+    vectorfield.fθ(dz, z, vectorfield.coefficients)
+    return dz
+end
+
+(vectorfield::HamiltonianSINDyVectorField)(dz, z, p, t) = vectorfield(dz, z)
