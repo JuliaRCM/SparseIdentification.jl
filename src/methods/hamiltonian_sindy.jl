@@ -11,7 +11,7 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
         analytical_fθ::GHT = missing,
         z::Vector{Symbolics.Num} = get_z_vector(2);
         λ::T = DEFAULT_LAMBDA,
-        noise_level::T = DEFAULT_NOISE_LEVEL,
+        noise_level::Real = DEFAULT_NOISE_LEVEL,
         noiseGen_timeStep::T = DEFAULT_NOISEGEN_TIMESTEP,
         nloops = DEFAULT_NLOOPS) where {T, GHT <: Union{Base.Callable,Missing}}
 
@@ -59,7 +59,6 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         biginds = .~smallinds
 
         # check if there are any small coefficients != 0 left
-        #TODO: is the code expected to exit the loop here usually?
         all(coeffs[smallinds] .== 0) && break
 
         # set all small coefficients to zero
@@ -84,9 +83,6 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
 end
 
 
-
-
-
 struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
     # basis::BT
     coefficients::CT
@@ -96,9 +92,6 @@ struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
         new{DT,CT,GHT}(coefficients, fθ)
     end
 end
-
-
-
 
 function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newton(), algorithm = "sparsify")
     # Check if the first dimension of x is even
@@ -115,16 +108,13 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newt
     
     if algorithm == "sparsify"
         coeffs = sparsify(method, fθ, data.x, data.ẋ, solver)
-    elseif algorithm == "sparsify_two"
-        coeffs = sparsify_two(method, fθ, data.x, data.y, solver)
-    elseif algorithm == "sparsify_parallel"
-        coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
-    else throw(ArgumentError("Algorithm must be one of: sparsify, sparsify_two, or sparsify_parallel"))
+    elseif algorithm == "sparsify_picard"
+        coeffs = sparsify_picard(method, fθ, data.x, data.y, solver)
+    else throw(ArgumentError("Algorithm must be either sparsify or sparsify_picard"))
     end
     
     HamiltonianSINDyVectorField(coeffs, fθ)
 end
-
 
 " wrapper function for generalized SINDY hamiltonian gradient.
 Needs the output of fθ to work! "
@@ -138,44 +128,7 @@ end
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-################################################################################################
-################################################################################################
-################################################################################################
-################################################################################################
-
-function gen_noisy_ref_data(method::HamiltonianSINDy, x)
-    # initialize timestep data for analytical solution
-    tstep = method.noiseGen_timeStep
-    tspan = (zero(tstep), tstep)
-
-    function next_timestep(x)
-        prob_ref = ODEProblem((dx, t, x, params) -> method.analytical_fθ(dx, x, params, t), tspan, tstep, x)
-        sol = integrate(prob_ref, Gauss(2))
-        sol.q[end]
-    end
-
-    data_ref = [next_timestep(_x) for _x in x]
-
-    # add noise
-    data_ref_noisy = [_x .+ method.noise_level .* randn(size(_x)) for _x in data_ref]
-
-    return data_ref_noisy
-
-end
-
-
-function sparsify_two(method::HamiltonianSINDy, fθ, x, y, solver)
+function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
     # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
     coeffs = zeros(get_numCoeffs(method.basis))
     
@@ -211,97 +164,6 @@ function sparsify_two(method::HamiltonianSINDy, fθ, x, y, solver)
         mapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x, y))
     end
     
-    # initial guess
-    println("Initial Guess...")
-    result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
-    
-    coeffs .= result.minimizer
-
-    println(result)
-
-    for n in 1:method.nloops
-        println("Iteration #$n...")
-
-        # find coefficients below λ threshold
-        smallinds = abs.(coeffs) .< method.λ
-        biginds = .~smallinds
-
-        # check if there are any small coefficients != 0 left
-        all(coeffs[smallinds] .== 0) && break
-
-        # set all small coefficients to zero
-        coeffs[smallinds] .= 0
-
-        # Regress dynamics onto remaining terms to find sparse coeffs
-        function sparseloss(b::AbstractVector)
-            c = zeros(eltype(b), axes(coeffs))
-            c[biginds] .= b
-            loss(c)
-        end
-
-        b = coeffs[biginds]
-        result = Optim.optimize(sparseloss, b, solver, Optim.Options(show_trace=true); autodiff = :forward)
-        b .= result.minimizer
-
-        println(result)
-    end
-    
-    return coeffs
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-################################################################################################
-################################################################################################
-################################################################################################
-################################################################################################
-function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
-    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-    coeffs = zeros(get_numCoeffs(method.basis))
-
-    function loss_kernel(x₀, x₁, fθ, a, Δt)
-        numLoops = 4 # random choice of loop steps
-
-        # solution of SINDy Hamiltonian problem
-        local x̄ = zeros(eltype(a), axes(x₁))
-        local x̃ = zeros(eltype(a), axes(x₁))
-        local f = zeros(eltype(a), axes(x₁))
-
-        # gradient at current (x) values
-        fθ(f, x₀, a)
-
-        # for first guess use explicit euler
-        x̃ .= x₀ .+ Δt .* f
-        
-        for _ in 1:numLoops
-            x̄ .= (x₀ .+ x̃) ./ 2
-            # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
-            fθ(f, x̄, a)
-            # mid point rule for integration to next step
-            x̃ .= x₀ .+ Δt .* f
-        end
-
-        # calculate square Euclidean distance
-        sqeuclidean(x₁,x̃)
-    end
-
-    # define loss function
-    function loss(a::AbstractVector)
-        mapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x, y))
-    end
-
     # initial guess
     println("Initial Guess...")
     result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
