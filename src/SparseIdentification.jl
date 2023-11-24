@@ -8,7 +8,7 @@ using Symbolics
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
 
-export get_z_vector, get_numCoeffs, get_basis_set, newtHam_dataGen
+export get_z_vector, get_numCoeffs, get_basis_set, newtHam_dataGen, gen_noisy_t₂_data
 
 include("util.jl")
 
@@ -44,7 +44,7 @@ export polynomial_basis, trigonometric_basis, exponential_basis, logarithmic_bas
 
 include("hamiltonian_basis.jl")
 
-export HamiltonianSINDy, HamiltonianSINDyVectorField, gen_noisy_ref_data, VectorField
+export HamiltonianSINDy, HamiltonianSINDyVectorField, VectorField
 
 include("methods/hamiltonian_sindy.jl")
 include("methods/hamiltonian.jl")

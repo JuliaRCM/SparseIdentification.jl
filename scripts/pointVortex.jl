@@ -85,7 +85,7 @@ ẋ = [gradient_analytical!(copy(dx), _x, param, t) for _x in x]
 method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.00)
 
 # generate noisy references data at next time step
-y = gen_noisy_ref_data(method, x)
+y = gen_noisy_t₂_data(method, x)
 
 # collect training data
 tdata = TrainingData(x, ẋ, y)

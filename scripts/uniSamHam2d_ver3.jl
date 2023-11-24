@@ -75,7 +75,7 @@ ẋ = [grad_H_ana!(copy(dx), _x, p, t) for _x in x]
 method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05)
 
 # generate noisy references data at next time step
-y = gen_noisy_ref_data(method, x)
+y = gen_noisy_t₂_data(method, x)
 
 # collect training data
 tdata = TrainingData(x, ẋ, y)

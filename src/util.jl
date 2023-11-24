@@ -40,3 +40,23 @@ function newtHam_dataGen(x, ẋ)
     end
     return TrainingData(x_mat, ẋ_mat)
 end
+
+function gen_noisy_t₂_data(method::HamiltonianSINDy, x)
+    # initialize timestep data for analytical solution
+    tstep = method.noiseGen_timeStep
+    tspan = (zero(tstep), tstep)
+
+    function next_timestep(x)
+        prob_ref = ODEProblem((dx, t, x, params) -> method.analytical_fθ(dx, x, params, t), tspan, tstep, x)
+        sol = integrate(prob_ref, Gauss(4))
+        sol.q[end]
+    end
+
+    data_ref = [next_timestep(_x) for _x in x]
+
+    # add noise
+    data_ref_noisy = [_x .+ method.noise_level .* randn(size(_x)) for _x in data_ref]
+
+    return data_ref_noisy
+
+end

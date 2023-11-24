@@ -74,13 +74,13 @@ ẋ = [gradient_analytical!(copy(dx), _x, p, t) for _x in x]
 method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.01, noiseGen_timeStep = 0.01)
 
 # generate noisy references data at next time step
-y = gen_noisy_ref_data(method, x)
+y = gen_noisy_t₂_data(method, x)
 
 # collect training data
 tdata = TrainingData(x, ẋ, y)
 
 # compute vector field
-vectorfield = VectorField(method, tdata, solver = BFGS(), algorithm = "sparsify_two") 
+vectorfield = VectorField(method, tdata, solver = BFGS(), algorithm = "sparsify_picard") 
 
 println(vectorfield.coefficients)
 

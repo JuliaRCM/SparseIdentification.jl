@@ -97,7 +97,7 @@ method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, noiseGen_ti
                             polyorder = polyorder, trigonometric = trig_wave_num, trig_state_diffs = trig_state_diffs)
 
 # generate noisy references data at next time step
-y = SparseIdentification.gen_noisy_ref_data(method, x)
+y = SparseIdentification.gen_noisy_t₂_data(method, x)
 
 # collect training data
 tdata = TrainingData(x, ẋ, y)
