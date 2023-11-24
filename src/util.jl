@@ -28,3 +28,15 @@ function get_basis_set(basis::Vector{Symbolics.Num}...)
 
     return basis
 end
+
+function newtHam_dataGen(x, ẋ)
+    x_mat = zeros(length(x[begin]), length(x))
+    ẋ_mat = zeros(length(ẋ[begin]), length(ẋ))
+    for i in 1:length(x)
+        x_mat[:,i] .= x[i]
+        x_mat[:,i] .= x[i]
+        ẋ_mat[:,i] .= ẋ[i]
+        ẋ_mat[:,i] .= ẋ[i]
+    end
+    return TrainingData(x_mat, ẋ_mat)
+end

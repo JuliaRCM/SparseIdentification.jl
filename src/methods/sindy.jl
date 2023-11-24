@@ -177,3 +177,25 @@ function VectorField(method::SINDy, basis::AbstractBasis, data::TrainingData; so
         return SINDyVectorField(basis, Ξ)
     end
 end
+
+
+function VectorField_Newt_Ham(method::SINDy, z::Vector{Symbolics.Num}, basis::Vector{Symbolics.Num}, data::TrainingData; solver::AbstractSolver = JuliaLeastSquare())
+    # create basis generator function with symbolic basis array
+    bases_gen_func = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(basis, z)[2]))
+    # store basis values for each time step
+    Θ = zeros(size(data.x, 2), length(basis))
+    res = zeros(length(basis))
+    for i in axes(data.x, 2)
+        bases_gen_func(res, data.x[:,i])
+        Θ[i,:] .= res
+    end    
+    Ξ = sparsify(method, Θ, data.ẋ, solver)
+
+    sol_fields = (
+    bases_gen_func = bases_gen_func,
+    Ξ = Ξ,
+    basis = basis,
+    )
+    
+    return sol_fields
+end

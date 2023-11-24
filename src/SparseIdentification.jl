@@ -8,7 +8,7 @@ using Symbolics
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
 
-export get_z_vector, get_numCoeffs, get_basis_set
+export get_z_vector, get_numCoeffs, get_basis_set, newtHam_dataGen
 
 include("util.jl")
 
@@ -34,7 +34,7 @@ export SparsificationMethod, VectorField
 include("methods/method.jl")
 include("methods/vectorfield.jl")
 
-export SINDy, SINDyVectorField, set_model
+export SINDy, SINDyVectorField, set_model, VectorField_Newt_Ham
 
 include("methods/sindy.jl")
 
