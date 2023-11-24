@@ -23,7 +23,7 @@ function sparsify(method::SINDy, Θ, ẋ, solver)
     Ξ = solve(Θ, ẋnoisy', solver)
 
     for n in 1:method.nloops
-        println("Iteration #$n...")
+        println("SINDy cycle #$n...")
 
         # find coefficients below lambda threshold
         smallinds = abs.(Ξ) .< method.lambda
@@ -58,6 +58,17 @@ end
 function (vf::SINDyVectorField)(dy, y, p, t)
     yPool = vf.basis(y)
     ẏ = yPool * vf.coefficients
+    @assert axes(dy,1) == axes(ẏ,2)
+    for index in eachindex(dy)
+        dy[index] = ẏ[1, index]
+    end
+    return dy
+end
+
+function newtSINDy_Ham_grad(dy, y, p, t)
+    basis_pool = zeros(eltype(y), length(p.basis))
+    p.bases_gen_func(basis_pool, y)
+    ẏ = transpose(basis_pool) * p.Ξ
     @assert axes(dy,1) == axes(ẏ,2)
     for index in eachindex(dy)
         dy[index] = ẏ[1, index]

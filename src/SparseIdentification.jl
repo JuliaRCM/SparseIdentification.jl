@@ -34,7 +34,8 @@ export SparsificationMethod, VectorField
 include("methods/method.jl")
 include("methods/vectorfield.jl")
 
-export SINDy, SINDyVectorField, set_model, VectorField_Newt_Ham
+export SINDy, SINDyVectorField, set_model
+export VectorField_Newt_Ham, newtSINDy_Ham_grad
 
 include("methods/sindy.jl")
 
