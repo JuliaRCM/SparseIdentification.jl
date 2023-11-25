@@ -71,7 +71,7 @@ ẋ = [gradient_analytical!(copy(dx), _x, p, t) for _x in x]
 # ----------------------------------------
 
 # choose SINDy method
-method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.01, noiseGen_timeStep = 0.01)
+method = HamiltonianSINDy(basis, gradient_analytical!, z, λ = 0.1, noise_level = 0.01, t₂_data_timeStep = 0.01)
 
 # generate noisy references data at next time step
 y = gen_noisy_t₂_data(method, x)

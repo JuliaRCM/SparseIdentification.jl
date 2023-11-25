@@ -4,7 +4,7 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
     z::Vector{Symbolics.Num} 
     λ::T # Sparsification Parameter
     noise_level::T # Noise amplitude added to the data
-    noiseGen_timeStep::T # Time step for the integrator to get noisy data 
+    t₂_data_timeStep::T # Time step for the integrator to get noisy data at t₂ for sparsify_picard
     nloops::Int # Sparsification Loops
     
     function HamiltonianSINDy(basis::Vector{Symbolics.Num},
@@ -12,10 +12,10 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
         z::Vector{Symbolics.Num} = get_z_vector(2);
         λ::T = DEFAULT_LAMBDA,
         noise_level::Real = DEFAULT_NOISE_LEVEL,
-        noiseGen_timeStep::T = DEFAULT_NOISEGEN_TIMESTEP,
+        t₂_data_timeStep::T = DEFAULT_t₂_DATA_TIMESTEP,
         nloops = DEFAULT_NLOOPS) where {T, GHT <: Union{Base.Callable,Missing}}
 
-        new{T, GHT}(basis, analytical_fθ, z, λ, noise_level, noiseGen_timeStep, nloops)
+        new{T, GHT}(basis, analytical_fθ, z, λ, noise_level, t₂_data_timeStep, nloops)
     end
 end
 
@@ -116,7 +116,7 @@ function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
 
     # define loss function
     function loss(a::AbstractVector)
-        mapreduce(z -> loss_kernel(z..., fθ, a, method.noiseGen_timeStep), +, zip(x, y))
+        mapreduce(z -> loss_kernel(z..., fθ, a, method.t₂_data_timeStep), +, zip(x, y))
     end
     
     # initial guess

@@ -43,7 +43,7 @@ end
 
 function gen_noisy_t₂_data(method::HamiltonianSINDy, x)
     # initialize timestep data for analytical solution
-    tstep = method.noiseGen_timeStep
+    tstep = method.t₂_data_timeStep
     tspan = (zero(tstep), tstep)
 
     function next_timestep(x)

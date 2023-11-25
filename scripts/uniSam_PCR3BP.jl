@@ -103,7 +103,7 @@ tdata = TrainingData(x, ẋ)
 # choose SINDy method
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
 # method = HamiltonianSINDy(grad_H_ana, λ = 0.05, noise_level = 0.05, polyorder = polyorder, trigonometric = trig_wave_num)
-method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.0, noiseGen_timeStep = 0.0)
+method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.0, t₂_data_timeStep = 0.0)
 
 # compute vector field
 println("Compute approximate gradient...")
