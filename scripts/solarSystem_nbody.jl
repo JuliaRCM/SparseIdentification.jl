@@ -171,52 +171,52 @@ data_sindy = integrate(prob_sindy, Gauss(2))
 # Sun and Earth plots
 # plot positions
 p1 = plot()
-plot!(p1, data_reference.t, data_reference.q[:,1], label = "EarthRef xPos")
-plot!(p1, data_sindy.t, data_sindy.q[:,1], label = "EarthId xPos", xlabel = "Time", ylabel = "X Position")
+plot!(p1, data_reference.t, data_reference.q[:,1], label = "EarthRef xPos", linewidth = 3)
+plot!(p1, data_sindy.t, data_sindy.q[:,1], label = "EarthId xPos", xlabel = "Time", ylabel = "X Position", linewidth = 3)
 
 p3 = plot()
-plot!(p3, data_reference.t, data_reference.q[:,3], label = "SunRef xPos")
-plot!(p3, data_sindy.t, data_sindy.q[:,3], label = "SunId xPos", xlabel = "Time", ylabel = "X Position")
+plot!(p3, data_reference.t, data_reference.q[:,3], label = "SunRef xPos", linewidth = 3)
+plot!(p3, data_sindy.t, data_sindy.q[:,3], label = "SunId xPos", xlabel = "Time", ylabel = "X Position", linewidth = 3)
 
 title = plot(title = "True vs Predicted X Positions", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p1, p3, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false, linewidth = 1.5))
+display(plot(title, p1, p3, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
 savefig("solarXPos.png")
 
 p2 = plot()
-plot!(p2, data_reference.t, data_reference.q[:,2], label = "EarthRef yPos")
-plot!(p2, data_sindy.t, data_sindy.q[:,2], label = "EarthId yPos", xlabel = "Time", ylabel = "Y Position")
+plot!(p2, data_reference.t, data_reference.q[:,2], label = "EarthRef yPos", linewidth = 3)
+plot!(p2, data_sindy.t, data_sindy.q[:,2], label = "EarthId yPos", xlabel = "Time", ylabel = "Y Position", linewidth = 3)
 
 p4 = plot()
-plot!(p4, data_reference.t, data_reference.q[:,4], label = "SunRef yPos")
-plot!(p4, data_sindy.t, data_sindy.q[:,4], label = "SunId yPos", xlabel = "Time", ylabel = "Y Position")
+plot!(p4, data_reference.t, data_reference.q[:,4], label = "SunRef yPos", linewidth = 3)
+plot!(p4, data_sindy.t, data_sindy.q[:,4], label = "SunId yPos", xlabel = "Time", ylabel = "Y Position", linewidth = 3)
 
 title = plot(title = "True vs Predicted Y Positions", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p2, p4, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false, linewidth = 1.5))
+display(plot(title, p2, p4, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
 savefig("solarYPos.png")
 
 # plot momenta
 p5 = plot()
-plot!(p5, data_reference.t, data_reference.q[:,5], label = "EarthRef xMom")
-plot!(p5, data_sindy.t, data_sindy.q[:,5], label = "EarthId xMom", xlabel = "Time", ylabel = "X momentum")
+plot!(p5, data_reference.t, data_reference.q[:,5], label = "EarthRef xMom", linewidth = 3)
+plot!(p5, data_sindy.t, data_sindy.q[:,5], label = "EarthId xMom", xlabel = "Time", ylabel = "X momentum", linewidth = 3)
 
 p7 = plot()
-plot!(p7, data_reference.t, data_reference.q[:,7], label = "SunRef xMom")
-plot!(p7, data_sindy.t, data_sindy.q[:,7], label = "SunId xMom", xlabel = "Time", ylabel = "X momentum")
+plot!(p7, data_reference.t, data_reference.q[:,7], label = "SunRef xMom", linewidth = 3)
+plot!(p7, data_sindy.t, data_sindy.q[:,7], label = "SunId xMom", xlabel = "Time", ylabel = "X momentum", linewidth = 3)
 
 title = plot(title = "True vs Predicted X Momenta", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p5, p7, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false, linewidth = 1.5))
+display(plot(title, p5, p7, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
 savefig("solarXMom.png")
 
 p6 = plot()
-plot!(p6, data_reference.t, data_reference.q[:,6], label = "EarthRef yMom")
-plot!(p6, data_sindy.t, data_sindy.q[:,6], label = "EarthId yMom", xlabel = "Time", ylabel = "Y momentum")
+plot!(p6, data_reference.t, data_reference.q[:,6], label = "EarthRef yMom", linewidth = 3)
+plot!(p6, data_sindy.t, data_sindy.q[:,6], label = "EarthId yMom", xlabel = "Time", ylabel = "Y momentum", linewidth = 3)
 
 p8 = plot()
-plot!(p8, data_reference.t, data_reference.q[:,8], label = "SunRef yMom")
-plot!(p8, data_sindy.t, data_sindy.q[:,8], label = "SunId yMom", xlabel = "Time", ylabel = "Y momentum")
+plot!(p8, data_reference.t, data_reference.q[:,8], label = "SunRef yMom", linewidth = 3)
+plot!(p8, data_sindy.t, data_sindy.q[:,8], label = "SunId yMom", xlabel = "Time", ylabel = "Y momentum", linewidth = 3)
 
 title = plot(title = "True vs Predicted Y Momenta", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p6, p8, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false, linewidth = 1.5))
+display(plot(title, p6, p8, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
 savefig("solarYMom.png")
 
 # save coefficients to file
