@@ -58,5 +58,4 @@ function gen_noisy_t₂_data(method::HamiltonianSINDy, x)
     data_ref_noisy = [_x .+ method.noise_level .* randn(size(_x)) for _x in data_ref]
 
     return data_ref_noisy
-
 end
