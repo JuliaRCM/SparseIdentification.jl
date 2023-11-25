@@ -71,8 +71,8 @@ ẋ = [grad_H_ana!(copy(dx), _x, p, t) for _x in x]
 
 # choose SINDy method
 
-# ** noiseGen_timeStep chosen randomly
-method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.05, noiseGen_timeStep = 0.05)
+# ** t₂_data_timeStep for Sparsify_Picard chosen randomly
+method = HamiltonianSINDy(basis, grad_H_ana!, z, λ = 0.05, noise_level = 0.05, t₂_data_timeStep = 0.05)
 
 # generate noisy references data at next time step
 y = gen_noisy_t₂_data(method, x)
