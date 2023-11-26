@@ -168,7 +168,7 @@ struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
     end
 end
 
-function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newton(), algorithm = "sparsify")
+function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = BFGS(), algorithm = "sparsify")
     # Check if the first dimension of x is even
     size(data.x[begin], 1) % 2 == 0 || throw(ArgumentError("The first dimension of x must be even."))
 
