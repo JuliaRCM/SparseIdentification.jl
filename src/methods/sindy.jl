@@ -14,7 +14,7 @@ struct SINDy{T} <: SparsificationMethod
     end
 end
 
-"sequential least squares"
+
 function sparsify(method::SINDy, Θ, ẋ, solver)
     # add noise
     ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
