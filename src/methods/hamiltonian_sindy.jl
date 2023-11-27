@@ -52,7 +52,7 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
     println(result)
 
     for n in 1:method.nloops
-        println("Iteration #$n...")
+        println("SINDy cycle #$n...")
 
         # find coefficients below λ threshold
         smallinds = abs.(coeffs) .< method.λ
