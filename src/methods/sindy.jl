@@ -1,6 +1,6 @@
 using Flux
 using Plots
-
+using DelimitedFiles
 struct SINDy{T} <: SparsificationMethod
     lambda::T
     noise_level::T
@@ -115,7 +115,13 @@ function separate_coeffs(model_W, smallinds)
     return Ξ
 end
 
-function sparsify_NN(method::SINDy, basis, data, solver)
+function sparsify_NN(method::SINDy, basis, data, solver, script_name)
+    # if no directory create one
+    nn_dir = "nn_$script_name"
+    if !isdir(nn_dir)
+        mkdir(nn_dir)
+    end
+
     # initialize parameters
     model = set_model(data, basis, method.l_dim)
 
@@ -125,6 +131,10 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     # Plot the initial loss array
     display(plot(log.(loss_vec), label = "Initial Optimization Loss", xlabel="Iterations", ylabel="Log-Loss"))
 
+    # save file name according to parameters
+    initialLoss_file = joinpath(nn_dir, "initial_Loss_thr_$(method.lambda)_noise_$(method.noise_level)_coeff_$(method.coeff)_batch_$(method.batch_size).csv")
+    writedlm(initialLoss_file, loss_vec, ',')
+
     # Initialize smallinds before the loop
     smallinds = falses(size(model[3].W))
 
@@ -132,7 +142,7 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     SINDy_loss_array = Vector{Vector{Float64}}()  # Store vectors of losses
 
     for n in 1:method.nloops
-        println("Iteration #$n...")
+        println("SINDy cycle #$n...")
         println()
         # find coefficients below λ threshold
         smallinds .= abs.(model[3].W) .< method.lambda
@@ -161,6 +171,10 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     # Plot the SINDy loss array
     display(plot(log.(SINDy_loss_array), label = "SINDy Optimization Loss", xlabel="Iterations", ylabel="Log-Loss"))
 
+    # save file name according to parameters
+    sindy_Loss_file = joinpath(nn_dir, "sindy_Loss_thr_$(method.lambda)_noise_$(method.noise_level)_coeff_$(method.coeff)_batch_$(method.batch_size).csv")
+    writedlm(sindy_Loss_file, SINDy_loss_array, ',')
+
     # Iterate once more for optimization without sparsification
     println("Final Iteration...")
     println()
@@ -169,6 +183,10 @@ function sparsify_NN(method::SINDy, basis, data, solver)
     model, final_loss = sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolver)
 
     display(plot(log.(final_loss), label = "Final Optimization Loss", xlabel="Iterations", ylabel="Log-Loss"))
+
+    # save file name according to parameters
+    final_Loss_file = joinpath(nn_dir, "final_Loss_thr_$(method.lambda)_noise_$(method.noise_level)_coeff_$(method.coeff)_batch_$(method.batch_size).csv")
+    writedlm(final_Loss_file, final_loss, ',')
     
     Ξ = model[3].W
     return Ξ, model
@@ -176,10 +194,10 @@ end
 
 # TODO: Add basis as field of SINDy method
 
-function VectorField(method::SINDy, basis::AbstractBasis, data::TrainingData; solver::AbstractSolver = JuliaLeastSquare())
+function VectorField(method::SINDy, basis::AbstractBasis, data::TrainingData; solver::AbstractSolver = JuliaLeastSquare(), script_name = "")
     # Compute Sparse Regression
     if isa(solver, NNSolver)
-        Ξ, model = sparsify_NN(method, basis, data, solver)
+        Ξ, model = sparsify_NN(method, basis, data, solver, script_name)
         return SINDyVectorField(basis, Ξ), model
     else
         # Pool Data (evaluate library of candidate basis functions on training data)
