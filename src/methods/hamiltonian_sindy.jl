@@ -84,7 +84,7 @@ end
 
 
 function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
-    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
+    # coeffs initialized to a vector of zeros b/c easier to sparsify zeros usually
     coeffs = zeros(get_numCoeffs(method.basis))
     
     # define loss function
