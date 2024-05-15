@@ -77,10 +77,11 @@ tdata = TrainingData(Float32.(x), Float32.(ẋnoisy))
 
 println("Computing Vector Field...")
 
-# compute vector field
+# Pick a solver type and create a vector field
+solverType = NNSolver() #OptimSolver() #nothing
 # vectorfield = VectorField(method, basis, tdata)
-# vectorfield = VectorField(method, basis, data; solver = OptimSolver())
-vectorfield, model = VectorField(method, basis, tdata, solver = NNSolver())
+# vectorfield = VectorField(method, basis, tdata, solver = solverType)
+vectorfield, model = VectorField(method, basis, tdata, solver = solverType, script_name="linear2d")
 
 
 # ----------------------------------------
@@ -99,12 +100,22 @@ trange = range(tspan[begin], step = tstep, stop = tspan[end])
 prob = ODEProblem(rhs, x₀, tspan)
 data = ODE.solve(prob, abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
 
-# use encoder to get the gradient
-prob_approx = ODEProblem(vectorfield, model[1].W(x₀), tspan)
-xid = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
 
-# use decoder to get the solution at each timestep
-xsol = hcat([model[2].W(xid[:,i]) for i in axes(xid,2)]...)
+xid = data
+xsol = nothing
+
+if isequal(solverType, NNSolver())
+    # use encoder to get the gradient
+    prob_approx = ODEProblem(vectorfield, model[1].W(Float32.(x₀)), tspan)
+    xid = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
+    # use decoder to get the solution at each timestep
+    xsol = hcat([model[2].W(Float32.(xid[:,i])) for i in axes(xid,2)]...)
+else
+    prob_approx = ODEProblem(vectorfield, x₀, tspan)
+    xid = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
+    xsol = xid
+end
+
 
 # ----------------------------------------
 # Plot Results
@@ -113,17 +124,17 @@ xsol = hcat([model[2].W(xid[:,i]) for i in axes(xid,2)]...)
 println("Plotting...")
 
 p1 = plot()
-plot!(p1, data.t, data[1,:], label = "Data")
-plot!(p1, xid.t, xsol[1,:], label = "Identified")
+plot!(p1, data.t, data[1,:], label = "Data", linestyle =:auto)
+plot!(p1, xid.t, xsol[1,:], label = "Identified", linestyle =:auto)
 
 p2 = plot()
-plot!(p2, data.t, data[2,:], label = "Data")
-plot!(p2, xid.t, xsol[2,:], label = "Identified")
+plot!(p2, data.t, data[2,:], label = "Data", linestyle =:auto)
+plot!(p2, xid.t, xsol[2,:], label = "Identified", linestyle =:auto)
 
-display(plot(p1, p2))
+display(plot(p1, p2, lw=3))
 savefig("linear2d.png")
 
-p3 = plot(data[1,:], data[2,:], label="true")
-p3 = scatter!(xsol[1,:], xsol[2,:], label="approx", linestyle =:dash, mc=:red, ms=2, ma=0.5, xlabel ="X1", ylabel="X2")
+p3 = plot(data[1,:], data[2,:], label="true", linestyle =:auto, lw=3)
+p3 = scatter!(xsol[1,:], xsol[2,:], label="approx", linestyle =:dash, mc=:red, ms=2, ma=0.5, xlabel ="X1", ylabel="X2", lw=3)
 display(plot(p3, show = true, reuse = false))
 savefig("linear2d_fig2.png")
