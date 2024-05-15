@@ -22,7 +22,7 @@
 # dq_i/dt = ∂H/∂p_i = (1/m_i) * p_i
 # dp_i/dt = -∂H/∂q_i = -G * Σ(m_i * m_j * (x_i - x_j) / r_ij^3) {the sum goes from j=1 to j=N and i≠j}
 
-
+using Revise
 using Distributions
 using GeometricIntegrators
 using Plots
@@ -30,6 +30,8 @@ using Random
 using SparseIdentification
 using Optim
 using Symbolics
+using Measures
+using DelimitedFiles
 
 include("solarsystem.jl") 
 
@@ -103,7 +105,7 @@ q₀ = [earth.x[1:2]; sun.x[1:2];] #.* 1e3 #km to m
 p₀ = [earth.v[1:2] .* m[1]; sun.v[1:2] .* m[2];] #.* 1e3 ./ (3600.0 .* 24.0) #km/d to m/s
 x₀ = [q₀; p₀]
 
-tstep = 250
+tstep = 200.0
 tspan = (0.0, 1e6)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
@@ -145,7 +147,10 @@ ẋ = [vcat(ẋ, vec(_ẋ)) for _ẋ in ẋ_ref]
 # collect training data
 tdata = TrainingData(x, ẋ)
 
-# compute vector field
+println("Computing vector field...")
+################################################################################
+################ Note: reduce Optim.Options iterations  to 200 before running ################
+################################################################################
 @time vector_field = VectorField(method, tdata, solver = BFGS()) 
 
 println(vector_field.coefficients)
@@ -171,56 +176,56 @@ data_sindy = integrate(prob_sindy, Gauss(2))
 # Sun and Earth plots
 # plot positions
 p1 = plot()
-plot!(p1, data_reference.t, data_reference.q[:,1], label = "EarthRef xPos", linewidth = 3)
-plot!(p1, data_sindy.t, data_sindy.q[:,1], label = "EarthId xPos", xlabel = "Time", ylabel = "X Position", linewidth = 3)
+plot!(p1, data_reference.t, data_reference.q[:,1], label = "EarthRef xPos", linewidth = 3, linestyle=:auto)
+plot!(p1, data_sindy.t, data_sindy.q[:,1], label = "EarthId xPos", xlabel = "Time", ylabel = "X Position", linestyle =:auto, linewidth = 3)
 
 p3 = plot()
-plot!(p3, data_reference.t, data_reference.q[:,3], label = "SunRef xPos", linewidth = 3)
-plot!(p3, data_sindy.t, data_sindy.q[:,3], label = "SunId xPos", xlabel = "Time", ylabel = "X Position", linewidth = 3)
+plot!(p3, data_reference.t, data_reference.q[:,3], label = "SunRef xPos", linewidth = 3, linestyle=:auto)
+plot!(p3, data_sindy.t, data_sindy.q[:,3], label = "SunId xPos", xlabel = "Time", ylabel = "X Position", linewidth = 3, linestyle=:auto)
 
 title = plot(title = "True vs Predicted X Positions", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p1, p3, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
+display(plot(title, p1, p3, layout = @layout([A{0.1h}; [B C]]), size=(850, 350), show=true, reuse=false, margin=5mm))
 savefig("solarXPos.png")
 
 p2 = plot()
-plot!(p2, data_reference.t, data_reference.q[:,2], label = "EarthRef yPos", linewidth = 3)
-plot!(p2, data_sindy.t, data_sindy.q[:,2], label = "EarthId yPos", xlabel = "Time", ylabel = "Y Position", linewidth = 3)
+plot!(p2, data_reference.t, data_reference.q[:,2], label = "EarthRef yPos", linewidth = 3, linestyle=:auto)
+plot!(p2, data_sindy.t, data_sindy.q[:,2], label = "EarthId yPos", xlabel = "Time", ylabel = "Y Position", linewidth = 3, linestyle=:auto)
 
 p4 = plot()
-plot!(p4, data_reference.t, data_reference.q[:,4], label = "SunRef yPos", linewidth = 3)
-plot!(p4, data_sindy.t, data_sindy.q[:,4], label = "SunId yPos", xlabel = "Time", ylabel = "Y Position", linewidth = 3)
+plot!(p4, data_reference.t, data_reference.q[:,4], label = "SunRef yPos", linewidth = 3, linestyle=:auto)
+plot!(p4, data_sindy.t, data_sindy.q[:,4], label = "SunId yPos", xlabel = "Time", ylabel = "Y Position", linewidth = 3, linestyle=:auto)
 
 title = plot(title = "True vs Predicted Y Positions", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p2, p4, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
+display(plot(title, p2, p4, layout = @layout([A{0.1h}; [B C]]), size=(850, 350), show=true, reuse=false, margin=5mm))
 savefig("solarYPos.png")
 
 # plot momenta
 p5 = plot()
-plot!(p5, data_reference.t, data_reference.q[:,5], label = "EarthRef xMom", linewidth = 3)
-plot!(p5, data_sindy.t, data_sindy.q[:,5], label = "EarthId xMom", xlabel = "Time", ylabel = "X momentum", linewidth = 3)
+plot!(p5, data_reference.t, data_reference.q[:,5], label = "EarthRef xMom", linewidth = 3, linestyle=:auto)
+plot!(p5, data_sindy.t, data_sindy.q[:,5], label = "EarthId xMom", xlabel = "Time", ylabel = "X momentum", linewidth = 3, linestyle=:auto)
 
 p7 = plot()
-plot!(p7, data_reference.t, data_reference.q[:,7], label = "SunRef xMom", linewidth = 3)
-plot!(p7, data_sindy.t, data_sindy.q[:,7], label = "SunId xMom", xlabel = "Time", ylabel = "X momentum", linewidth = 3)
+plot!(p7, data_reference.t, data_reference.q[:,7], label = "SunRef xMom", linewidth = 3, linestyle=:auto)
+plot!(p7, data_sindy.t, data_sindy.q[:,7], label = "SunId xMom", xlabel = "Time", ylabel = "X momentum", linewidth = 3, linestyle=:auto)
 
 title = plot(title = "True vs Predicted X Momenta", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p5, p7, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
+display(plot(title, p5, p7, layout = @layout([A{0.1h}; [B C]]), size=(850, 350), show=true, reuse=false, margin=5mm))
 savefig("solarXMom.png")
 
 p6 = plot()
-plot!(p6, data_reference.t, data_reference.q[:,6], label = "EarthRef yMom", linewidth = 3)
-plot!(p6, data_sindy.t, data_sindy.q[:,6], label = "EarthId yMom", xlabel = "Time", ylabel = "Y momentum", linewidth = 3)
+plot!(p6, data_reference.t, data_reference.q[:,6], label = "EarthRef yMom", linewidth = 3, linestyle=:auto)
+plot!(p6, data_sindy.t, data_sindy.q[:,6], label = "EarthId yMom", xlabel = "Time", ylabel = "Y momentum", linewidth = 3, linestyle=:auto)
 
 p8 = plot()
-plot!(p8, data_reference.t, data_reference.q[:,8], label = "SunRef yMom", linewidth = 3)
-plot!(p8, data_sindy.t, data_sindy.q[:,8], label = "SunId yMom", xlabel = "Time", ylabel = "Y momentum", linewidth = 3)
+plot!(p8, data_reference.t, data_reference.q[:,8], label = "SunRef yMom", linewidth = 3, linestyle=:auto)
+plot!(p8, data_sindy.t, data_sindy.q[:,8], label = "SunId yMom", xlabel = "Time", ylabel = "Y momentum", linewidth = 3, linestyle=:auto)
 
 title = plot(title = "True vs Predicted Y Momenta", grid = false, showaxis = false, bottom_margin = -50Plots.px)
-display(plot(title, p6, p8, layout = @layout([A{0.1h}; [B C]]), size=(850, 600), show=true, reuse=false))
+display(plot(title, p6, p8, layout = @layout([A{0.1h}; [B C]]), size=(850, 350), show=true, reuse=false, margin=5mm))
 savefig("solarYMom.png")
 
+
 # save coefficients to file
-using DelimitedFiles
 solar_system = "solar_system_files"
 if !isdir(solar_system)
     mkdir(solar_system)
@@ -229,7 +234,3 @@ solar_system_file = joinpath(solar_system, "solar_system_coeffs.csv")
 solar_system_arr = []
 push!(solar_system_arr, vector_field.coefficients)
 writedlm(solar_system_file, solar_system_arr, ',')
-
-
-
-
