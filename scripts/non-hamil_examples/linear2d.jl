@@ -104,7 +104,7 @@ data = ODE.solve(prob, abstol=1e-10, reltol=1e-10, saveat = trange, tstops = tra
 xid = data
 xsol = nothing
 
-if isequal(solverType, NNSolver())
+if isa(solverType, NNSolver)
     # use encoder to get the gradient
     prob_approx = ODEProblem(vectorfield, model[1].W(Float32.(x₀)), tspan)
     xid = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
