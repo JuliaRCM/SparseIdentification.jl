@@ -1,23 +1,45 @@
 
 using Optim
 using Flux
-using Distances
 using Random
 using Zygote
 
 
+"""
+Abstract type for all solvers.
+"""
 abstract type AbstractSolver end
 
+"""
+Abstract type for nonlinear solvers.
+"""
 abstract type NonlinearSolver <: AbstractSolver end
 
-
+"""
+Solver using Julia's least squares method.
+"""
 struct JuliaLeastSquare <: AbstractSolver end
 
+"""
+Solves a linear system using Julia's least squares method.
+
+# Arguments
+- `Θ`: The matrix of basis functions.
+- `ẋ`: The vector of time derivatives.
+
+# Returns
+- The solution vector.
+"""
 function solve(Θ, ẋ, ::JuliaLeastSquare)
     Θ \ ẋ
 end
 
+"""
+Solver using an optimization method from the `Optim` package.
 
+# Fields
+- `method`: The optimization method to be used. The default method is `BFGS()`.
+"""
 struct OptimSolver <: NonlinearSolver 
     method
 
@@ -26,24 +48,46 @@ struct OptimSolver <: NonlinearSolver
     end
 end
 
+"""
+Optimizes a loss function using the specified solver.
+
+# Arguments
+- `loss`: The loss function to be minimized.
+- `x₀`: Initial guess for the solution.
+- `solver::OptimSolver`: The solver to be used.
+
+# Returns
+- The minimizer vector of the loss function.
+"""
 function optimize(loss, x₀, solver::OptimSolver)
     result = Optim.optimize(loss, x₀, solver.method, Optim.Options(iterations=500))
     println(result)
     return result.minimizer
 end
 
-   
+"""
+Solves a nonlinear system using a nonlinear solver.
+
+# Arguments
+- `Θ`: The matrix of basis functions.
+- `ẋ`: The vector of time derivatives.
+- `solver::NonlinearSolver`: The solver to be used.
+
+# Returns
+- The minimizing coefficients matrix.
+"""
 function solve(Θ, ẋ, solver::NonlinearSolver)
     x₀ = zeros(size(Θ,2), size(ẋ,2))
-    loss(x) = mapreduce( y -> y^2, +, ẋ .- Θ * x )
-    # input coefficients as a vector
-    result = optimize(x->loss(reshape(x, size(x₀))), x₀[:], solver)
+    loss(x) = mapreduce(y -> y^2, +, ẋ .- Θ * x)
+    result = optimize(x -> loss(reshape(x, size(x₀))), x₀[:], solver)
     return reshape(result, size(x₀))
 end
 
-
-
-
+"""
+Solver using a neural network-based method.
+# Fields
+- `optimizer`: The optimizer to be used for training the neural network. The default optimizer is `Adam()`.
+"""
 struct NNSolver <: NonlinearSolver 
     optimizer
 
@@ -52,15 +96,19 @@ struct NNSolver <: NonlinearSolver
     end
 end
 
+"""
+Calculates batched Jacobian for a model layer.
 
-# Needed because Flux.gradient can't handle Flux.jacobian
+# Arguments
+- `model_layer`: The layer of the model.
+- `x_batch`: The batch of input data.
+
+# Returns
+- The batched Jacobian.
+"""
 function batched_jacobian(model_layer, x_batch)
-    # output size using first sample
     output_dim = size(model_layer(x_batch[:, 1]))[1]
-    # batch_size using number of samples
     batch_size = size(x_batch, 2)
-
-    # The jacobian at each of the samples
     batch_jac = zeros(output_dim, batch_size, size(x_batch, 1))
     
     for i in 1:batch_size
@@ -72,6 +120,14 @@ function batched_jacobian(model_layer, x_batch)
     return batch_jac
 end
 
+"""
+Updates the model coefficients based on the given indices and values.
+
+# Arguments
+- `model_W`: The model weights to be updated.
+- `smallinds`: The indices of coefficients below sparsification threshold.
+- `Ξ`: The values to update the weights with.
+"""
 function update_model_coeffs!(model_W, smallinds, Ξ)
     for ind in 1:size(model_W, 2)
         non_zero_indices = findall(.~smallinds[:, ind])
@@ -79,17 +135,35 @@ function update_model_coeffs!(model_W, smallinds, Ξ)
     end
 end
 
-# Get ż from dz/dx and ẋ
+"""
+Calculates `ż` from `dz/dx` and `ẋ`.
+
+# Arguments
+- `enc_jac_batch`: Encoder Jacobian (dz/dx) of a batch.
+- `ẋ_batch`: Batch of time derivatives.
+
+# Returns
+- The calculated `ż`.
+"""
 function enc_ż(enc_jac_batch, ẋ_batch)
     # Size is equal to encoded features and number of batches
     ż_ref = zero(enc_jac_batch[:,:, 1])
-    for i in 1:size(enc_jac_batch, 2)
-        ż_ref[:, i] = (enc_jac_batch[:,i,:] * (ẋ_batch[:,i]))
+    for b in 1:size(enc_jac_batch, 2)
+        ż_ref[:, b] = enc_jac_batch[:, b, :] * ẋ_batch[:, b]
     end
     return ż_ref
 end
 
-# Get ẋ from decoder derivative (dx/dz) and ż
+"""
+This function calculates the time derivatives of the decoded state variables (`ẋ`) using the Jacobian of the decoder `dx/dz` and the time derivatives of the latent variables (`ż`).
+
+# Arguments
+- `dec_jac_batch`: A 3D array containing the Jacobian matrices of the decoder for each batch.
+- `ż`: A 2D array containing the time derivatives of the latent variables for each batch.
+
+# Returns
+- A 2D array containing the time derivatives of the decoded state variables.
+"""
 function dec_ẋ(dec_jac_batch, ż)
     # Size is equal to decoded features and number of batches
     dec_mult_ẋ = Zygote.Buffer(dec_jac_batch[:,:, 1])
@@ -99,7 +173,18 @@ function dec_ẋ(dec_jac_batch, ż)
     return copy(dec_mult_ẋ)
 end
 
-# Get ż from SINDy coefficients and basis functions
+"""
+This function calculates the time derivatives of the latent variables (`ż`) using the SINDy coefficients and the basis functions.
+
+# Arguments
+- `enc_x_batch`: A 2D array containing the encoded state variables for each batch.
+- `Θ`: A 2D array containing the encoded values of the basis functions for each batch.
+- `Ξ`: A vector containing the SINDy coefficients.
+- `smallinds`: A 2D array indicating the coefficients below sparsification threshold.
+
+# Returns
+- A 2D array containing the time derivatives of the latent variables.
+"""
 function set_ż_SINDY(enc_x_batch, Θ, Ξ, smallinds)
     ż_SINDy = Zygote.Buffer(zeros(size(enc_x_batch, 1), size(Θ,1)))
     for ind in axes(enc_x_batch, 1)
@@ -110,9 +195,22 @@ function set_ż_SINDY(enc_x_batch, Θ, Ξ, smallinds)
     return copy(ż_SINDy)
 end
 
+"""
+# Solve the optimization problem for the given data and model using a neural network solver
 
+This function trains a neural network model to find the optimal parameters for the given data using a specified optimization method.
+
+# Arguments
+- `data`: The training data.
+- `method`: The method struct containing relevant parameters.
+- `model`: The neural network model.
+- `basis`: The basis functions used for SINDy.
+- `solver::NNSolver`: The chosen neural network solver.
+
+# Returns
+- The trained model and an array containing the loss for each epoch.
+"""
 function solve(data, method, model, basis, solver::NNSolver)
-    
     total_samples = size(data.x)[2]
     num_batches = ceil(Int, total_samples / method.batch_size)
 
@@ -206,10 +304,24 @@ function solve(data, method, model, basis, solver::NNSolver)
     return model, epoch_loss_array
 end
 
+"""
+# Sparsify and solve the optimization problem for the given data and model
 
+This function trains a neural network model to find sparse optimal parameters for the given data using specified method parameters, basis functions, and SINDy coefficients.
 
+# Arguments
+- `data`: The training data.
+- `method`: The method struct containing relevant parameters.
+- `model`: The neural network model.
+- `basis`: The basis functions used for SINDy.
+- `Ξ`: A vector containing the SINDy coefficients.
+- `smallinds`: A 2D array indicating the coefficients below sparsification threshold
+- `solver::NNSolver`: The chosen neural network solver.
+
+# Returns
+- The trained model and an array containing the loss for each epoch.
+"""
 function sparse_solve(data, method, model, basis, Ξ, smallinds, solver::NNSolver)
-    
     total_samples = size(data.x)[2]
     num_batches = ceil(Int, total_samples / method.batch_size)
 

@@ -5,7 +5,7 @@ DocMeta.setdocmeta!(SparseIdentification, :DocTestSetup, :(using SparseIdentific
 
 makedocs(;
     modules=[SparseIdentification],
-    authors=["Michael Kraus", "Nigel Bruce Khan"],
+    authors="Michael Kraus and Nigel Bruce Khan",
     repo="https://github.com/JuliaRCM/SparseIdentification.jl/blob/{commit}{path}#{line}",
     sitename="SparseIdentification.jl",
     format=Documenter.HTML(;
