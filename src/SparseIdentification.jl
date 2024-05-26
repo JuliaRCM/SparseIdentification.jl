@@ -1,5 +1,5 @@
 """
-The `SparseIdentification` module provides methods for sparse identification of nonlinear Newtonian and Hamiltonian dynamical systems.
+The `SparseIdentification` module provides methods for sparse identification of nonlinear Classical and Hamiltonian dynamical systems.
 """
 module SparseIdentification
 
