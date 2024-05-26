@@ -60,18 +60,6 @@ struct TrigonometricBasis <: AbstractBasis
     n::Int
 end
 
-# function (basis::TrigonometricBasis)(data::AbstractVector)
-#     # initialize output array
-#     out = zeros(0)
-
-#     for k in 1:basis.n
-#         tmp = [sin(k*data), cos(k*data)]
-#         out = hcat(out, tmp)
-#     end
-
-#     return out
-# end
-
 function (basis::TrigonometricBasis)(data::AbstractArray)
     # number of snapshots
     ns = size(data,2)
@@ -112,18 +100,6 @@ function CompoundBasis(; polyorder::Int = 5, trigonometric::Int = 0)
 end
 
 bases(b::CompoundBasis) = b.bases
-
-# function (basis::CompoundBasis)(data::AbstractVector)
-#     # initialize output array
-#     out = zeros(0)
-
-#     # loop over bases
-#     for b in bases(basis)
-#         out = hcat(out, b(data))
-#     end
-
-#     return out
-# end
 
 function (basis::CompoundBasis)(data::AbstractArray)
     # number of snapshots
