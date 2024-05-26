@@ -1,3 +1,14 @@
+"""
+The `lorenz` function generates a Lorenz system of equations.
+
+# Arguments
+- `y`: state of the Lorenz system.
+- `p`: parameters of the Lorenz system.
+- `t`: time.
+
+# Returns
+- The derivative of the Lorenz system.
+"""
 function lorenz(y, p, t)
     sigma, beta, rho = p
     dy = [
