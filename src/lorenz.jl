@@ -1,22 +1,25 @@
 """
-The `lorenz` function generates a Lorenz system of equations.
+Generates the Lorenz system of equations.
 
 # Arguments
-- `y`: state of the Lorenz system.
-- `p`: parameters of the Lorenz system.
-- `t`: time.
+- `y`: A vector of the state variables [x, y, z].
+- `p`: A tuple of the parameters (σ, β, ρ).
+- `t`: Time variable (not used in the equations but typically required for ODE solvers).
 
 # Returns
-- The derivative of the Lorenz system.
+- A vector `dy` representing the time derivatives of the state variables.
+
+The Lorenz system is defined by the following equations:
+    dx/dt = σ(y - x)
+    dy/dt = x(ρ - z) - y
+    dz/dt = xy - βz
 """
 function lorenz(y, p, t)
-    sigma, beta, rho = p
+    σ, β, ρ = p
     dy = [
-    sigma*(y[2]-y[1]);
-    y[1]*(rho-y[3])-y[2];
-    y[1]*y[2]-beta*y[3];
+        σ*(y[2] - y[1]);
+        y[1]*(ρ - y[3]) - y[2];
+        y[1]*y[2] - β*y[3];
     ]
     return dy
 end
-    
-    
