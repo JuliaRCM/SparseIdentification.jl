@@ -1,11 +1,29 @@
+
+"""
+    struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
+
+A structure representing the Hamiltonian Sparse Identification of Nonlinear Dynamics (SINDy) method.
+
+# Fields
+- `basis::Vector{Symbolics.Num}`: The augmented basis for sparsification.
+- `analytical_fθ::GHT`: The analytical form of the function θ (optional).
+- `z::Vector{Symbolics.Num}`: The symbolic state variable vector.
+- `λ::T`: Sparsification threshold.
+- `noise_level::T`: Noise amplitude added to the data.
+- `t₂_data_timeStep::T`: Time step for the integrator to get noisy data at t₂ for `sparsify_picard`.
+- `nloops::Int`: Number of sparsification cycles.
+
+# Constructor
+Creates a new `HamiltonianSINDy` object with specified parameters.
+"""
 struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
-    basis::Vector{Symbolics.Num} # the augmented basis for sparsification
+    basis::Vector{Symbolics.Num}
     analytical_fθ::GHT
-    z::Vector{Symbolics.Num} 
-    λ::T # Sparsification Parameter
-    noise_level::T # Noise amplitude added to the data
-    t₂_data_timeStep::T # Time step for the integrator to get noisy data at t₂ for sparsify_picard
-    nloops::Int # Sparsification Loops
+    z::Vector{Symbolics.Num}
+    λ::T
+    noise_level::T
+    t₂_data_timeStep::T
+    nloops::Int
     
     function HamiltonianSINDy(basis::Vector{Symbolics.Num},
         analytical_fθ::GHT = missing,
@@ -14,57 +32,60 @@ struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
         noise_level::Real = DEFAULT_NOISE_LEVEL,
         t₂_data_timeStep::T = DEFAULT_t₂_DATA_TIMESTEP,
         nloops = DEFAULT_NLOOPS) where {T, GHT <: Union{Base.Callable,Missing}}
-
         new{T, GHT}(basis, analytical_fθ, z, λ, noise_level, t₂_data_timeStep, nloops)
     end
 end
 
-function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
-    # add noise
-    ẋnoisy = [_ẋ .+ method.noise_level .* randn(size(_ẋ)) for _ẋ in ẋ]
+"""
+    sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
 
-    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
+Sparsifies the coefficients of the Hamiltonian system using the SINDy algorithm.
+
+# Arguments
+- `method::HamiltonianSINDy`: The Hamiltonian SINDy method object.
+- `fθ`: The function representing the Hamiltonian gradient.
+- `x`: The state variable data.
+- `ẋ`: The time derivatives of the state variable data.
+- `solver`: The optimization solver to use.
+
+# Returns
+- `coeffs::Vector`: The sparse coefficients of the Hamiltonian system.
+
+# Description
+This function performs the following steps:
+1. Adds noise to the time derivatives of the state variable data.
+2. Initializes the coefficients to a vector of zeros.
+3. Defines the loss function for the optimization problem.
+4. Optimizes the loss function to find the initial guess of the coefficients.
+5. Iteratively refines the coefficients by setting small coefficients to zero and re-optimizing the remaining coefficients.
+"""
+function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
+    ẋnoisy = [_ẋ .+ method.noise_level .* randn(size(_ẋ)) for _ẋ in ẋ]
     coeffs = zeros(get_numCoeffs(method.basis))
     
-    # define loss function
     function loss_kernel(x₀, x̃, fθ, a)
-        # gradient of SINDy Hamiltonian problem
         f = zeros(eltype(a), axes(x₀))
-        
-        # gradient at current (x) values
         fθ(f, x₀, a)
-
-        # calculate square euclidean distance
         sqeuclidean(f,x̃)
-    
     end
 
-    # define loss function
     function loss(a::AbstractVector)
         mapreduce(z -> loss_kernel(z..., fθ, a), +, zip(x, ẋnoisy))
     end
     
-    # initial guess
     println("Initial Guess...")
     result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
     coeffs .= result.minimizer
-
     println(result)
 
     for n in 1:method.nloops
         println("SINDy cycle #$n...")
-
-        # find coefficients below λ threshold
         smallinds = abs.(coeffs) .< method.λ
         biginds = .~smallinds
-
         # check if there are any small coefficients != 0 left
         all(coeffs[smallinds] .== 0) && break
-
-        # set all small coefficients to zero
         coeffs[smallinds] .= 0
 
-        # Regress dynamics onto remaining terms to find sparse coeffs
         function sparseloss(b::AbstractVector)
             c = zeros(eltype(b), axes(coeffs))
             c[biginds] .= b
@@ -75,30 +96,43 @@ function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
         b = coeffs[biginds]
         result = Optim.optimize(sparseloss, b, solver, Optim.Options(show_trace=true); autodiff = :forward)
         b .= result.minimizer
-
         println(result)
     end
 
     return coeffs
 end
 
+"""
+    sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
 
+Sparsifies the coefficients of the Hamiltonian system using the Picard iteration-based SINDy algorithm.
+
+# Arguments
+- `method::HamiltonianSINDy`: The Hamiltonian SINDy method object.
+- `fθ`: The function representing the Hamiltonian gradient.
+- `x`: The initial state variable data.
+- `y`: The state variable data at the next time step.
+- `solver`: The optimization solver to use.
+
+# Returns
+- `coeffs::Vector`: The sparse coefficients of the Hamiltonian system.
+
+# Description
+This function performs the following steps:
+1. Initializes the coefficients to a vector of zeros.
+2. Defines the loss function for the optimization problem using the Picard iteration.
+3. Optimizes the loss function to find the initial guess of the coefficients.
+4. Iteratively refines the coefficients by setting small coefficients to zero and re-optimizing the remaining coefficients.
+"""
 function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
-    # coeffs initialized to a vector of zeros b/c easier to sparsify zeros usually
     coeffs = zeros(get_numCoeffs(method.basis))
     
-    # define loss function
     function loss_kernel(x₀, x₁, fθ, a, Δt)
         numLoops = 4 # random choice of loop steps
-
-        # solution of SINDy Hamiltonian problem
         local x̄ = zeros(eltype(a), axes(x₁))
         local x̃ = zeros(eltype(a), axes(x₁))
         local f = zeros(eltype(a), axes(x₁))
-
-        # gradient at current (x) values
         fθ(f, x₀, a)
-
         # for first guess use explicit euler
         x̃ .= x₀ .+ Δt .* f
         
@@ -110,37 +144,25 @@ function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
             x̃ .= x₀ .+ Δt .* f
         end
 
-        # calculate square euclidean distance
         sqeuclidean(x₁,x̃)
     end
 
-    # define loss function
     function loss(a::AbstractVector)
         mapreduce(z -> loss_kernel(z..., fθ, a, method.t₂_data_timeStep), +, zip(x, y))
     end
     
-    # initial guess
     println("Initial Guess...")
     result = Optim.optimize(loss, coeffs, solver, Optim.Options(show_trace=true); autodiff = :forward)
-    
     coeffs .= result.minimizer
-
     println(result)
 
     for n in 1:method.nloops
         println("Iteration #$n...")
-
-        # find coefficients below λ threshold
         smallinds = abs.(coeffs) .< method.λ
         biginds = .~smallinds
-
-        # check if there are any small coefficients != 0 left
         all(coeffs[smallinds] .== 0) && break
-
-        # set all small coefficients to zero
         coeffs[smallinds] .= 0
 
-        # Regress dynamics onto remaining terms to find sparse coeffs
         function sparseloss(b::AbstractVector)
             c = zeros(eltype(b), axes(coeffs))
             c[biginds] .= b
@@ -150,16 +172,25 @@ function sparsify_picard(method::HamiltonianSINDy, fθ, x, y, solver)
         b = coeffs[biginds]
         result = Optim.optimize(sparseloss, b, solver, Optim.Options(show_trace=true); autodiff = :forward)
         b .= result.minimizer
-
         println(result)
     end
     
     return coeffs
 end
 
+"""
+    struct HamiltonianSINDyVectorField{DT, CT, GHT} <: VectorField
 
+A structure representing a vector field for the Hamiltonian SINDy method.
+
+# Fields
+- `coefficients::CT`: The coefficients of the Hamiltonian system.
+- `fθ::GHT`: The function representing the Hamiltonian gradient.
+
+# Constructor
+Creates a new `HamiltonianSINDyVectorField` object with specified coefficients and Hamiltonian gradient basis function.
+"""
 struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
-    # basis::BT
     coefficients::CT
     fθ::GHT
 
@@ -168,17 +199,34 @@ struct HamiltonianSINDyVectorField{DT,CT,GHT} <: VectorField
     end
 end
 
+"""
+    VectorField(method::HamiltonianSINDy, data::TrainingData; solver = BFGS(), algorithm = "sparsify")
+
+Creates a vector field for the Hamiltonian SINDy method using training data.
+
+# Arguments
+- `method::HamiltonianSINDy`: The Hamiltonian SINDy method object.
+- `data::TrainingData`: The training data containing state variables and derivatives.
+- `solver`: The optimization solver to use (default is BFGS()).
+- `algorithm::String`: The algorithm to use for sparsification ("sparsify" or "sparsify_picard").
+
+# Returns
+- `HamiltonianSINDyVectorField`: The vector field representing the Hamiltonian SINDy method.
+
+# Description
+This function performs the following steps:
+1. Checks if the first dimension of the state variables is even.
+2. Determines the dimension `d` of the system.
+3. Builds the Hamiltonian gradient function `fθ`.
+4. Initializes the coefficients to zeros.
+5. Uses the specified algorithm to sparsify the coefficients.
+
+ Returns a `HamiltonianSINDyVectorField` object with the sparse coefficients and Hamiltonian gradient function.
+"""
 function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = BFGS(), algorithm = "sparsify")
-    # Check if the first dimension of x is even
     size(data.x[begin], 1) % 2 == 0 || throw(ArgumentError("The first dimension of x must be even."))
-
-    # dimension of system
     d = size(data.x[begin], 1) ÷ 2
-
-    # returns function that builds hamiltonian gradient through symbolics
     fθ = ΔH_func_builder(d, method.z, method.basis)
-
-    # initialize coeffs
     coeffs = zeros(get_numCoeffs(method.basis))
     
     if algorithm == "sparsify"
@@ -191,8 +239,21 @@ function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = BFGS
     HamiltonianSINDyVectorField(coeffs, fθ)
 end
 
-" wrapper function for generalized SINDY hamiltonian gradient.
-Needs the output of fθ to work! "
+"""
+    (vectorfield::HamiltonianSINDyVectorField)(dz, z)
+
+Evaluates the Hamiltonian gradient using the sparse coefficients.
+
+# Arguments
+- `dz`: The output vector for the gradient.
+- `z`: The input state variable vector.
+
+# Returns
+- `dz`: The evaluated gradient.
+
+# Description
+This function evaluates the Hamiltonian gradient at the given state variables using the sparse coefficients.
+"""
 function (vectorfield::HamiltonianSINDyVectorField)(dz, z)
     vectorfield.fθ(dz, z, vectorfield.coefficients)
     return dz
