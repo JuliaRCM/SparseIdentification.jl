@@ -4,7 +4,7 @@ SparseIdentification's development is coordinated by a group of *principal devel
 
 ## Principal Developers
 
-* Nigel Bruce Khan,
+* [Nigel Bruce Khan](https://github.com/nigel-bruce-khan),
   Technische Universität München, Garching, Germany
 * [Michael Kraus](https://www.michael-kraus.org/),
   Max Planck Institute for Plasma Physics, Garching, Germany
