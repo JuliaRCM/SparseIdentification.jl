@@ -42,11 +42,11 @@ println("Generate Training Data...")
 
 num_samp = 15
 
-# samples in p and q space
+# samples in input range
 samp_range = LinRange(-20, 20, num_samp)
 
 # initialize vector of matrices to store ODE solve output
-# s depend on size of nd (total dims), 4 in the case here so we use samp_range x samp_range x samp_range x samp_range
+# s depend on size of nd (total dims), 2 in the case here so we use samp_range x samp_range
 s = collect(Iterators.product(fill(samp_range, nd)...))
 
 # compute vector field from x state values
