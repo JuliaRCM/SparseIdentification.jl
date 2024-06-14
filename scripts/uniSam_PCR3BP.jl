@@ -1,13 +1,17 @@
-# The Planar Circular Restricted Three-Body Problem (PCR3BP) is 
-# a special case of the n-body problem in which two massive bodies 
-# orbit around their center of mass while a third, massless body moves 
-# in their gravitational field. The motion of the massless body is restricted 
-# to the plane of the two massive bodies and is influenced only by their 
-# gravitational forces. These equations describe the motion of the massless body 
-# in the plane of the massive bodies. The solutions of these equations give the 
-# trajectory of the massless body as it moves under the influence of the gravitational 
-# field of the two massive bodies. The PCR3BP is a highly nonlinear problem and does not 
-# have an analytical solution, but numerical methods can be used to approximate the solutions of these equations.
+"""
+The Planar Circular Restricted Three-Body Problem (PCR3BP) is 
+a special case of the n-body problem in which two massive bodies 
+orbit around their center of mass while a third, massless body moves 
+in their gravitational field. The motion of the massless body is restricted 
+to the plane of the two massive bodies and is influenced only by their 
+gravitational forces. These equations describe the motion of the massless body 
+in the plane of the massive bodies. The solutions of these equations give the 
+trajectory of the massless body as it moves under the influence of the gravitational 
+field of the two massive bodies. The PCR3BP is a highly nonlinear problem and does not 
+have an analytical solution, but numerical methods can be used to approximate the solutions of these equations.
+
+We will use a version of this system with simple coefficients for the gradient function.
+"""
 
 
 using GeometricIntegrators
@@ -44,13 +48,15 @@ small_m = 0.01 # mass of assumed masslesss body
 dist = 1 # distances between the masless body and the two massive bodies, assumed equal
 R = 10 # distance between the two massive bodies
 
-# Gradient function of the 2D hamiltonian
+# Acutal Gradient function of the 2D hamiltonian
 # x_cm = -big_m * R / (big_m + big_m)
 # grad_H_ana(x) = [x[3]; 
 #                 x[4]; 
 #                 -G * (big_m + big_m) * x[1] / (dist^3) - G * small_m * (x[1] - x_cm) / dist^3; 
 #                 -G * (big_m + big_m) * x[2] / (dist^3) - G * small_m * x[2] / dist^3]
 
+
+# Simplified version of the above equation
 alpha = 1
 wₚ = 1
 grad_H_ana(x) = [alpha*x[1]; 
