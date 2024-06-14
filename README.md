@@ -32,25 +32,56 @@ Please refer to scripts folder to see example usages of the package. Here is a b
 ```julia
 using SparseIdentification
 
-# Define the system
-Θ = [x^2 for x in -10:0.1:10]  # Example basis functions
-ẋ = [2x + 1 for x in -10:0.1:10]  # Example gradient data
+# initial data
+x₀ = [2., 0.]
 
-# collect training data
+# 2D system 
+nd = length(x₀)
+
+# vector field
+const A = [-0.1  2.0
+           -2.0 -0.1]
+
+rhs(xᵢₙ,p,t) = A*xᵢₙ
+
+# number of samples
+num_samp = 15
+
+# example sample input range
+samp_range = LinRange(-20, 20, num_samp)
+
+# initialize vector of matrices to store ODE solve output
+# s depend on size of nd (total dims), 2 in the case here so we use samp_range x samp_range
+s = collect(Iterators.product(fill(samp_range, nd)...))
+
+# compute vector field from x state values
+x = [collect(s[i]) for i in eachindex(s)]
+
+x = hcat(x...)
+
+# compute vector field from x state values at each timestep
+ẋ = zero(x)
+for i in axes(ẋ,2)
+    ẋ[:,i] .= A*x[:,i]
+end
+
+# collect training data (noise is added in the method itself)
 data = TrainingData(Float32.(x), Float32.(ẋ))
 
-# generate a basis
-basis = CompoundBasis(polyorder = 3, trigonometric = 0)
+# example specifications of SINDy method
+method = SINDy(lambda = 0.05, noise_level = 0.01, nloops = 5)
 
-# Perform SINDy
-method = SINDyMethod(noise_level=0.01, lambda=0.05, nloops=5)
+# generate basis
+#  - search space up to fifth order polynomials
+#  - no trigonometric functions
+basis = CompoundBasis(polyorder = 5, trigonometric = 0)
 
 # select a solver type JuliaLeastSquare(), OptimSolver(), or NNsolver() and pass it to the VectorField
 solverType = JuliaLeastSquare()
 vectorfield = VectorField(method, basis, data, solver = solverType)
 
-# Display the identified coefficients
-println(vectorfield.Ξ)
+# Display the identified coefficients or basis
+println(vectorfield.coefficients)
 ```
 
 ## Intrinsic Coordinate Identification with SINDy
