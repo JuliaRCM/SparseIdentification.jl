@@ -32,7 +32,7 @@ export sparsify, lorenz, sparsify_hamiltonian_dynamics
 
 include("lorenz.jl")
 
-export hamilGradient!, hamiltonianFunction
+# export hamilGradient!, hamiltonianFunction
 
 # include("hamiltonianGenerator.jl")
 
