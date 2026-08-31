@@ -20,4 +20,15 @@ makes it worth keeping.
 
 ### Breaking Changes
 
+- **Minimum Julia is now 1.10**, raised from the declared 1.6. 1.10 is the LTS and the floor across
+  the whole tree; 1.6 was declared but never tested, and CI was still running a `1.6 · 1.9 ·
+  ^1.10.0-0` matrix. CI now derives its lower matrix entry from this field, so a declared floor that
+  nobody tests is no longer possible.
+
 ## Open Issues
+
+- **The package does not load.** `PreallocationTools` 0.4.34 moved its `ForwardDiff` methods into an
+  extension, so `ForwardDiff` is undefined there unless the extension loads; `MKL_jll` reaches the
+  environment through `LinearSolve`. Both are upstream. The pinned `ForwardDiff = "0.10"` and
+  `Symbolics = "5"` bounds are part of the picture and want revisiting together. Recorded
+  2026-08-31.
