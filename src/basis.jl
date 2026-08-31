@@ -1,5 +1,4 @@
 
-
 abstract type AbstractBasis end
 
 """
@@ -8,7 +7,6 @@ abstract type AbstractBasis end
 Evaluates a data set on all basis functions in `basis`.
 """
 function evaluate end
-
 
 """
     PolynomialBasis(p)
@@ -26,19 +24,19 @@ end
 
 function _evaluate_polynomial(data, p, inds...)
     # number of degrees of freedom
-    ndof = size(data,2)
+    ndof = size(data, 2)
 
     # number of snapshots
-    ns = size(data,1)
+    ns = size(data, 1)
 
     # initialize output array
-    out = zeros(ns,0)
+    out = zeros(ns, 0)
 
     if p == 0
-        tmp = ones(ns,1)
+        tmp = ones(ns, 1)
         out = hcat(out, tmp)
     elseif p == length(inds)
-        tmp = _prod([data[:,i] for i in inds]...)
+        tmp = _prod([data[:, i] for i in inds]...)
         out = hcat(out, tmp)
     else
         start_ind = length(inds) == 0 ? 1 : inds[end]
@@ -55,7 +53,6 @@ function evaluate(data::AbstractArray, basis::PolynomialBasis)
     _evaluate_polynomial(data', basis.p)
 end
 
-
 """
     TrigonometricBasis(n)
 
@@ -67,10 +64,10 @@ end
 
 function evaluate(data::AbstractArray, basis::TrigonometricBasis)
     # number of snapshots
-    ns = size(data,2)
+    ns = size(data, 2)
 
     # initialize output array
-    out = zeros(ns,0)
+    out = zeros(ns, 0)
 
     for k in 1:basis.n
         tmp = [sin(k*data), cos(k*data)]
@@ -79,7 +76,6 @@ function evaluate(data::AbstractArray, basis::TrigonometricBasis)
 
     return out
 end
-
 
 """
     CompoundBasis(bases)
@@ -106,13 +102,12 @@ end
 
 bases(b::CompoundBasis) = b.bases
 
-
 function evaluate(data::AbstractArray, basis::CompoundBasis)
     # number of snapshots
-    ns = size(data,2)
+    ns = size(data, 2)
 
     # initialize output array
-    out = zeros(ns,0)
+    out = zeros(ns, 0)
 
     # loop over bases
     for b in bases(basis)

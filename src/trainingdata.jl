@@ -1,7 +1,6 @@
 
-struct TrainingData{AT<:AbstractArray}
+struct TrainingData{AT <: AbstractArray}
     x::AT
     ẋ::AT
     y::AT
 end
-

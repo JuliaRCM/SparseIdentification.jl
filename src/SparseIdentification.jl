@@ -10,7 +10,6 @@ using ParallelUtilities
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-
 export calculate_nparams, hamiltonian, hamil_trig
 
 include("util.jl")
@@ -40,10 +39,6 @@ export hamilGradient!, hamiltonianFunction
 export hamil_basis_maker, hamiltonian_basis_concat
 
 include("hamiltonian_basis_maker.jl")
-
-
-
-
 
 export TrainingData
 

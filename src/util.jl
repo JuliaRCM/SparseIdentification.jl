@@ -5,7 +5,6 @@ _prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
 _prod(a, b) = a .* b
 _prod(a) = a
 
-
 """
 returns the number of required parameters
 depending on whether there are trig basis or not

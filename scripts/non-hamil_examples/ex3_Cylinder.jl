@@ -3,14 +3,13 @@ using DifferentialEquations
 using Distributions
 using ODE
 using Plots
-using Random 
+using Random
 using LinearAlgebra
 using DataFrames
 using CSV
 using SparseIdentification
 
 gr()
-
 
 # --------------------
 # Setup
@@ -38,7 +37,7 @@ lambda = 0.00002
 println("Getting Training Data...")
 
 # load data from first run and compute derivative
-POD_coeff_alpha = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_alpha.csv"), DataFrame; delim=",")
+POD_coeff_alpha = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_alpha.csv"), DataFrame; delim = ",")
 
 POD_coeff_alphaS = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_alphaS.csv"), DataFrame)
 
@@ -56,16 +55,17 @@ M = size(x, 1)
 # noise level
 eps = 0
 
-ẋ = Array{Float64}(undef, M, size(x, 2) -3 -2) 
+ẋ = Array{Float64}(undef, M, size(x, 2) - 3 - 2)
 
-for i=3:size(x, 2)-3
-    for k=1:M
-        ẋ[k, i-2] = (1 / (12 * dt)) * (-x[k, i+2] + 8 .* x[k, i+1] -8 .* x[k, i-1] + x[k, i-2])
+for i in 3:(size(x, 2) - 3)
+    for k in 1:M
+        ẋ[k, i - 2] = (1 / (12 * dt)) *
+                      (-x[k, i + 2] + 8 .* x[k, i + 1] - 8 .* x[k, i - 1] + x[k, i - 2])
     end
-end  
+end
 
 # load data from second run and compute derivative
-POD_coeff_run1_alpha = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_run1_alpha.csv"), DataFrame; delim=",")
+POD_coeff_run1_alpha = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_run1_alpha.csv"), DataFrame; delim = ",")
 
 POD_coeff_run1_alphaS = CSV.read(joinpath(@__DIR__, "data\\POD_coeff_run1_alphaS.csv"), DataFrame)
 
@@ -79,15 +79,17 @@ x1 = x1'
 
 M = size(x1, 1)
 
-ẋ_one = Array{Float64}(undef, M, size(x1, 2)-3-2) 
-for i=3:size(x1, 2) -3
-    for k=1:M
-        ẋ_one[k, i-2] = (1 / (12 * dt)) * (-x1[k, i+2] + 8 * x1[k, i+1] -8 * x1[k, i-1] + x1[k, i-2])
+ẋ_one = Array{Float64}(undef, M, size(x1, 2)-3-2)
+for i in 3:(size(x1, 2) - 3)
+    for k in 1:M
+        ẋ_one[k, i - 2] = (1 / (12 * dt)) *
+                          (-x1[k, i + 2] + 8 * x1[k, i + 1] - 8 * x1[k, i - 1] +
+                           x1[k, i - 2])
     end
-end  
+end
 
 # concatenate
-x = [x[:, 3:end-3] x1[:, 3:end-3]]
+x = [x[:, 3:(end - 3)] x1[:, 3:(end - 3)]]
 
 ẋ = [ẋ ẋ_one]
 
@@ -103,7 +105,6 @@ m = size(Θ, 2)
 
 ẋ = ẋ[:, 1:end]
 
-
 # ----------------------------------------
 # Compute Sparse Regression
 # ----------------------------------------
@@ -112,7 +113,6 @@ println("Sparsify Dynamics...")
 
 #Ξ = sparsify_dynamics(Θ, ẋ, lambda)
 Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
-
 
 ######Test to check if Theta and dx from matlab are equal to theta and dx obtained in Julia
 # #load data from first run and compute derivative
@@ -128,8 +128,6 @@ println("Sparsify Dynamics...")
 # all(dx .== check_dx')
 # all(Theta .== check_Theta)
 ##########################################################################################
-
-
 
 # Note: There are constant order terms... this is because fixed points
 # are not at (0,0,0) for this data
@@ -152,7 +150,7 @@ x₀ = x[:, 1]
 p = (Ξ = Ξ, basis = basis)
 
 prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
-xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
+xD = ODE.solve(prob_approx, Tsit5(), abstol = 1e-8, reltol = 1e-8)
 
 # ----------------------------------------
 # Plot Results
@@ -160,8 +158,9 @@ xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
 
 println("Plotting Fig One...")
 
-p1 = plot(x[1,1:end-6], x[2,1:end-6], x[3,1:end-6], xlabel="x", ylabel="y", zlabel="z")
-p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z")
+p1 = plot(x[1, 1:(end - 6)], x[2, 1:(end - 6)], x[3, 1:(end - 6)],
+    xlabel = "x", ylabel = "y", zlabel = "z")
+p2 = plot(xD[1, :], xD[2, :], xD[3, :], xlabel = "x", ylabel = "y", zlabel = "z")
 l = @layout [a b]
 display(plot(p1, p2, layout = l))
 
@@ -177,7 +176,7 @@ tspan = (0.0, 95.0)
 x₀ = x[:, 5001]
 
 prob_approx = ODEProblem(sparse_galerkin!, x₀, tspan, p)
-xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
+xD = ODE.solve(prob_approx, Tsit5(), abstol = 1e-8, reltol = 1e-8)
 
 # ----------------------------------------
 # Plot Results
@@ -185,7 +184,8 @@ xD = ODE.solve(prob_approx, Tsit5(), abstol=1e-8, reltol=1e-8)
 
 println("Plotting Fig Two...")
 
-p1 = plot(x[1,5001:end], x[2,5001:end], x[3,5001:end], xlabel="x", ylabel="y", zlabel="z")
-p2 = plot(xD[1,:], xD[2,:], xD[3,:], xlabel="x", ylabel="y", zlabel="z")
+p1 = plot(x[1, 5001:end], x[2, 5001:end], x[3, 5001:end],
+    xlabel = "x", ylabel = "y", zlabel = "z")
+p2 = plot(xD[1, :], xD[2, :], xD[3, :], xlabel = "x", ylabel = "y", zlabel = "z")
 l = @layout [a b]
 display(plot(p1, p2, layout = l))

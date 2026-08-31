@@ -42,11 +42,11 @@ function hamil_basis_maker(data, order)
 
     result = Array{Float64}(undef, 0, num_combos)
 
-    for i in 1:size(data, 2) 
+    for i in 1:size(data, 2)
         temp = hamiltonian_basis_concat(data[:, i], order)
         temp = temp'
         result = vcat(result, temp)
     end
-    
+
     return result
 end

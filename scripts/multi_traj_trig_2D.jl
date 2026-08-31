@@ -12,7 +12,6 @@ using Optim
 
 gr()
 
-
 # --------------------
 # Setup
 # --------------------
@@ -30,7 +29,7 @@ const nd = 4d
 #############################################################
 
 # search space up to polyorder polynomials (highest polynomial order)
-const polyorder = 3 
+const polyorder = 3
 
 ######################################################################
 ######################################################################
@@ -48,7 +47,7 @@ out = zeros(nd)
 m = 1
 
 tstep = 0.01
-tspan = (0.0,25.0)
+tspan = (0.0, 25.0)
 trange = range(tspan[begin], step = tstep, stop = tspan[end])
 
 # noise level
@@ -56,7 +55,6 @@ eps = 0.05
 
 # lambda parameter (must be close to noise value so that only coeffs with value around the noise are sparsified away)
 lambda = 0.05
-
 
 # two-dim simple harmonic oscillator (not used anywhere only in case some testing needed)
 # H_ana(x, p, t) = 1/(2*m) * x[3]^2 + ϵ * x[1]^2 + 1/(2*m) * x[4]^2 + ϵ * x[2]^2
@@ -87,15 +85,15 @@ x₀ = zeros(nd, num_trajec)
 for i in 1:num_trajec
 
     # generate random q₁ and p₁ array in range 1 to 10 with one decimal place precision
-    x₀[:,i] = rand(1:.1:10, 4)
+    x₀[:, i] = rand(1:0.1:10, 4)
 
-    prob = ODEProblem(grad_H_ana, x₀[:,i], tspan)
-    data = ODE.solve(prob, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange)
+    prob = ODEProblem(grad_H_ana, x₀[:, i], tspan)
+    data = ODE.solve(
+        prob, Tsit5(), abstol = 1e-10, reltol = 1e-10, saveat = trange, tstops = trange)
 
     push!(x, Array(data))
 
     push!(time, Array(data.t))
-
 end
 x = reduce(vcat, x)
 
@@ -103,15 +101,14 @@ x = reduce(vcat, x)
 # stored as matrix with dims [nd,ntime]
 ẋ = zero(x)
 
-for i in axes(ẋ,2)
-    for j in 1:size(ẋ,1)-3
-        ẋ[j:j+3,i] = grad_H_ana(x[j:j+3,i], 0, 0)
+for i in axes(ẋ, 2)
+    for j in 1:(size(ẋ, 1) - 3)
+        ẋ[j:(j + 3), i] = grad_H_ana(x[j:(j + 3), i], 0, 0)
     end
 end
 
 # collect training data
 tdata = TrainingData(x, ẋ)
-
 
 # ----------------------------------------
 # Compute Sparse Regression
@@ -119,13 +116,13 @@ tdata = TrainingData(x, ẋ)
 
 # choose SINDy method
 # (λ parameter must be close to noise value so that only coeffs with value around the noise are sparsified away)
-method = HamiltonianSINDy(grad_H_ana, λ = lambda, noise_level = eps, polyorder = polyorder, trigonometric = trig_wave_num)
+method = HamiltonianSINDy(grad_H_ana, λ = lambda, noise_level = eps,
+    polyorder = polyorder, trigonometric = trig_wave_num)
 
 # compute vector field
 vectorfield = VectorField(method, tdata)
 
 println(vectorfield.coefficients)
-
 
 # ----------------------------------------
 # Integrate Identified System
@@ -140,8 +137,9 @@ xid = Vector{Matrix{Float64}}(undef, 0)
 approx_time = Vector{Vector{Float64}}(undef, 0)
 
 for i in 1:num_trajec
-    prob_approx = ODEProblem(vectorfield, x₀[:,i], tspan, a)
-    output = ODE.solve(prob_approx, Tsit5(), abstol=1e-10, reltol=1e-10, saveat = trange, tstops = trange) 
+    prob_approx = ODEProblem(vectorfield, x₀[:, i], tspan, a)
+    output = ODE.solve(prob_approx, Tsit5(), abstol = 1e-10,
+        reltol = 1e-10, saveat = trange, tstops = trange)
 
     # xid stores the different trajectories, as a vector of matrices
     push!(xid, Array(output))
@@ -156,40 +154,36 @@ println("Plotting...")
 
 # only plot first 4 random trajectories to get an idea of the results
 for i in 1:4
-
     p1 = plot()
-    plot!(p1, time[i], x[i + 3*(i-1), :], markershape=:circle, label = "Data q₁")
-    plot!(p1, approx_time[i], xid[i][1,:], label = "Identified q₁")
+    plot!(p1, time[i], x[i + 3 * (i - 1), :], markershape = :circle, label = "Data q₁")
+    plot!(p1, approx_time[i], xid[i][1, :], label = "Identified q₁")
 
     xlabel!("Time")
     ylabel!("q₁")
 
     p3 = plot()
-    plot!(p3, time[i], x[i + 3*(i-1) + 2, :], markershape=:circle, label = "Data p₁")
-    plot!(p3, approx_time[i], xid[i][3,:], label = "Identified p₁")
-    
+    plot!(p3, time[i], x[i + 3 * (i - 1) + 2, :], markershape = :circle, label = "Data p₁")
+    plot!(p3, approx_time[i], xid[i][3, :], label = "Identified p₁")
+
     xlabel!("Time")
     ylabel!("p₁")
-    display(plot(p1, p3, title="Analytical vs Calculated gradient in a 2D system"))
-    
+    display(plot(p1, p3, title = "Analytical vs Calculated gradient in a 2D system"))
 end
 
 # only plot first 4 random trajectories to get an idea of the results
 for i in 1:4
-
     p2 = plot()
-    plot!(p2, time[i], x[i + 3*(i-1) + 1, :], markershape=:circle, label = "Data q₂")
-    plot!(p2, approx_time[i], xid[i][2,:], label = "Identified q₂")
+    plot!(p2, time[i], x[i + 3 * (i - 1) + 1, :], markershape = :circle, label = "Data q₂")
+    plot!(p2, approx_time[i], xid[i][2, :], label = "Identified q₂")
 
     xlabel!("Time")
     ylabel!("q₂")
 
     p4 = plot()
-    plot!(p4, time[i], x[i + 3*(i-1) + 3, :], markershape=:circle, label = "Data p₂")
-    plot!(p4, approx_time[i], xid[i][4,:], label = "Identified p₂")
-    
+    plot!(p4, time[i], x[i + 3 * (i - 1) + 3, :], markershape = :circle, label = "Data p₂")
+    plot!(p4, approx_time[i], xid[i][4, :], label = "Identified p₂")
+
     xlabel!("Time")
     ylabel!("p₄")
-    display(plot(p2, p4, title="Analytical vs Calculated gradient in a 2D system"))
-    
+    display(plot(p2, p4, title = "Analytical vs Calculated gradient in a 2D system"))
 end

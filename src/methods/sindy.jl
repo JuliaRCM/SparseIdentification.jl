@@ -4,7 +4,8 @@ struct SINDy{T} <: SparsificationMethod
     ϵ::T
     nloops::Int
 
-    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL, nloops = DEFAULT_NLOOPS) where {T}
+    function SINDy(; lambda::T = DEFAULT_LAMBDA, noise_level::T = DEFAULT_NOISE_LEVEL,
+            nloops = DEFAULT_NLOOPS) where {T}
         new{T}(lambda, noise_level, nloops)
     end
 end
@@ -28,40 +29,39 @@ function sparsify(method::SINDy, Θ, ẋ, solver)
         Ξ[smallinds] .= 0
 
         # Regress dynamics onto remaining terms to find sparse Ξ
-        for ind in axes(ẋnoisy,1)
-            biginds = .~(smallinds[:,ind])
-            Ξ[biginds,ind] .= solve(Θ[:,biginds], ẋnoisy[ind,:], solver)
+        for ind in axes(ẋnoisy, 1)
+            biginds = .~(smallinds[:, ind])
+            Ξ[biginds, ind] .= solve(Θ[:, biginds], ẋnoisy[ind, :], solver)
         end
     end
-    
+
     return Ξ
 end
 
-
-struct SINDyVectorField{DT,BT,CT} <: VectorField
+struct SINDyVectorField{DT, BT, CT} <: VectorField
     basis::BT
     coefficients::CT
 
-    function SINDyVectorField(basis::BT, coefficients::CT) where {DT, BT <: AbstractBasis, CT <: AbstractArray{DT}}
-        new{DT,BT,CT}(basis, coefficients)
+    function SINDyVectorField(basis::BT,
+            coefficients::CT) where {DT, BT <: AbstractBasis, CT <: AbstractArray{DT}}
+        new{DT, BT, CT}(basis, coefficients)
     end
 end
-
 
 function (vf::SINDyVectorField)(dy, y, p, t)
     yPool = evaluate(y, vf.basis)
     ẏ = yPool * vf.coefficients
-    @assert axes(dy,1) == axes(ẏ,2)
+    @assert axes(dy, 1) == axes(ẏ, 2)
     for index in eachindex(dy)
         dy[index] = ẏ[1, index]
     end
     return dy
 end
 
- 
 # TODO: Add basis as field of SINDy method
 
-function VectorField(method::SINDy, basis::AbstractBasis, data::TrainingData; solver::AbstractSolver = JuliaLeastSquare())
+function VectorField(method::SINDy, basis::AbstractBasis, data::TrainingData;
+        solver::AbstractSolver = JuliaLeastSquare())
     # Pool Data (evaluate library of candidate basis functions on training data)
     Θ = evaluate(data.x, basis)
 
@@ -70,4 +70,3 @@ function VectorField(method::SINDy, basis::AbstractBasis, data::TrainingData; so
 
     SINDyVectorField(basis, Ξ)
 end
-
