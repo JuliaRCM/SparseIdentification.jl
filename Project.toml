@@ -1,7 +1,7 @@
 name = "SparseIdentification"
 uuid = "9a34ec7f-1978-43d1-92b5-2e42bdcf4e44"
-authors = ["Michael Kraus"]
 version = "0.1.0"
+authors = ["Michael Kraus"]
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
@@ -21,7 +21,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 DelimitedFiles = "1"
-DifferentialEquations = "7"
+DifferentialEquations = "7, 8"
 Distances = "0.10"
 Distributions = "0.25"
 ForwardDiff = "0.10"
