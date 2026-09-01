@@ -32,8 +32,8 @@ using SparseIdentification
 A = [-0.1 2.0; -2.0 -0.1]          # the system to rediscover
 x = randn(2, 500); ẋ = A * x
 
-Ξ = VectorField(SINDy(λ = 0.05), CompoundBasis(polyorder = 3), TrainingData(x, ẋ)).coefficients
-Ξ[2:3, :]                          # recovered: A transposed
+result = identify(TrainingData(x, ẋ), SINDy(CompoundBasis(polyorder = 3); λ = 0.05))
+parameters(result)[2:3, :]         # recovered: A transposed
 ```
 
 ## Where to go next

@@ -57,7 +57,8 @@ end
     x = [randn(2) for _ in 1:60]
     y = [R * xⱼ for xⱼ in x]
 
-    vectorfield = VectorField(method, TrajectoryData(x, y, Δt))
+    result = identify(TrajectoryData(x, y, Δt), method)
+    vectorfield = HamiltonianSINDyVectorField(result)
 
     # The identified field must reproduce ż = (p, -q) at points it never saw.
     dz = zeros(2)
@@ -72,5 +73,5 @@ end
     x = [randn(3) for _ in 1:5]
     y = [randn(3) for _ in 1:5]
     method = HamiltonianSINDy(polyorder = 2)
-    @test_throws ArgumentError VectorField(method, TrajectoryData(x, y, 0.01))
+    @test_throws ArgumentError identify(TrajectoryData(x, y, 0.01), method)
 end

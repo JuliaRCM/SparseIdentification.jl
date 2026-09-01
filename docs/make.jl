@@ -38,7 +38,8 @@ makedocs(;
         "Usage" => [
             "Getting Started" => "usage/getting_started.md",
             "Basis Libraries" => "usage/basis.md",
-            "Choosing λ" => "usage/sparsification.md"
+            "Choosing λ" => "usage/sparsification.md",
+            "JuliaGNI Integration" => "usage/ecosystem.md"
         ],
         "Examples" => [
             "Linear 2D Oscillator" => "examples/linear_oscillator.md",

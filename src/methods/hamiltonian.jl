@@ -1,6 +1,6 @@
 
 ##########################################################
-# Helper functions for Hamiltonian gradient calculations
+# Symbolic construction of a parametrised Hamiltonian
 ##########################################################
 
 " makes polynomial combinations of basis "
@@ -32,7 +32,7 @@ function hamiltonian(z, a, order)
     sum(collect(a .* ham))
 end
 
-" collects and sums polynomial and trignometric combinations of basis "
+" collects and sums polynomial and trigonometric combinations of basis "
 function hamil_trig(z, a, order, trig_wave_num)
     ham = []
 
@@ -41,7 +41,7 @@ function hamil_trig(z, a, order, trig_wave_num)
         ham = vcat(ham, hamiltonian_poly(z, i))
     end
 
-    # Trignometric basis
+    # Trigonometric basis
     for k in 1:trig_wave_num
         ham = vcat(ham, vcat(sin.(k*z)), vcat(cos.(k*z)))
     end
@@ -51,45 +51,85 @@ function hamil_trig(z, a, order, trig_wave_num)
     return ham
 end
 
-" returns a function that can build the gradient of the hamiltonian "
-function hamilGrad_func_builder(d, polyorder, trig_wave_num)
-    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
+"""
+    HamiltonianFunctions
+
+The compiled functions of a parametrised Hamiltonian `H(z; a)`, in the form
+`GeometricEquations` expects.
+
+# Fields
+
+  - `H`: the Hamiltonian, callable as `H(t, q, p, params)` with `params.a` the coefficients
+  - `v`: `q̇ = ∂H/∂p`, callable as `v(v, t, q, p, params)`
+  - `f`: `ṗ = -∂H/∂q`, callable as `f(f, t, q, p, params)`
+  - `ż`: the combined field `J∇H`, callable as `ż(out, z, a)` — the form the regression uses
+  - `d`: the number of degrees of freedom
+  - `nparam`: the number of coefficients
+
+Splitting `v` and `f` is what lets an identified system become a `HODEProblem`; the combined `ż`
+is kept because the fitting loop evaluates the whole field at once.
+"""
+struct HamiltonianFunctions{HT, VT, FT, ZT}
+    H::HT
+    v::VT
+    f::FT
+    ż::ZT
+    d::Int
+    nparam::Int
+end
+
+"""
+    hamiltonian_functions(d, polyorder, trig_wave_num)
+
+Build the symbolic Hamiltonian `H(z; a) = Σₖ aₖ φₖ(z)` over `d` degrees of freedom and compile it,
+together with its symplectic gradient, into [`HamiltonianFunctions`](@ref).
+
+The constant term is omitted: it contributes nothing to `∇H` and is therefore unidentifiable.
+"""
+function hamiltonian_functions(d::Int, polyorder::Int, trig_wave_num::Int)
     nparam = calculate_nparams(d, polyorder, trig_wave_num)
 
-    # symbolic variables
     @variables a[1:nparam]
     @variables q[1:d]
     @variables p[1:d]
+    @variables t
     z = vcat(q, p)
 
-    # usesine: whether to add trig basis or not
-    if trig_wave_num > 0
+    H = trig_wave_num > 0 ? hamil_trig(z, a, polyorder, trig_wave_num) :
+        hamiltonian(z, a, polyorder)
 
-        # gives derivative of the hamiltonian, but not the skew-symmetric true one
-        Dz = Differential.(z)
-        ∇H_add_trig = [expand_derivatives(dz(hamil_trig(z, a, polyorder, trig_wave_num)))
-                       for dz in Dz]
+    Dz = Differential.(z)
+    ∇H = [expand_derivatives(dz(H)) for dz in Dz]
 
-        # line below makes the vector into a hamiltonian vector field by multiplying with the skew-symmetric matrix
-        ∇H_trig = vcat(∇H_add_trig[(d + 1):2d], -∇H_add_trig[1:d])
+    # q̇ = ∂H/∂p and ṗ = -∂H/∂q
+    v_expr = ∇H[(d + 1):(2d)]
+    f_expr = -∇H[1:d]
 
-        # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
-        ∇H_eval = @RuntimeGeneratedFunction(build_function(∇H_trig, z, a)[2])
+    # The combined field the regression evaluates, as a function of (out, z, a).
+    ż = @RuntimeGeneratedFunction(build_function(vcat(v_expr, f_expr), z, a)[2])
 
-        return ∇H_eval
+    # The GeometricEquations calling conventions. `a` is passed inside `params`, so the generated
+    # code takes it as an ordinary argument and a wrapper unpacks it — the same one-definition,
+    # two-callers split EulerLagrange uses.
+    v_raw = @RuntimeGeneratedFunction(build_function(v_expr, q, p, a)[2])
+    f_raw = @RuntimeGeneratedFunction(build_function(f_expr, q, p, a)[2])
+    H_raw = @RuntimeGeneratedFunction(build_function(H, q, p, a))
 
-    else
+    Hfun = (t, q, p, params) -> H_raw(q, p, params.a)
+    vfun = (v, t, q, p, params) -> v_raw(v, q, p, params.a)
+    ffun = (f, t, q, p, params) -> f_raw(f, q, p, params.a)
 
-        # gives derivative of the hamiltonian, but not the skew-symmetric true one
-        Dz = Differential.(z)
-        f = [expand_derivatives(dz(hamiltonian(z, a, polyorder))) for dz in Dz]
+    HamiltonianFunctions(Hfun, vfun, ffun, ż, d, nparam)
+end
 
-        # line below makes the vector into a hamiltonian by multiplying with the skew-symmetric matrix
-        ∇H = vcat(f[(d + 1):2d], -f[1:d])
+"""
+    hamilGrad_func_builder(d, polyorder, trig_wave_num)
 
-        # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
-        ∇H_eval = @RuntimeGeneratedFunction(build_function(∇H, z, a)[2])
+The symplectic gradient `J∇H` of the parametrised Hamiltonian, callable as `out = f(out, z, a)`.
 
-        return ∇H_eval
-    end
+A thin wrapper over [`hamiltonian_functions`](@ref) for the regression, which needs only the
+combined field.
+"""
+function hamilGrad_func_builder(d, polyorder, trig_wave_num)
+    hamiltonian_functions(d, polyorder, trig_wave_num).ż
 end

@@ -42,7 +42,7 @@ x = randn(2, 500)
 basis = CompoundBasis(polyorder = 3, trigonometric = 0)
 
 # identify
-vectorfield = VectorField(SINDy(λ = 0.05), basis, TrainingData(x, ẋ))
+result = identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.05))
 nothing # hide
 ```
 
@@ -50,13 +50,13 @@ The coefficient matrix maps library terms to state components. Rows 2 and 3 hold
 so that block should be `A` transposed:
 
 ```@example started
-vectorfield.coefficients[2:3, :]
+parameters(result)[2:3, :]
 ```
 
 and everything else should be exactly zero — not merely small:
 
 ```@example started
-Ξ = vectorfield.coefficients
+Ξ = parameters(result)
 all(iszero, Ξ[1, :]) && all(iszero, Ξ[4:end, :])
 ```
 
@@ -80,7 +80,8 @@ x = [randn(2) for _ in 1:60]     # states
 y = [R * xⱼ for xⱼ in x]         # the same states one step later
 
 method = HamiltonianSINDy(λ = 0.05, integrator_timestep = Δt, polyorder = 2)
-vf = VectorField(method, TrajectoryData(x, y, Δt))
+result = identify(TrajectoryData(x, y, Δt), method)
+vf     = HamiltonianSINDyVectorField(result)
 nothing # hide
 ```
 
@@ -110,7 +111,6 @@ at construction that the pieces describe the same number of snapshots of the sam
 shape error here otherwise surfaces much later as a wrong answer rather than an exception.
 
 ```@docs; canonical=false
-SparseIdentification.nsnapshots
 SparseIdentification.statedimension
 ```
 
@@ -130,7 +130,7 @@ x  = randn(2, 500)
 ẋ_noisy = ẋ .+ η .* randn(size(ẋ))       # noise added here, deliberately and reproducibly
 
 basis = CompoundBasis(polyorder = 3, trigonometric = 0)
-Ξ = VectorField(SINDy(λ = 0.05), basis, TrainingData(x, ẋ_noisy)).coefficients
+Ξ = parameters(identify(TrainingData(x, ẋ_noisy), SINDy(basis; λ = 0.05)))
 Ξ[2:3, :]
 ```
 

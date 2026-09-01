@@ -24,7 +24,7 @@ x = randn(2, 500)
 ẋ = A * x
 
 basis = CompoundBasis(polyorder = 3, trigonometric = 0)
-Ξ = VectorField(SINDy(λ = 0.05), basis, TrainingData(x, ẋ)).coefficients
+Ξ = parameters(identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.05)))
 
 Ξ[2:3, :]        # the linear block: should equal A'
 ```
@@ -64,7 +64,7 @@ x = 40 .* rand(2, 144) .- 20
 ẋ_noisy = ẋ .+ η .* randn(size(ẋ))
 
 basis = CompoundBasis(polyorder = 5, trigonometric = 0)
-Ξ = VectorField(SINDy(λ = 0.05), basis, TrainingData(x, ẋ_noisy)).coefficients
+Ξ = parameters(identify(TrainingData(x, ẋ_noisy), SINDy(basis; λ = 0.05)))
 
 println("active terms: ", count(!iszero, Ξ), "  (true model has 4)")
 println("linear block:\n", Ξ[2:3, :])

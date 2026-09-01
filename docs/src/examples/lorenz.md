@@ -22,14 +22,15 @@ using SparseIdentification
 
 σ, ρ, β = 10.0, 28.0, 8/3
 
+lorenz_rhs(y) = [σ * (y[2] - y[1]),
+                 y[1] * (ρ - y[3]) - y[2],
+                 y[1] * y[2] - β * y[3]]
+
 x = 10 .* randn(3, 2000)
-ẋ = similar(x)
-for j in axes(x, 2)
-    ẋ[:, j] .= lorenz(x[:, j], (σ, β, ρ), 0.0)
-end
+ẋ = reduce(hcat, [lorenz_rhs(x[:, j]) for j in axes(x, 2)])
 
 basis = CompoundBasis(polyorder = 2, trigonometric = 0)
-Ξ = VectorField(SINDy(λ = 0.1), basis, TrainingData(x, ẋ)).coefficients
+Ξ = parameters(identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.1)))
 
 count(!iszero, Ξ)     # the true model has 7 terms
 ```
@@ -75,7 +76,7 @@ using Random
 Random.seed!(7)
 
 ẋ_noisy = ẋ .+ 0.5 .* randn(size(ẋ))
-Ξn = VectorField(SINDy(λ = 0.5), basis, TrainingData(x, ẋ_noisy)).coefficients
+Ξn = parameters(identify(TrainingData(x, ẋ_noisy), SINDy(basis; λ = 0.5)))
 
 println("active terms: ", count(!iszero, Ξn), "   (true: 7)")
 println("max coefficient error: ", maximum(abs, Ξn - truth))

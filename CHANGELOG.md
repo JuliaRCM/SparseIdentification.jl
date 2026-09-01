@@ -55,6 +55,38 @@ makes it worth keeping.
 
 ### Breaking Changes
 
+- **The package now follows the JuliaGNI API.** Identification mirrors integration:
+
+  ```julia
+  result = identify(problem, method)      # was: VectorField(method, basis, data)
+  ```
+
+  `TrainingData` and `TrajectoryData` are `GeometricBase.AbstractProblem`s and the methods are
+  `GeometricBase.AbstractMethod`s, so the ecosystem's accessors work on them — `nsamples`,
+  `timestep`, `datatype`, `arrtype`, `parameters`, `functions`, `basis`, `name`, `description`,
+  `reference`. The basis moved into the method, `SINDy(basis; λ)`, which is what the source's own
+  `# TODO: Add basis as field of SINDy method` asked for. Results are typed (`SINDyResult`,
+  `HamiltonianSINDyResult`) rather than bare coefficient arrays.
+
+- **The loop closes.** An identified system converts to a `GeometricEquations` problem —
+  `ODEProblem(result, timespan, timestep, ics...)` and
+  `HODEProblem(result, timespan, timestep, q₀, p₀)` — so it integrates with `GeometricIntegrators`.
+  Conversely `TrainingData(solution)` and `TrajectoryData(solution)` build training data from a
+  `GeometricSolution`. These extend the ecosystem's own constructors rather than inventing names,
+  as `EulerLagrange` does. The Hamiltonian side generates `v = ∂H/∂p` and `f = -∂H/∂q` separately,
+  which is what a `HODEProblem` needs, alongside the combined field the regression uses.
+
+- **`issymplectic` and `isenergypreserving` now state the difference between the methods** as a
+  property rather than as prose: both are `true` for `HamiltonianSINDy` and `false` for `SINDy`.
+  Those two, with `isexplicit`, `isimplicit`, `issymmetric` and `isstifflyaccurate`, are extended
+  but **not exported** — `GeometricIntegratorsBase` defines its own generics of those six names
+  instead of extending `GeometricBase`'s stubs, so exporting them would make
+  `using SparseIdentification` alongside `using GeometricIntegrators` resolve the name to neither.
+  Reach them qualified.
+
+- **`src/lorenz.jl` is gone.** `GeometricProblems.LorenzAttractor` covers it; a package in this
+  ecosystem should not carry its own copy of a standard test problem.
+
 - **Minimum Julia is now 1.11**, raised from 1.10 because `SimpleSolvers` requires it. This is the
   second floor in use across the tree, for dependencies that need it.
 
@@ -133,9 +165,5 @@ makes it worth keeping.
 - **The implicit midpoint step in the flow-map loss uses a fixed four Picard iterations** rather
   than a convergence test, so the step it computes is not the implicit midpoint step to any stated
   tolerance.
-
-- **The package does not yet follow the JuliaGNI API.** `SparsificationMethod` is a free-standing
-  abstract type rather than a `GeometricBase.AbstractMethod`, the accessor verbs are not extended,
-  and an identified system does not convert to a `GeometricEquations` problem.
 
 - **The scripts in `scripts/` have not been ported** and still call the old API and `Plots`.

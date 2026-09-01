@@ -60,7 +60,7 @@ basis = CompoundBasis(polyorder = 3, trigonometric = 0)
 data = TrainingData(x, ẋ)
 
 for λ in (0.001, 0.01, 0.05, 0.2, 0.5)
-    Ξ = VectorField(SINDy(; λ), basis, data).coefficients
+    Ξ = parameters(identify(data, SINDy(basis; λ)))
     println("λ = ", rpad(λ, 6), "  active terms: ", count(!iszero, Ξ))
 end
 ```

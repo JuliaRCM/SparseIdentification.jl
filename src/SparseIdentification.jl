@@ -4,6 +4,10 @@ using LinearAlgebra
 using RuntimeGeneratedFunctions
 using Symbolics
 
+using GeometricBase
+using GeometricEquations
+using GeometricSolutions
+
 using GeometricOptimizers: Optimizer, OptimizerState, BFGS, Backtracking
 
 # `solve` belongs to SimpleSolvers and is re-exported by GeometricOptimizers. Importing it and
@@ -11,7 +15,26 @@ using GeometricOptimizers: Optimizer, OptimizerState, BFGS, Backtracking
 # method-definition error or shadow theirs.
 import SimpleSolvers: solve, solve!
 
+# The verbs this package answers. GeometricBase declares most of these as bare stubs and exports
+# only a handful, so they have to be imported by name before methods can be added, and re-exported
+# for callers who reach them through this package.
+import GeometricBase: basis, datatype, arrtype, equations, functions, nsamples, parameters,
+                      timestep, name, description, reference,
+                      isexplicit, isimplicit, issymmetric, issymplectic,
+                      isenergypreserving, isstifflyaccurate, order
+
 RuntimeGeneratedFunctions.init(@__MODULE__)
+
+export basis, datatype, arrtype, equations, functions, nsamples, parameters, timestep
+export name, description, reference
+
+# `isexplicit`, `isimplicit`, `issymmetric`, `issymplectic`, `isenergypreserving` and
+# `isstifflyaccurate` are extended here but deliberately NOT exported. GeometricIntegratorsBase
+# defines its own generics of those six names rather than extending GeometricBase's stubs, and
+# exports them; a session with both `using SparseIdentification` and `using GeometricIntegrators`
+# would then see two different bindings under one name and resolve it to neither. Reach them
+# qualified — `SparseIdentification.issymplectic(method)` — as SimpleSolvers has callers do with
+# `status` and `isconverged`, and for the same reason.
 
 export calculate_nparams, hamiltonian, hamil_trig
 
@@ -23,32 +46,33 @@ export evaluate
 include("basis.jl")
 
 export AbstractSolver, JuliaLeastSquare, OptimizerSolver
+# `solve` is re-exported rather than redefined: it is SimpleSolvers' generic, and this package
+# only adds methods to it. GeometricOptimizers re-exports it the same way.
 export solve, minimize
 
 include("solvers.jl")
 
-export lorenz
-
-include("lorenz.jl")
-
-export TrainingData, TrajectoryData
-export nsnapshots, statedimension
+export IdentificationProblem, TrainingData, TrajectoryData
+export statedimension
 
 include("trainingdata.jl")
 
 export SparsificationMethod, VectorField
-export sparsify
+export identify, sparsify, nterms
 
 include("methods/method.jl")
 include("methods/vectorfield.jl")
 
-export SINDy, SINDyVectorField
+export SINDy, SINDyResult, SINDyVectorField
 
 include("methods/sindy.jl")
 
-export HamiltonianSINDy, HamiltonianSINDyVectorField
+export HamiltonianSINDy, HamiltonianSINDyResult, HamiltonianSINDyVectorField
+export HamiltonianFunctions, hamiltonian_functions, degreesoffreedom
 
 include("methods/hamiltonian.jl")
 include("methods/hamiltonian_sindy.jl")
+
+include("geometricequations.jl")
 
 end

@@ -1,6 +1,13 @@
 using SparseIdentification
 using Test
 
+"The Lorenz system, written out so the expected coefficients below are explicit."
+function lorenz_rhs(y, σ, β, ρ)
+    [σ * (y[2] - y[1]),
+        y[1] * (ρ - y[3]) - y[2],
+        y[1] * y[2] - β * y[3]]
+end
+
 @testset "Linear 2D oscillator" begin
     # ẋ = -0.1x + 2y,  ẏ = -2x - 0.1y — the illustrative example of Brunton, Proctor & Kutz
     # (PNAS 2016). On clean data the coefficients must come back exactly.
@@ -11,8 +18,8 @@ using Test
     ẋ = A * x
 
     basis = CompoundBasis(polyorder = 3, trigonometric = 0)
-    vectorfield = VectorField(SINDy(λ = 0.05), basis, TrainingData(x, ẋ))
-    Ξ = vectorfield.coefficients
+    result = identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.05))
+    Ξ = parameters(result)
 
     # Rows 2 and 3 are the linear terms; `Ξ` maps library terms to state components, so the
     # linear block is the transpose of `A`.
@@ -21,6 +28,8 @@ using Test
     # Everything else is thresholded to exactly zero, not merely small.
     @test all(iszero, Ξ[1, :])
     @test all(iszero, Ξ[4:end, :])
+
+    @test nterms(result) == 4
 end
 
 @testset "Lorenz 63" begin
@@ -28,14 +37,10 @@ end
     σ, ρ, β = 10.0, 28.0, 8 / 3
 
     x = 10 .* randn(3, 2000)
-    ẋ = similar(x)
-    for j in axes(x, 2)
-        ẋ[:, j] .= lorenz(x[:, j], (σ, β, ρ), 0.0)
-    end
+    ẋ = reduce(hcat, [lorenz_rhs(x[:, j], σ, β, ρ) for j in axes(x, 2)])
 
     basis = CompoundBasis(polyorder = 2, trigonometric = 0)
-    vectorfield = VectorField(SINDy(λ = 0.1), basis, TrainingData(x, ẋ))
-    Ξ = vectorfield.coefficients
+    Ξ = parameters(identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.1)))
 
     # Library order for 3 dof: [1, x, y, z, x², xy, xz, y², yz, z²]
     truth = zeros(10, 3)
@@ -57,12 +62,11 @@ end
     A = [-0.1 2.0
          -2.0 -0.1]
     x = randn(2, 300)
-    ẋ = A * x
+    data = TrainingData(x, A * x)
     basis = CompoundBasis(polyorder = 3, trigonometric = 0)
-    data = TrainingData(x, ẋ)
 
-    few = VectorField(SINDy(λ = 0.05, nloops = 10), basis, data).coefficients
-    many = VectorField(SINDy(λ = 0.05, nloops = 200), basis, data).coefficients
+    few = parameters(identify(data, SINDy(basis; λ = 0.05, nloops = 10)))
+    many = parameters(identify(data, SINDy(basis; λ = 0.05, nloops = 200)))
 
     @test few == many
 end
@@ -74,10 +78,23 @@ end
          -2.0 -0.1]
     x = randn(2, 200)
     data = TrainingData(x, A * x)
-    basis = CompoundBasis(polyorder = 3, trigonometric = 0)
+    method = SINDy(CompoundBasis(polyorder = 3, trigonometric = 0); λ = 0.05)
 
-    a = VectorField(SINDy(λ = 0.05), basis, data).coefficients
-    b = VectorField(SINDy(λ = 0.05), basis, data).coefficients
+    @test parameters(identify(data, method)) == parameters(identify(data, method))
+end
 
-    @test a == b
+@testset "Identified vector field evaluates" begin
+    A = [-0.1 2.0
+         -2.0 -0.1]
+    x = randn(2, 300)
+    result = identify(TrainingData(x, A * x),
+        SINDy(CompoundBasis(polyorder = 3, trigonometric = 0); λ = 0.05))
+
+    vf = SINDyVectorField(result)
+    dz = zeros(2)
+    z = [0.7, -0.3]
+
+    # GeometricEquations calls a vector field as v(v, t, q, params).
+    vf(dz, 0.0, z, nothing)
+    @test dz≈A * z atol=1e-10
 end
