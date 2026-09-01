@@ -1,4 +1,13 @@
 
+"""
+    AbstractBasis
+
+Supertype of the candidate-function libraries a sparse regression selects from.
+
+A basis is evaluated on a data set with [`evaluate`](@ref), which returns the matrix `Θ` whose
+columns are the candidate functions and whose rows are the snapshots. Concrete bases are
+[`PolynomialBasis`](@ref), [`TrigonometricBasis`](@ref) and [`CompoundBasis`](@ref).
+"""
 abstract type AbstractBasis end
 
 """

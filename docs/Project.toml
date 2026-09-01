@@ -1,3 +1,13 @@
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+GeometricProblems = "18cb22b4-ad41-5c80-9c5f-710df63fbdc9"
 SparseIdentification = "9a34ec7f-1978-43d1-92b5-2e42bdcf4e44"
+
+[sources]
+SparseIdentification = {path = ".."}
+
+[compat]
+CairoMakie = "0.15"
+Documenter = "1"
+GeometricProblems = "0.8"

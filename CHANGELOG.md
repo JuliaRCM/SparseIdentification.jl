@@ -87,6 +87,28 @@ makes it worth keeping.
 
 ### New Features
 
+- **Documentation.** Theory (Hamiltonian mechanics and the symplectic form, the SINDy formulation
+  and what STLSQ actually guarantees, the Hamiltonian extension), usage (getting started, basis
+  libraries, choosing `λ`), four worked examples, and a page on failure modes. Every code block in
+  it executes during the build, so an example that stops working fails the docs job.
+
+- **`scripts/verify_thesis_examples.jl`.** Claims taken from Khan's thesis are checked rather than
+  transcribed. It confirms five and finds three that do not hold as printed:
+
+  - **Eq. (4.2)**, the nonlinear oscillator, prints `½p₁² + ½p₁²` — the same term twice, with `p₂`
+    absent. As printed `q̇₂ = ∂H/∂p₂ = 0`, so the second degree of freedom of a system the text
+    describes as two-dimensional never moves. It must read `½p₁² + ½p₂²`.
+  - **Eq. (4.4)**, the point vortex, sums over all `i` and `j` including `i = j`, where
+    `log|qᵢ - qⱼ| = log 0`. Worse, it identifies `p` with the vortex strength, which makes
+    `ṗ = -∂H/∂q ≠ 0` — vortex strengths are constants of the motion. The conjugate pair is the two
+    spatial coordinates of each vortex, with the strengths as fixed parameters.
+  - The **magnitudes quoted for the N-body conditioning argument** are `1e-24` and `1e37`;
+    recomputed they are `1e-25` and `1e45`. The argument survives — it rests on the ratio, which is
+    70 orders of magnitude and larger than claimed — but the numbers as printed do not reproduce.
+
+  It also confirms the two facts the package's design rests on: `J∇H` is exactly linear in the
+  coefficients, and the identified field is Hamiltonian for *any* coefficients, fitted or not.
+
 - **A test suite.** It previously checked `A \ y` two ways and nothing else — no basis, no SINDy,
   no Hamiltonian path — which is why none of the defects above were caught. It now covers basis
   evaluation against closed forms, `TrainingData` validation, both solvers, and Aqua. Each bug
