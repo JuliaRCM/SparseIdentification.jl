@@ -119,6 +119,37 @@ makes it worth keeping.
 
 ### New Features
 
+- **Exponential, logarithmic and rational bases, applied to differences of state components.**
+  This is what makes the systems the thesis treats expressible at all. Applying `exp` to individual
+  components gives `e^{q₁}, e^{q₂}, …`, which is useless for a lattice — a Toda chain interacts
+  through `e^{-(qₙ₊₁ - qₙ)}`, an exponential of a *difference*. Every univariate basis therefore
+  takes an argument selection, `StateComponents()` or `Differences(indices; consecutive)`:
+
+  ```julia
+  ExponentialBasis(Differences(1:4; consecutive = true); rates = (-1.0,))   # Toda
+  LogarithmicBasis(Differences(1:3))                                        # point vortex
+  RationalBasis(Differences(1:3))                                           # N-body, 1-D
+  ```
+
+  Bases compose with `⊕`, and `HamiltonianSINDy` now takes one directly rather than only a
+  `polyorder`/`trigonometric` pair. A `scripts`-level check confirms the compiled `J∇H` reproduces
+  the exact two-particle Toda field to `0.0`.
+
+  Still out of reach: a **norm** of a difference of position *vectors*,
+  `1/‖qᵢ - qⱼ‖`, so a genuinely three-dimensional N-body problem is not yet expressible.
+
+- **A basis is now defined once, symbolically.** `basis_functions(basis, z)` returns `Symbolics`
+  expressions, and everything derives from it: `evaluate` compiles them into a numerical evaluator
+  (cached per basis and dimension), and the Hamiltonian methods differentiate the same expressions
+  to build `J∇φₖ`. The previous hand-written numeric evaluator and the separate symbolic
+  Hamiltonian construction were two definitions of one thing that could drift apart; a test asserts
+  the polynomial column order is unchanged by the unification.
+
+- **Constant terms are stripped from a Hamiltonian ansatz.** A constant contributes an
+  identically-zero column to `J∇H`, so it cannot be identified and only makes the fit singular.
+  `strip_constants` filters on the gradient rather than on the type of the term, which catches
+  every such case whatever basis it came from.
+
 - **Documentation.** Theory (Hamiltonian mechanics and the symplectic form, the SINDy formulation
   and what STLSQ actually guarantees, the Hamiltonian extension), usage (getting started, basis
   libraries, choosing `λ`), four worked examples, and a page on failure modes. Every code block in
@@ -157,6 +188,11 @@ makes it worth keeping.
   a *Hamiltonian-SINDy* and an *Auto-Encoder-Hamiltonian-SINDy* algorithm, the latter identifying
   canonical conjugate coordinates alongside the dynamics. Only the first exists here. The file that
   was to become it never worked and has been removed.
+
+- **A norm of a difference of position vectors is not expressible.** `Differences` forms scalar
+  differences `zᵢ - zⱼ`, which is exactly right in one spatial dimension. A three-dimensional
+  N-body problem needs `1/‖𝐪ᵢ - 𝐪ⱼ‖`, a norm over a block of components, which needs a block
+  structure the current argument selection does not carry.
 
 - **Matching the vector field directly is not implemented yet.** `J∇H` is linear in the
   coefficients, so fitting against measured `ż` is an ordinary linear sparse regression — far

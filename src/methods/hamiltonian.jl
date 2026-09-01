@@ -3,24 +3,6 @@
 # Symbolic construction of a parametrised Hamiltonian
 ##########################################################
 
-" makes polynomial combinations of basis "
-function hamiltonian_poly(z, order, inds...)
-    ham = []
-
-    if order == 0
-        Num(1)
-    elseif order == length(inds)
-        ham = vcat(ham, _prod([z[i] for i in inds]...))
-    else
-        start_ind = length(inds) == 0 ? 1 : inds[end]
-        for j in start_ind:length(z)
-            ham = vcat(ham, hamiltonian_poly(z, order, inds..., j))
-        end
-    end
-
-    return ham
-end
-
 " collects and sums only polynomial combinations of basis "
 function hamiltonian(z, a, order)
     ham = []
@@ -79,24 +61,59 @@ struct HamiltonianFunctions{HT, VT, FT, ZT}
 end
 
 """
+    hamiltonian_basis(; polyorder = 3, trigonometric = 0)
+
+The polynomial (and optionally trigonometric) library used for a Hamiltonian ansatz.
+
+The **constant is omitted**: it contributes nothing to `∇H`, so its coefficient is unidentifiable
+and its column of the regression matrix is identically zero.
+"""
+function hamiltonian_basis(; polyorder::Int = 3, trigonometric::Int = 0)
+    bs = Tuple(PolynomialBasis(i) for i in 1:polyorder)
+    trigonometric > 0 && (bs = (bs..., TrigonometricBasis(trigonometric)))
+    CompoundBasis(bs)
+end
+
+"""
+    strip_constants(basis, z)
+
+The basis functions of `basis` whose gradient is not identically zero.
+
+A term with vanishing gradient — a constant — cannot be identified from `ż = J∇H`: it contributes
+an all-zero column, which makes the linear formulation singular and wastes a parameter in the
+nonlinear one. Filtering on the gradient rather than on the type of the term catches every such
+case, whatever basis it came from.
+"""
+function strip_constants(basis::AbstractBasis, z)
+    φ = basis_functions(basis, z)
+    Dz = Differential.(z)
+    keep = [any(!iszero, [expand_derivatives(dz(φₖ)) for dz in Dz]) for φₖ in φ]
+    φ[keep]
+end
+
+"""
+    hamiltonian_functions(basis, d)
     hamiltonian_functions(d, polyorder, trig_wave_num)
 
-Build the symbolic Hamiltonian `H(z; a) = Σₖ aₖ φₖ(z)` over `d` degrees of freedom and compile it,
-together with its symplectic gradient, into [`HamiltonianFunctions`](@ref).
+Build the symbolic Hamiltonian `H(z; a) = Σₖ aₖ φₖ(z)` over `d` degrees of freedom — so `2d`
+phase-space variables — and compile it, together with its symplectic gradient, into
+[`HamiltonianFunctions`](@ref).
 
-The constant term is omitted: it contributes nothing to `∇H` and is therefore unidentifiable.
+Constant terms are dropped, since they are unidentifiable; see [`strip_constants`](@ref).
 """
-function hamiltonian_functions(d::Int, polyorder::Int, trig_wave_num::Int)
-    nparam = calculate_nparams(d, polyorder, trig_wave_num)
-
-    @variables a[1:nparam]
+function hamiltonian_functions(basis::AbstractBasis, d::Int)
     @variables q[1:d]
     @variables p[1:d]
-    @variables t
     z = vcat(q, p)
 
-    H = trig_wave_num > 0 ? hamil_trig(z, a, polyorder, trig_wave_num) :
-        hamiltonian(z, a, polyorder)
+    φ = strip_constants(basis, z)
+    nparam = length(φ)
+    nparam > 0 ||
+        throw(ArgumentError("the basis has no identifiable terms: every candidate " *
+                            "function has vanishing gradient"))
+
+    @variables a[1:nparam]
+    H = sum(collect(a)[k] * φ[k] for k in eachindex(φ))
 
     Dz = Differential.(z)
     ∇H = [expand_derivatives(dz(H)) for dz in Dz]
@@ -120,6 +137,11 @@ function hamiltonian_functions(d::Int, polyorder::Int, trig_wave_num::Int)
     ffun = (f, t, q, p, params) -> f_raw(f, q, p, params.a)
 
     HamiltonianFunctions(Hfun, vfun, ffun, ż, d, nparam)
+end
+
+function hamiltonian_functions(d::Int, polyorder::Int, trig_wave_num::Int)
+    hamiltonian_functions(
+        hamiltonian_basis(; polyorder, trigonometric = trig_wave_num), d)
 end
 
 """

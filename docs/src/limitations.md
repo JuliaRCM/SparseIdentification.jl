@@ -56,8 +56,11 @@ data or tuning will change that.
 This is not a soft limitation that shows up as reduced accuracy — it shows up as a confident,
 dense, wrong model, because the fit will use whatever it has to approximate what it cannot express.
 
-The current package supplies polynomial and trigonometric bases only. Three of the thesis's own
-four Hamiltonian examples need more than that (see [Basis Libraries](@ref)).
+The package supplies polynomial, trigonometric, exponential, logarithmic and rational bases, and —
+crucially — lets each be applied to *differences* of state components rather than to components
+alone, which is what interacting systems need. What remains out of reach is a **norm** of a
+difference of position *vectors*, ``1/\lVert \mathbf{q}_i - \mathbf{q}_j\rVert``, so a genuinely
+three-dimensional ``N``-body problem is still not expressible. See [Basis Libraries](@ref).
 
 ## Coordinates matter as much as the library
 

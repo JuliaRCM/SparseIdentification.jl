@@ -59,14 +59,62 @@ optimisation problem than minimising over one that contains none.
 This is the empirical case for the whole approach, and it generalises: where you know a structural
 property of the system, imposing it by construction beats fitting freely and hoping.
 
-## Not currently reproducible here
+## Building the library
 
-The Toda Hamiltonian needs ``e^{-(q_{n+1} - q_n)}`` — an exponential of a **difference of state
-components**. The package's current basis library offers polynomials and trigonometric functions of
-individual components only, so this system cannot presently be expressed. The thesis's
-implementation supported exponential, logarithmic and rational bases together with arithmetic
-combinations of components; restoring that is tracked in the changelog's open issues.
+The Toda Hamiltonian needs ``e^{-(q_{n+1} - q_n)}`` — an exponential of a **difference** of state
+components — which is exactly what [`Differences`](@ref) exists for. For a two-particle chain, with
+``z = (q_1, q_2, p_1, p_2)`` so the positions are components 1 and 2:
 
-Until then, the numbers above are reported from the thesis rather than recomputed, and are marked as
-such. The `GeometricProblems.TodaLattice` module provides the system itself, so the data-generation
-half is available in-tree already.
+```@example toda
+using SparseIdentification
+using Symbolics
+
+basis = hamiltonian_basis(polyorder = 2) ⊕
+        ExponentialBasis(Differences(1:2; consecutive = true); rates = (-1.0,))
+
+z = Symbolics.variables(:z, 1:4)
+φ = basis_functions(basis, z)
+
+length(φ), φ[end]      # the interaction term is in the library
+```
+
+The interaction is formed over the *positions only*, which is what `Differences(1:2)` says: the
+momenta do not interact, and including them would add terms that cannot appear in a Toda
+Hamiltonian.
+
+## Checking it against the exact field
+
+With the coefficients of the true Hamiltonian ``H = \tfrac{1}{2}(p_1^2 + p_2^2) + e^{-(q_2 - q_1)}``
+set by hand, the compiled ``J\nabla H`` must reproduce the exact vector field
+``\dot z = (p_1,\, p_2,\, -e,\, e)`` with ``e = e^{-(q_2-q_1)}``:
+
+```@example toda
+hfuns = SparseIdentification.hamiltonian_functions(basis, 2)
+
+a = zeros(hfuns.nparam)
+a[findfirst(isequal(z[3]^2), φ)]          = 0.5      # ½p₁²
+a[findfirst(isequal(z[4]^2), φ)]          = 0.5      # ½p₂²
+a[findfirst(isequal(exp(z[1] - z[2])), φ)] = 1.0     # e^{-(q₂-q₁)}
+
+function exact(z)
+    e = exp(-(z[2] - z[1]))
+    [z[3], z[4], -e, e]
+end
+
+zv  = [0.3, -0.7, 1.1, 0.4]
+out = zeros(4)
+hfuns.ż(out, zv, a)
+
+out, exact(zv)
+```
+
+```@example toda
+maximum(abs, out - exact(zv))
+```
+
+This is the check that the library really contains the system, before any fitting is attempted —
+worth doing first, because a library that cannot represent the answer produces a confident, dense,
+wrong model rather than an error.
+
+The numbers in the table above are reported from the thesis rather than recomputed here; the
+`GeometricProblems.TodaLattice` module provides the system itself for a full reproduction.

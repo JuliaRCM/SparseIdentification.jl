@@ -36,12 +36,14 @@ export name, description, reference
 # qualified — `SparseIdentification.issymplectic(method)` — as SimpleSolvers has callers do with
 # `status` and `isconverged`, and for the same reason.
 
-export calculate_nparams, hamiltonian, hamil_trig
+export calculate_nparams, hamiltonian, hamil_trig, hamiltonian_poly
 
 include("util.jl")
 
 export AbstractBasis, PolynomialBasis, TrigonometricBasis, CompoundBasis
-export evaluate
+export ExponentialBasis, LogarithmicBasis, RationalBasis
+export BasisArguments, StateComponents, Differences
+export basis_functions, evaluate, ⊕
 
 include("basis.jl")
 
@@ -68,7 +70,8 @@ export SINDy, SINDyResult, SINDyVectorField
 include("methods/sindy.jl")
 
 export HamiltonianSINDy, HamiltonianSINDyResult, HamiltonianSINDyVectorField
-export HamiltonianFunctions, hamiltonian_functions, degreesoffreedom
+export HamiltonianFunctions, hamiltonian_functions, hamiltonian_basis
+export strip_constants, degreesoffreedom
 
 include("methods/hamiltonian.jl")
 include("methods/hamiltonian_sindy.jl")

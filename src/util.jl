@@ -21,3 +21,28 @@ function calculate_nparams(d, polyorder, trig_wave_num)
 
     return nparam
 end
+
+""" 
+    hamiltonian_poly(z, order, inds...)
+
+All monomials of degree exactly `order` in the variables `z`, without repetition.
+
+Shared by `PolynomialBasis` and by the symbolic Hamiltonian construction, so that the two cannot
+disagree about which terms exist or in what order.
+"""
+function hamiltonian_poly(z, order, inds...)
+    ham = []
+
+    if order == 0
+        Num(1)
+    elseif order == length(inds)
+        ham = vcat(ham, _prod([z[i] for i in inds]...))
+    else
+        start_ind = length(inds) == 0 ? 1 : inds[end]
+        for j in start_ind:length(z)
+            ham = vcat(ham, hamiltonian_poly(z, order, inds..., j))
+        end
+    end
+
+    return ham
+end

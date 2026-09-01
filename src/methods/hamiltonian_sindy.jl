@@ -14,29 +14,42 @@ The coefficients are fitted by matching the flow map — minimising `Σⱼ ‖Φ
 
 Apply it to a [`TrajectoryData`](@ref) problem with [`identify`](@ref).
 
+The basis may be given directly, which is what the systems the thesis treats require — a Toda
+lattice needs `exp` of a *difference* of positions, a point vortex `log` of one:
+
+```julia
+HamiltonianSINDy(hamiltonian_basis(polyorder = 2) ⊕
+                 ExponentialBasis(Differences(1:4; consecutive = true); rates = (-1.0,)))
+```
+
+The keyword form `HamiltonianSINDy(; polyorder, trigonometric)` builds the polynomial and
+trigonometric library and is equivalent to passing [`hamiltonian_basis`](@ref).
+
 !!! note "Matching the vector field is cheaper when `ż` is available"
     `J∇H` is *linear* in `a`, so fitting against measured derivatives is an ordinary linear sparse
     regression with no optimiser at all. That formulation is not implemented yet.
 """
-struct HamiltonianSINDy{T} <: SparsificationMethod
+struct HamiltonianSINDy{T, BT <: AbstractBasis} <: SparsificationMethod
+    basis::BT
+
     λ::T
     integrator_timestep::T
 
     nloops::Int
     picard_iterations::Int
 
-    polyorder::Int
-    trigonometric::Int
-
-    function HamiltonianSINDy(;
+    function HamiltonianSINDy(basis::BT;
             λ::T = DEFAULT_LAMBDA,
             integrator_timestep::T = DEFAULT_INTEGRATOR_TIMESTEP,
             nloops::Int = DEFAULT_NLOOPS,
-            picard_iterations::Int = DEFAULT_PICARD_ITERATIONS,
-            polyorder::Int = 3,
-            trigonometric::Int = 0) where {T}
-        new{T}(λ, integrator_timestep, nloops, picard_iterations, polyorder, trigonometric)
+            picard_iterations::Int = DEFAULT_PICARD_ITERATIONS) where {
+            T, BT <: AbstractBasis}
+        new{T, BT}(basis, λ, integrator_timestep, nloops, picard_iterations)
     end
+end
+
+function HamiltonianSINDy(; polyorder::Int = 3, trigonometric::Int = 0, kwargs...)
+    HamiltonianSINDy(hamiltonian_basis(; polyorder, trigonometric); kwargs...)
 end
 
 GeometricBase.name(::HamiltonianSINDy) = "HamiltonianSINDy"
@@ -98,19 +111,16 @@ function Base.show(io::IO, result::HamiltonianSINDyResult)
 end
 
 """
-    sparsify(method::HamiltonianSINDy, fθ, problem::TrajectoryData, solver; verbose = false)
+    sparsify(method::HamiltonianSINDy, hfuns, problem::TrajectoryData, solver; verbose = false)
 
 Sequentially thresholded regression of the Hamiltonian coefficients against the flow map.
 """
-function sparsify(method::HamiltonianSINDy, fθ, problem::TrajectoryData, solver;
-        verbose = false)
-    # `fθ` is built for `d` degrees of freedom, i.e. `2d` phase-space variables, and
-    # `calculate_nparams` takes that same `d`. Passing the full state dimension here instead is
+function sparsify(method::HamiltonianSINDy, hfuns::HamiltonianFunctions,
+        problem::TrajectoryData, solver; verbose = false)
+    # The coefficient count comes from the compiled basis itself. Recomputing it separately is
     # what made the optimiser search 212 coefficients for a basis that reads 58 of them.
-    d = statedimension(problem) ÷ 2
-    nparam = calculate_nparams(d, method.polyorder, method.trigonometric)
-
-    coeffs = zeros(nparam)
+    fθ = hfuns.ż
+    coeffs = zeros(hfuns.nparam)
 
     function loss_kernel(x₀, x₁, a, Δt)
         x̄ = zeros(eltype(a), axes(x₁))
@@ -172,8 +182,8 @@ function identify(problem::TrajectoryData, method::HamiltonianSINDy;
     iseven(nd) ||
         throw(ArgumentError("a Hamiltonian system needs an even state dimension, got $nd"))
 
-    hfuns = hamiltonian_functions(nd ÷ 2, method.polyorder, method.trigonometric)
-    coeffs = sparsify(method, hfuns.ż, problem, solver; verbose)
+    hfuns = hamiltonian_functions(method.basis, nd ÷ 2)
+    coeffs = sparsify(method, hfuns, problem, solver; verbose)
 
     HamiltonianSINDyResult(method, coeffs, hfuns)
 end

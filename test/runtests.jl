@@ -3,6 +3,9 @@ using SafeTestsets
 @safetestset "Basis                                                                           " begin
     include("basis_tests.jl")
 end
+@safetestset "Extended Bases                                                                  " begin
+    include("basis_extended_tests.jl")
+end
 @safetestset "Training Data                                                                   " begin
     include("trainingdata_tests.jl")
 end

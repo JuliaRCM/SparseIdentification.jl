@@ -4,95 +4,246 @@
 
 Supertype of the candidate-function libraries a sparse regression selects from.
 
-A basis is evaluated on a data set with [`evaluate`](@ref), which returns the matrix `Θ` whose
-columns are the candidate functions and whose rows are the snapshots. Concrete bases are
-[`PolynomialBasis`](@ref), [`TrigonometricBasis`](@ref) and [`CompoundBasis`](@ref).
+A basis is defined symbolically by [`basis_functions`](@ref), which returns its candidate functions
+as `Symbolics` expressions in the state. Everything else follows from that one definition:
+[`evaluate`](@ref) compiles the expressions into a fast numerical evaluator, and the Hamiltonian
+methods differentiate them to build `J∇φₖ`. There is deliberately no second, numeric definition
+that could drift from the symbolic one.
+
+Concrete bases are [`PolynomialBasis`](@ref), [`TrigonometricBasis`](@ref),
+[`ExponentialBasis`](@ref), [`LogarithmicBasis`](@ref), [`RationalBasis`](@ref) and
+[`CompoundBasis`](@ref).
 """
 abstract type AbstractBasis end
 
 """
-    evaluate(data, basis)
+    basis_functions(basis, z)
 
-Evaluates a data set on all basis functions in `basis`.
+The candidate functions of `basis` as symbolic expressions in the state vector `z`.
+
+This is the definition of a basis; `evaluate` is generated from it.
 """
-function evaluate end
+function basis_functions end
+
+"""
+    nterms(basis, d)
+
+The number of candidate functions the basis contributes for a state of dimension `d`.
+"""
+nterms(basis::AbstractBasis, d::Int) = length(basis_functions(basis, _symbolic_state(d)))
+
+_symbolic_state(d::Int) = Symbolics.variables(:z, 1:d)
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# Arguments: what a univariate candidate function is applied to.
+#
+# This is the piece that makes the thesis's examples expressible. Applying `exp` to individual
+# state components gives `e^{q₁}, e^{q₂}, …`, which is useless for a Toda lattice — that needs
+# `e^{-(qₙ₊₁ - qₙ)}`, an exponential of a *difference*. Likewise a point-vortex Hamiltonian needs
+# `log|qᵢ - qⱼ|` and an N-body one `1/|qᵢ - qⱼ|`.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+
+"""
+    BasisArguments
+
+Supertype of the argument selections a univariate basis can be applied to:
+[`StateComponents`](@ref) and [`Differences`](@ref).
+"""
+abstract type BasisArguments end
+
+"""
+    StateComponents()
+
+Apply the basis functions to each state component separately: `f(z₁), f(z₂), …`.
+"""
+struct StateComponents <: BasisArguments end
+
+"""
+    Differences(indices; consecutive = false)
+
+Apply the basis functions to differences of the state components named by `indices`.
+
+With `consecutive = true` only neighbouring differences `z[i₊₁] - z[i]` are formed, which is what a
+lattice with nearest-neighbour interaction needs. Otherwise all pairs `z[i] - z[j]` with `i > j`
+are formed, which is what an all-to-all interaction needs.
+
+# Examples
+
+A Toda lattice of four particles interacts through consecutive differences of the *positions*, the
+first four of eight phase-space components:
+
+```jldoctest
+julia> args = Differences(1:4; consecutive = true);
+
+julia> basis = ExponentialBasis(args; rates = (-1.0,));
+
+julia> nterms(basis, 8)
+3
+```
+"""
+struct Differences <: BasisArguments
+    indices::Vector{Int}
+    consecutive::Bool
+
+    function Differences(indices; consecutive::Bool = false)
+        idx = collect(Int, indices)
+        length(idx) ≥ 2 ||
+            throw(ArgumentError("need at least two indices to form a difference, got $idx"))
+        allunique(idx) || throw(ArgumentError("indices must be unique, got $idx"))
+        new(idx, consecutive)
+    end
+end
+
+basis_arguments(::StateComponents, z) = collect(z)
+
+function basis_arguments(a::Differences, z)
+    idx = a.indices
+    maximum(idx) ≤ length(z) ||
+        throw(ArgumentError("Differences references component $(maximum(idx)) but the state has " *
+                            "only $(length(z)) components"))
+
+    if a.consecutive
+        [z[idx[i + 1]] - z[idx[i]] for i in 1:(length(idx) - 1)]
+    else
+        [z[idx[i]] - z[idx[j]] for i in eachindex(idx) for j in 1:(i - 1)]
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# Bases
+# ─────────────────────────────────────────────────────────────────────────────────────────────
 
 """
     PolynomialBasis(p)
 
-Holds polynomials of degree p.
+All monomials of degree exactly `p`, without repetition.
+
+Degree 0 is the constant. For a state of dimension `d` there are `binomial(d + p - 1, p)` terms of
+degree `p`.
 """
 struct PolynomialBasis <: AbstractBasis
     p::Int
 end
 
-# already defined in util.jl file
-# _prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
-# _prod(a, b) = a .* b
-# _prod(a) = a
-
-function _evaluate_polynomial(data, p, inds...)
-    # number of degrees of freedom
-    ndof = size(data, 2)
-
-    # number of snapshots
-    ns = size(data, 1)
-
-    # initialize output array
-    out = zeros(ns, 0)
-
-    if p == 0
-        tmp = ones(ns, 1)
-        out = hcat(out, tmp)
-    elseif p == length(inds)
-        tmp = _prod([data[:, i] for i in inds]...)
-        out = hcat(out, tmp)
-    else
-        start_ind = length(inds) == 0 ? 1 : inds[end]
-        for j in start_ind:ndof
-            tmp = _evaluate_polynomial(data, p, inds..., j)
-            out = hcat(out, tmp)
-        end
-    end
-
-    return out
-end
-
-function evaluate(data::AbstractArray, basis::PolynomialBasis)
-    _evaluate_polynomial(data', basis.p)
+function basis_functions(basis::PolynomialBasis, z)
+    basis.p == 0 ? [Num(1)] : Num.(hamiltonian_poly(collect(z), basis.p))
 end
 
 """
-    TrigonometricBasis(n)
+    TrigonometricBasis(n, args = StateComponents())
 
-Holds the basis functions `sin(k xᵢ)` and `cos(k xᵢ)` for `1 ≤ k ≤ n` and every component `xᵢ`.
+The basis functions `sin(k u)` and `cos(k u)` for `1 ≤ k ≤ n`, over the arguments `args`.
 """
-struct TrigonometricBasis <: AbstractBasis
+struct TrigonometricBasis{A <: BasisArguments} <: AbstractBasis
     n::Int
+    args::A
+
+    function TrigonometricBasis(n::Int, args::A = StateComponents()) where {A <:
+                                                                            BasisArguments}
+        new{A}(n, args)
+    end
 end
 
-function evaluate(data::AbstractArray, basis::TrigonometricBasis)
-    # `data` is transposed to match `PolynomialBasis`: snapshots along rows, degrees of freedom
-    # along columns. The two used to disagree, which is why a compound basis could not mix them.
-    d = data'
-
-    # number of snapshots
-    ns = size(d, 1)
-
-    out = zeros(ns, 0)
-
+function basis_functions(basis::TrigonometricBasis, z)
+    u = basis_arguments(basis.args, z)
+    out = Num[]
     for k in 1:(basis.n)
-        out = hcat(out, sin.(k .* d), cos.(k .* d))
+        append!(out, sin.(k .* u))
+        append!(out, cos.(k .* u))
     end
-
-    return out
+    out
 end
 
 """
-    CompoundBasis(bases)
+    ExponentialBasis(args = StateComponents(); rates = (1.0,))
 
-Holds a basis composed of several different basis functions,
-e.g. polynomials of vardatag degree and/or trigonometric functions.
+The basis functions `exp(α u)` for each rate `α` and each argument `u`.
+
+The Toda lattice needs `exp(-(qₙ₊₁ - qₙ))`, so both a negative rate and a
+[`Differences`](@ref) argument selection:
+
+```jldoctest
+julia> basis = ExponentialBasis(Differences(1:3; consecutive = true); rates = (-1.0,));
+
+julia> nterms(basis, 6)
+2
+```
+"""
+struct ExponentialBasis{A <: BasisArguments, R} <: AbstractBasis
+    args::A
+    rates::R
+
+    function ExponentialBasis(args::A = StateComponents();
+            rates::R = (1.0,)) where {A <: BasisArguments, R}
+        new{A, R}(args, rates)
+    end
+end
+
+function basis_functions(basis::ExponentialBasis, z)
+    u = basis_arguments(basis.args, z)
+    Num[exp(α * uᵢ) for α in basis.rates for uᵢ in u]
+end
+
+"""
+    LogarithmicBasis(args = StateComponents())
+
+The basis functions `log(abs(u))` over the arguments `args`.
+
+A point-vortex Hamiltonian is built from `log|qᵢ - qⱼ|`, so this is normally paired with
+[`Differences`](@ref). `abs` is applied inside the logarithm so the basis is defined on both signs
+of the argument; it is singular where the argument vanishes, which for a difference means two
+coordinates coinciding.
+"""
+struct LogarithmicBasis{A <: BasisArguments} <: AbstractBasis
+    args::A
+
+    LogarithmicBasis(args::A = StateComponents()) where {A <: BasisArguments} = new{A}(args)
+end
+
+function basis_functions(basis::LogarithmicBasis, z)
+    Num[log(abs(u)) for u in basis_arguments(basis.args, z)]
+end
+
+"""
+    RationalBasis(args = StateComponents(); powers = (1,))
+
+The basis functions `u^-k` for each `k` in `powers`, over the arguments `args`.
+
+An N-body gravitational Hamiltonian is built from `1/|qᵢ - qⱼ|`, so this is normally paired with
+[`Differences`](@ref). Singular where the argument vanishes.
+"""
+struct RationalBasis{A <: BasisArguments, P} <: AbstractBasis
+    args::A
+    powers::P
+
+    function RationalBasis(args::A = StateComponents();
+            powers::P = (1,)) where {A <: BasisArguments, P}
+        new{A, P}(args, powers)
+    end
+end
+
+function basis_functions(basis::RationalBasis, z)
+    u = basis_arguments(basis.args, z)
+    Num[uᵢ^(-k) for k in basis.powers for uᵢ in u]
+end
+
+"""
+    CompoundBasis(bases...)
+    CompoundBasis(; polyorder = 5, trigonometric = 0)
+
+A basis assembled from several others, evaluated in the order given.
+
+The keyword form builds the common case: the constant and all monomials up to `polyorder`,
+optionally followed by trigonometric terms up to wavenumber `trigonometric`.
+
+Bases are combined with `⊕` as well:
+
+```jldoctest
+julia> basis = CompoundBasis(polyorder = 2) ⊕ ExponentialBasis(; rates = (-1.0,));
+
+julia> nterms(basis, 2)
+8
+```
 """
 struct CompoundBasis{BT <: Tuple} <: AbstractBasis
     bases::BT
@@ -112,18 +263,77 @@ function CompoundBasis(; polyorder::Int = 5, trigonometric::Int = 0)
 end
 
 bases(b::CompoundBasis) = b.bases
+bases(b::AbstractBasis) = (b,)
 
-function evaluate(data::AbstractArray, basis::CompoundBasis)
-    # number of snapshots
-    ns = size(data, 2)
-
-    # initialize output array
-    out = zeros(ns, 0)
-
-    # loop over bases
+function basis_functions(basis::CompoundBasis, z)
+    out = Num[]
     for b in bases(basis)
-        out = hcat(out, evaluate(data, b))
+        append!(out, basis_functions(b, z))
     end
+    out
+end
 
-    return out
+"""
+    b₁ ⊕ b₂
+
+Concatenate two bases into a [`CompoundBasis`](@ref).
+"""
+⊕(b₁::AbstractBasis, b₂::AbstractBasis) = CompoundBasis((bases(b₁)..., bases(b₂)...))
+
+function Base.show(io::IO, basis::AbstractBasis)
+    print(io, nameof(typeof(basis)), "()")
+end
+
+function Base.show(io::IO, basis::CompoundBasis)
+    print(io, "CompoundBasis of ", length(bases(basis)), " bases")
+end
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# Evaluation
+#
+# The evaluator is compiled from the symbolic definition, once per (basis, state dimension) pair
+# and cached. Building it on every call would dominate the cost of a fit; defining a second,
+# hand-written numeric path would risk it drifting from the symbolic one.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+
+const EVALUATOR_CACHE = Dict{Tuple{Any, Int}, Any}()
+
+function _evaluator(basis::AbstractBasis, d::Int)
+    get!(EVALUATOR_CACHE, (basis, d)) do
+        z = _symbolic_state(d)
+        φ = basis_functions(basis, z)
+        @RuntimeGeneratedFunction(build_function(φ, z)[1])
+    end
+end
+
+"""
+    evaluate(data, basis)
+
+Evaluate every candidate function of `basis` on every snapshot of `data`.
+
+`data` is a matrix whose columns are snapshots, or a single state vector. The result `Θ` has one
+row per snapshot and one column per candidate function.
+
+# Examples
+
+```jldoctest
+julia> Θ = evaluate([1.0 2.0; 3.0 4.0], CompoundBasis(polyorder = 1));
+
+julia> size(Θ)      # 2 snapshots × (1 constant + 2 linear) terms
+(2, 3)
+```
+"""
+function evaluate(data::AbstractMatrix, basis::AbstractBasis)
+    d = size(data, 1)
+    f = _evaluator(basis, d)
+    reduce(vcat, transpose(f(view(data, :, j))) for j in axes(data, 2))
+end
+
+function evaluate(data::AbstractVector{<:Number}, basis::AbstractBasis)
+    transpose(_evaluator(basis, length(data))(data))
+end
+
+function evaluate(data::AbstractVector{<:AbstractVector}, basis::AbstractBasis)
+    f = _evaluator(basis, length(first(data)))
+    reduce(vcat, transpose(f(x)) for x in data)
 end

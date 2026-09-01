@@ -10,8 +10,27 @@ raises the chance of a spurious fit. This page covers what is available and how 
 SparseIdentification.AbstractBasis
 SparseIdentification.PolynomialBasis
 SparseIdentification.TrigonometricBasis
+SparseIdentification.ExponentialBasis
+SparseIdentification.LogarithmicBasis
+SparseIdentification.RationalBasis
 SparseIdentification.CompoundBasis
+SparseIdentification.basis_functions
 SparseIdentification.evaluate
+```
+
+## One definition, not two
+
+A basis is defined **symbolically**, by `basis_functions(basis, z)`, and everything else is derived
+from that single definition: `evaluate` compiles the expressions into a fast numerical evaluator
+(cached per basis and state dimension), and the Hamiltonian methods differentiate the same
+expressions to build `J∇φₖ`. There is deliberately no second, hand-written numeric path that could
+drift from the symbolic one.
+
+```@example basis
+using SparseIdentification, Symbolics
+
+z = Symbolics.variables(:z, 1:2)
+basis_functions(CompoundBasis(polyorder = 2), z)
 ```
 
 ## Polynomials
@@ -70,17 +89,73 @@ be told apart from data clustered near the origin. Uniform sampling over a broad
 throughout the thesis, distinguishes them better than a single trajectory that lingers in one
 region.
 
-## Not yet implemented
+## Arguments: applying a function to *differences*
 
-The thesis's implementation supported a wider set than this package currently exposes: **rational,
-exponential and logarithmic** basis functions, and arithmetic combinations of state components
-(differences ``q_i - q_j``, products, quotients). These matter for the examples it treats —
+This is the piece that makes interacting systems expressible, and it is easy to miss. Applying
+``\exp`` to individual state components gives ``e^{q_1}, e^{q_2}, \dots``, which is useless for a
+lattice: a Toda chain interacts through ``e^{-(q_{n+1} - q_n)}``, an exponential of a
+**difference**. The same is true of a point vortex (``\log\lvert q_i - q_j\rvert``) and of the
+``N``-body problem (``1/\lvert q_i - q_j\rvert``).
 
-- the Toda lattice needs ``e^{-(q_{n+1} - q_n)}``, i.e. an exponential of a *difference*;
-- the point-vortex system needs ``\log \lVert q_i - q_j \rVert``;
-- the ``N``-body problem needs ``1/\lVert q_i - q_j \rVert``.
+Every univariate basis therefore takes an argument selection:
 
-None of these three is currently expressible. Extending the basis machinery to cover them is
-tracked in the changelog's open issues. Where a system's Hamiltonian is not in the span of the
-polynomial and trigonometric library, an evolutionary symbolic-regression search is the better tool
-— it composes operators rather than selecting from a fixed list.
+```@docs; canonical=false
+SparseIdentification.BasisArguments
+SparseIdentification.StateComponents
+SparseIdentification.Differences
+```
+
+`Differences(indices)` forms all pairs ``z_i - z_j`` with ``i > j``, which is what an all-to-all
+interaction needs; `Differences(indices; consecutive = true)` forms only neighbouring differences,
+which is what a nearest-neighbour lattice needs. The `indices` select which components take part —
+for a Hamiltonian system in ``z = (q, p)`` the interaction is usually among the positions alone,
+i.e. the first half.
+
+```@example basis
+# a Toda chain of three particles: interaction among the positions only
+basis_functions(ExponentialBasis(Differences(1:3; consecutive = true); rates = (-1.0,)), 
+                Symbolics.variables(:z, 1:6))
+```
+
+```@example basis
+# a point vortex: log of every pairwise separation
+basis_functions(LogarithmicBasis(Differences(1:3)), Symbolics.variables(:z, 1:6))
+```
+
+```@example basis
+# an N-body gravitational term
+basis_functions(RationalBasis(Differences(1:3)), Symbolics.variables(:z, 1:6))
+```
+
+## Combining bases
+
+`⊕` concatenates bases, so a library is assembled from the pieces a system actually needs rather
+than from one monolithic keyword:
+
+```@example basis
+basis = hamiltonian_basis(polyorder = 2) ⊕
+        ExponentialBasis(Differences(1:2; consecutive = true); rates = (-1.0,))
+
+nterms(basis, 4)
+```
+
+```@docs; canonical=false
+SparseIdentification.hamiltonian_basis
+SparseIdentification.strip_constants
+```
+
+For a Hamiltonian ansatz the constant term is dropped, because it contributes an identically-zero
+column to ``J\nabla H`` and so cannot be identified. `hamiltonian_basis` omits it, and
+`strip_constants` removes any term whose gradient vanishes — filtering on the gradient rather than
+on the type of the term catches every such case, whatever basis it came from.
+
+## What is still out of reach
+
+The bases above take **scalar** arguments. A genuinely three-dimensional ``N``-body problem needs
+``1/\lVert \mathbf{q}_i - \mathbf{q}_j \rVert`` — the norm of a difference of position
+*vectors* — which needs a block structure over components that `Differences` does not express. In
+one spatial dimension the rational basis above is exactly right; in three it is not.
+
+Where a system's Hamiltonian is not in the span of any fixed library, an evolutionary
+symbolic-regression search is the better tool, since it composes operators rather than selecting
+from a list.
