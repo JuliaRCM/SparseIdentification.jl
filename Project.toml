@@ -1,7 +1,7 @@
 name = "SparseIdentification"
 uuid = "9a34ec7f-1978-43d1-92b5-2e42bdcf4e44"
-authors = ["Michael Kraus"]
 version = "0.1.0"
+authors = ["Michael Kraus"]
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
@@ -31,7 +31,7 @@ ParallelUtilities = "0.8"
 Plots = "1"
 RuntimeGeneratedFunctions = "0.5"
 Symbolics = "5"
-Zygote = "0.6"
+Zygote = "0.6, 0.7"
 julia = "1.10"
 
 [extras]
