@@ -56,22 +56,24 @@ end
 """
     TrigonometricBasis(n)
 
-Holds the basis functions [sin(kx), cos(kx)] for 1 ≤ k ≤ n.
+Holds the basis functions `sin(k xᵢ)` and `cos(k xᵢ)` for `1 ≤ k ≤ n` and every component `xᵢ`.
 """
 struct TrigonometricBasis <: AbstractBasis
     n::Int
 end
 
 function evaluate(data::AbstractArray, basis::TrigonometricBasis)
-    # number of snapshots
-    ns = size(data, 2)
+    # `data` is transposed to match `PolynomialBasis`: snapshots along rows, degrees of freedom
+    # along columns. The two used to disagree, which is why a compound basis could not mix them.
+    d = data'
 
-    # initialize output array
+    # number of snapshots
+    ns = size(d, 1)
+
     out = zeros(ns, 0)
 
-    for k in 1:basis.n
-        tmp = [sin(k*data), cos(k*data)]
-        out = hcat(out, tmp)
+    for k in 1:(basis.n)
+        out = hcat(out, sin.(k .* d), cos.(k .* d))
     end
 
     return out

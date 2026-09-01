@@ -74,8 +74,7 @@ function hamilGrad_func_builder(d, polyorder, trig_wave_num)
         ∇H_trig = vcat(∇H_add_trig[(d + 1):2d], -∇H_add_trig[1:d])
 
         # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
-        ∇H_eval = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(
-            ∇H_trig, z, a)[2]))
+        ∇H_eval = @RuntimeGeneratedFunction(build_function(∇H_trig, z, a)[2])
 
         return ∇H_eval
 
@@ -89,8 +88,7 @@ function hamilGrad_func_builder(d, polyorder, trig_wave_num)
         ∇H = vcat(f[(d + 1):2d], -f[1:d])
 
         # builds a function that calculates Hamiltonian gradient and converts the function to a native Julia function
-        ∇H_eval = @RuntimeGeneratedFunction(Symbolics.inject_registered_module_functions(build_function(
-            ∇H, z, a)[2]))
+        ∇H_eval = @RuntimeGeneratedFunction(build_function(∇H, z, a)[2])
 
         return ∇H_eval
     end

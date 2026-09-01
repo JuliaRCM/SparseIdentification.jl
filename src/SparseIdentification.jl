@@ -1,12 +1,15 @@
 module SparseIdentification
 
+using LinearAlgebra
 using RuntimeGeneratedFunctions
 using Symbolics
-using DifferentialEquations
-using ODE
-using Base.Threads
-using Distances
-using ParallelUtilities
+
+using GeometricOptimizers: Optimizer, OptimizerState, BFGS, Backtracking
+
+# `solve` belongs to SimpleSolvers and is re-exported by GeometricOptimizers. Importing it and
+# adding methods keeps one generic function; defining a fresh `solve` here would either be a
+# method-definition error or shadow theirs.
+import SimpleSolvers: solve, solve!
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
@@ -14,37 +17,27 @@ export calculate_nparams, hamiltonian, hamil_trig
 
 include("util.jl")
 
-export PolynomialBasis, TrigonometricBasis, CompoundBasis
+export AbstractBasis, PolynomialBasis, TrigonometricBasis, CompoundBasis
 export evaluate
 
 include("basis.jl")
 
-export poolDataLIST
-
-include("poolDataLIST.jl")
-
-export JuliaLeastSquare, OptimSolver
-export solve
+export AbstractSolver, JuliaLeastSquare, OptimizerSolver
+export solve, minimize
 
 include("solvers.jl")
 
-export sparsify, lorenz, sparsify_hamiltonian_dynamics
+export lorenz
 
 include("lorenz.jl")
 
-# export hamilGradient!, hamiltonianFunction
-
-# include("hamiltonianGenerator.jl")
-
-export hamil_basis_maker, hamiltonian_basis_concat
-
-include("hamiltonian_basis_maker.jl")
-
-export TrainingData
+export TrainingData, TrajectoryData
+export nsnapshots, statedimension
 
 include("trainingdata.jl")
 
 export SparsificationMethod, VectorField
+export sparsify
 
 include("methods/method.jl")
 include("methods/vectorfield.jl")
