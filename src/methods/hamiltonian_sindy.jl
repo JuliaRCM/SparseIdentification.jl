@@ -1,91 +1,209 @@
-struct HamiltonianSINDy{T, GHT} <: SparsificationMethod
-    analytical_fθ::GHT
+
+"""
+    HamiltonianSINDy(; λ, polyorder, trigonometric, integrator_timestep, nloops, picard_iterations)
+
+Sparse identification of a *Hamiltonian* system (Khan 2023).
+
+A scalar Hamiltonian is parametrised over a library of candidate functions,
+`H(z; a) = Σₖ aₖ φₖ(z)`, and the vector field is obtained as `ż = J ∇H(z)`. The identified dynamics
+is therefore Hamiltonian **by construction** rather than by penalty: every candidate the fit
+considers is a symplectic gradient field, whatever the coefficients happen to be.
+
+The coefficients are fitted by matching the flow map — minimising `Σⱼ ‖Φ_Δt(zⱼ; a) − zⱼ₊₁‖²` where
+`Φ_Δt` is an implicit-midpoint step. This is nonlinear in `a` and needs an optimiser.
+
+Apply it to a [`TrajectoryData`](@ref) problem with [`identify`](@ref).
+
+The basis may be given directly, which is what the systems the thesis treats require — a Toda
+lattice needs `exp` of a *difference* of positions, a point vortex `log` of one:
+
+```julia
+HamiltonianSINDy(hamiltonian_basis(polyorder = 2) ⊕
+                 ExponentialBasis(Differences(1:4; consecutive = true); rates = (-1.0,)))
+```
+
+The keyword form `HamiltonianSINDy(; polyorder, trigonometric)` builds the polynomial and
+trigonometric library and is equivalent to passing [`hamiltonian_basis`](@ref).
+
+!!! note "Matching the vector field is cheaper when `ż` is available"
+    `J∇H` is *linear* in `a`, so fitting against measured derivatives is an ordinary linear sparse
+    regression with no optimiser at all. That formulation is not implemented yet.
+"""
+struct HamiltonianSINDy{T, BT <: AbstractBasis} <: SparsificationMethod
+    basis::BT
 
     λ::T
-    noise_level::T
-    integrator_timeStep::T
+    integrator_timestep::T
+
     nloops::Int
+    picard_iterations::Int
 
-    polyorder::Int
-    trigonometric::Int
-
-    function HamiltonianSINDy(analytical_fθ::GHT;
+    function HamiltonianSINDy(basis::BT;
             λ::T = DEFAULT_LAMBDA,
-            noise_level::T = DEFAULT_NOISE_LEVEL,
-            integrator_timeStep::T = DEFAULT_INTEGRATOR_TIMESTEP,
-            nloops = DEFAULT_NLOOPS,
-            polyorder::Int = 3,
-            trigonometric::Int = 0) where {T, GHT <: Base.Callable}
-        new{T, GHT}(analytical_fθ, λ, noise_level, integrator_timeStep,
-            nloops, polyorder, trigonometric)
+            integrator_timestep::T = DEFAULT_INTEGRATOR_TIMESTEP,
+            nloops::Int = DEFAULT_NLOOPS,
+            picard_iterations::Int = DEFAULT_PICARD_ITERATIONS) where {
+            T, BT <: AbstractBasis}
+        new{T, BT}(basis, λ, integrator_timestep, nloops, picard_iterations)
     end
 end
 
-function sparsify(method::HamiltonianSINDy, fθ, x, ẋ, solver)
-    # add noise
-    ẋnoisy = ẋ .+ method.noise_level .* randn(size(ẋ))
+function HamiltonianSINDy(; polyorder::Int = 3, trigonometric::Int = 0, kwargs...)
+    HamiltonianSINDy(hamiltonian_basis(; polyorder, trigonometric); kwargs...)
+end
 
-    # dimension of system
-    nd = size(x, 1)
+GeometricBase.name(::HamiltonianSINDy) = "HamiltonianSINDy"
+function GeometricBase.description(::HamiltonianSINDy)
+    "Sparse identification of a Hamiltonian, preserving the symplectic structure by construction"
+end
+function GeometricBase.reference(::HamiltonianSINDy)
+    "N. B. Khan, Sparse Identification of Symplectic Hamiltonian Dynamics for Predictive " *
+    "Modeling and Analysis, MSc thesis, TU München, 2023. mediaTUM 1747893"
+end
 
-    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
+# The identified model is J∇H for a scalar H, so it is symplectic and conserves H exactly,
+# whatever the fitted coefficients turn out to be. This is the whole point of the method.
+GeometricBase.issymplectic(::HamiltonianSINDy) = true
+GeometricBase.isenergypreserving(::HamiltonianSINDy) = true
+# The regression goes through an implicit-midpoint step, so it is not a direct solve.
+GeometricBase.isexplicit(::HamiltonianSINDy) = false
+GeometricBase.isimplicit(::HamiltonianSINDy) = true
 
-    # coeffs initialized to a vector of zeros b/c easier to optimze zeros for our case
-    coeffs = zeros(nparam)
+"""
+    HamiltonianSINDyResult
 
-    # define loss function
-    function loss(a::AbstractVector)
-        res = zeros(eltype(a), axes(ẋnoisy))
-        out = zeros(eltype(a), nd)
+The outcome of [`identify`](@ref) with [`HamiltonianSINDy`](@ref).
 
-        for j in axes(res, 2)
-            fθ(out, x[:, j], a)
-            res[:, j] .= out
+Reach the coefficients with `parameters` and the compiled Hamiltonian and its symplectic
+gradient with `functions`. Convert to a `GeometricEquations.HODEProblem` to integrate the
+identified system with a symplectic integrator.
+"""
+struct HamiltonianSINDyResult{DT, CT <: AbstractVector{DT}, FT, MT <: HamiltonianSINDy}
+    method::MT
+    coefficients::CT
+    hamiltonian::FT
+
+    function HamiltonianSINDyResult(method::MT, coefficients::CT,
+            hamiltonian::FT) where {
+            DT, MT <: HamiltonianSINDy, CT <: AbstractVector{DT}, FT}
+        new{DT, CT, FT, MT}(method, coefficients, hamiltonian)
+    end
+end
+
+GeometricBase.parameters(result::HamiltonianSINDyResult) = result.coefficients
+GeometricBase.functions(result::HamiltonianSINDyResult) = result.hamiltonian
+GeometricBase.datatype(::HamiltonianSINDyResult{DT}) where {DT} = DT
+method(result::HamiltonianSINDyResult) = result.method
+
+"""
+    degreesoffreedom(result)
+
+The number of degrees of freedom `d`; the phase space has `2d` dimensions.
+"""
+degreesoffreedom(result::HamiltonianSINDyResult) = result.hamiltonian.d
+
+"""
+    nterms(result)
+
+The number of Hamiltonian basis terms retained after sparsification.
+"""
+nterms(result::HamiltonianSINDyResult) = count(!iszero, result.coefficients)
+
+function Base.show(io::IO, result::HamiltonianSINDyResult)
+    print(io, "Hamiltonian SINDy result: ", nterms(result), " of ",
+        length(result.coefficients), " coefficients retained, ",
+        degreesoffreedom(result), " degrees of freedom")
+end
+
+"""
+    sparsify(method::HamiltonianSINDy, hfuns, problem::TrajectoryData, solver; verbose = false)
+
+Sequentially thresholded regression of the Hamiltonian coefficients against the flow map.
+"""
+function sparsify(method::HamiltonianSINDy, hfuns::HamiltonianFunctions,
+        problem::TrajectoryData, solver; verbose = false)
+    # The coefficient count comes from the compiled basis itself, so the optimiser searches
+    # exactly the coefficients the vector field reads. A second, independent count of the same
+    # quantity is what lets the two disagree.
+    fθ = hfuns.ż
+    coeffs = zeros(hfuns.nparam)
+
+    function loss_kernel(x₀, x₁, a, Δt)
+        x̄ = zeros(eltype(a), axes(x₁))
+        x̃ = zeros(eltype(a), axes(x₁))
+        f = zeros(eltype(a), axes(x₁))
+
+        # gradient at the current state; explicit Euler for the first guess
+        fθ(f, x₀, a)
+        x̃ .= x₀ .+ Δt .* f
+
+        # fixed-point iteration for the implicit midpoint step
+        for _ in 1:(method.picard_iterations)
+            x̄ .= (x₀ .+ x̃) ./ 2
+            fθ(f, x̄, a)
+            x̃ .= x₀ .+ Δt .* f
         end
 
-        mapreduce(y -> y^2, +, ẋnoisy .- res)
+        sum(abs2, x₁ .- x̃)
     end
 
-    # initial guess
-    println("Initial Guess...")
-    result = Optim.optimize(loss, coeffs, solver; autodiff = :forward)
-    coeffs .= result.minimizer
+    xs, ys = _as_vector_of_states(problem.x), _as_vector_of_states(problem.y)
 
-    println(result)
+    function loss(a::AbstractVector)
+        mapreduce(z -> loss_kernel(z..., a, method.integrator_timestep), +, zip(xs, ys))
+    end
 
-    for n in 1:method.nloops
-        println("Iteration #$n...")
+    verbose && println("Initial guess...")
+    coeffs .= minimize(loss, coeffs, solver)
 
-        # find coefficients below λ threshold
-        smallinds = abs.(coeffs) .< method.λ
+    for n in 1:nloops(method)
+        verbose && println("Iteration #$n...")
+
+        smallinds = abs.(coeffs) .< sparsity_threshold(method)
         biginds = .~smallinds
 
-        # check if there are any small coefficients != 0 left
+        # the support has stopped changing
         all(coeffs[smallinds] .== 0) && break
 
-        # set all small coefficients to zero
         coeffs[smallinds] .= 0
 
-        # Regress dynamics onto remaining terms to find sparse coeffs
+        # Nothing survived the threshold, so there is no reduced problem left to regress — and
+        # handing the optimiser an empty parameter vector is not a well-posed call.
+        any(biginds) || break
+
+        # regress onto the surviving terms only
         function sparseloss(b::AbstractVector)
             c = zeros(eltype(b), axes(coeffs))
             c[biginds] .= b
             loss(c)
         end
 
-        b = coeffs[biginds]
-        result = Optim.optimize(sparseloss, b, solver; autodiff = :forward)
-        b .= result.minimizer
-
-        println(result)
+        # `coeffs[biginds]` is a copy, so the result has to be written back through `biginds`.
+        # Assigning into the copy instead would discard every refit silently.
+        coeffs[biginds] .= minimize(sparseloss, coeffs[biginds], solver)
     end
 
     return coeffs
 end
 
+function identify(problem::TrajectoryData, method::HamiltonianSINDy;
+        solver = OptimizerSolver(), verbose = false)
+    nd = statedimension(problem)
+    iseven(nd) ||
+        throw(ArgumentError("a Hamiltonian system needs an even state dimension, got $nd"))
+
+    hfuns = hamiltonian_functions(method.basis, nd ÷ 2)
+    coeffs = sparsify(method, hfuns, problem, solver; verbose)
+
+    HamiltonianSINDyResult(method, coeffs, hfuns)
+end
+
+"""
+    HamiltonianSINDyVectorField(result)
+
+The identified Hamiltonian vector field `J∇H`, callable as `f(dz, z)`.
+"""
 struct HamiltonianSINDyVectorField{DT, CT, GHT} <: VectorField
-    # basis::BT
     coefficients::CT
     fθ::GHT
 
@@ -95,235 +213,13 @@ struct HamiltonianSINDyVectorField{DT, CT, GHT} <: VectorField
     end
 end
 
-function VectorField(method::HamiltonianSINDy, data::TrainingData; solver = Newton())
-    # TODO: Check that first dimension x is even
-
-    # dimension of system
-    d = size(data.x[begin], 1) ÷ 2
-
-    # returns function that builds hamiltonian gradient through symbolics
-    # " the function hamilGradient_general!() needs this "
-    fθ = hamilGrad_func_builder(d, method.polyorder, method.trigonometric)
-
-    # Compute Sparse Regression
-    coeffs = sparsify_parallel(method, fθ, data.x, data.y, solver)
-
-    HamiltonianSINDyVectorField(coeffs, fθ)
+function HamiltonianSINDyVectorField(result::HamiltonianSINDyResult)
+    HamiltonianSINDyVectorField(result.coefficients, result.hamiltonian.ż)
 end
 
-" wrapper function for generalized SINDY hamiltonian gradient.
-Needs the output of fθ_sparse to work!
-It is in a syntax that is suitable to be evaluated by a loss function
-for optimization "
 function (vectorfield::HamiltonianSINDyVectorField)(dz, z)
     vectorfield.fθ(dz, z, vectorfield.coefficients)
     return dz
 end
 
-(vectorfield::HamiltonianSINDyVectorField)(dz, z, p, t) = vectorfield(dz, z)
-
-################################################################################################
-################################################################################################
-################################################################################################
-################################################################################################
-
-function gen_noisy_ref_data(method::HamiltonianSINDy, x)
-    # initialize timestep data for analytical solution
-    timeStep = method.integrator_timeStep
-    tspan = (0.0, timeStep)
-    trange = range(tspan[begin], step = timeStep, stop = tspan[end])
-
-    # # matrix to store solution at next time point
-    # data_ref = zero(x)
-
-    function next_timestep(x)
-        prob_ref = ODEProblem(method.analytical_fθ, x, tspan)
-        sol = ODE.solve(prob_ref, Tsit5(), dt = timeStep,
-            abstol = 1e-10, reltol = 1e-10, saveat = trange)
-        sol.u[2]
-    end
-
-    data_ref = [next_timestep(_x) for _x in x]
-
-    # add noise
-    data_ref_noisy = [_x .+ method.noise_level .* randn(size(_x)) for _x in data_ref]
-
-    return data_ref_noisy
-
-    #TODO: Ask Dr. Michael if it is correct to add noise here or to x directly before doing ODE.solve
-end
-
-function sparsify_two(method::HamiltonianSINDy, fθ, x, ẋ, solver)
-
-    # generate noisy references data
-    data_ref_noisy = gen_noisy_ref_data(method::HamiltonianSINDy, x)
-
-    # dimension of system
-    nd = size(x, 1)
-
-    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
-
-    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-    coeffs = zeros(nparam)
-
-    # define loss function
-    function loss(a::AbstractVector)
-        numLoops = 4 # random choice of loop steps
-
-        # initialize matrix to store picard iterations result
-        picardX = zeros(eltype(a), axes(x))
-
-        # initialization for the SINDy coefficients result
-        res = zeros(eltype(a), axes(ẋ))
-        out = zeros(eltype(a), nd)
-
-        for j in axes(res, 2)
-            fθ(out, x[:, j], a) # gradient at current (x) values
-            res[:, j] .= out
-            picardX[:, j] .= x[:, j] .+ method.integrator_timeStep .* res[:, j] # for first guess use explicit euler
-
-            for loop in 1:numLoops
-                fθ(out, (x[:, j] .+ picardX[:, j]) ./ 2, a) # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
-                res[:, j] .= out
-                picardX[:, j] .= x[:, j] + method.integrator_timeStep * res[:, j] # mid point rule for integration to next step
-            end
-        end
-
-        return mapreduce(y -> y^2, +, data_ref_noisy .- picardX)
-    end
-
-    # initial guess
-    println("Initial Guess...")
-    result = Optim.optimize(
-        loss, coeffs, solver, Optim.Options(show_trace = true); autodiff = :forward)
-
-    coeffs .= result.minimizer
-
-    println(result)
-
-    for n in 1:method.nloops
-        println("Iteration #$n...")
-
-        # find coefficients below λ threshold
-        smallinds = abs.(coeffs) .< method.λ
-        biginds = .~smallinds
-
-        # check if there are any small coefficients != 0 left
-        all(coeffs[smallinds] .== 0) && break
-
-        # set all small coefficients to zero
-        coeffs[smallinds] .= 0
-
-        # Regress dynamics onto remaining terms to find sparse coeffs
-        function sparseloss(b::AbstractVector)
-            c = zeros(eltype(b), axes(coeffs))
-            c[biginds] .= b
-            loss(c)
-        end
-
-        b = coeffs[biginds]
-        result = Optim.optimize(
-            sparseloss, b, solver, Optim.Options(show_trace = true); autodiff = :forward)
-        b .= result.minimizer
-
-        println(result)
-    end
-
-    return coeffs
-end
-
-################################################################################################
-################################################################################################
-################################################################################################
-################################################################################################
-function sparsify_parallel(method::HamiltonianSINDy, fθ, x, y, solver)
-
-    # dimension of system
-    nd = size(x[begin], 1)
-
-    # binomial used to get the combination of variables till the highest order without repeat, nparam = 34 for 3rd order, with z = q,p each of 2 dims
-    nparam = calculate_nparams(nd, method.polyorder, method.trigonometric)
-
-    # coeffs initialized to a vector of zeros b/c easier to optimize zeros for our case
-    coeffs = zeros(nparam)
-
-    function loss_kernel(x₀, x₁, fθ, a, Δt)
-        numLoops = 4 # random choice of loop steps
-
-        # solution of SINDy Hamiltonian problem
-        local x̄ = zeros(eltype(a), axes(x₁))
-        local x̃ = zeros(eltype(a), axes(x₁))
-        local f = zeros(eltype(a), axes(x₁))
-
-        # gradient at current (x) values
-        fθ(f, x₀, a)
-
-        # for first guess use explicit euler
-        x̃ .= x₀ .+ Δt .* f
-
-        for _ in 1:numLoops
-            x̄ .= (x₀ .+ x̃) ./ 2
-            # find gradient at {(x̃ₙ + x̃ⁱₙ₊₁)/2} to get Hermite extrapolation
-            fθ(f, x̄, a)
-            # mid point rule for integration to next step
-            x̃ .= x₀ .+ Δt .* f
-        end
-
-        sqeuclidean(x₁, x̃)
-    end
-
-    # define loss function
-    function loss(a::AbstractVector)
-        mapreduce(z -> loss_kernel(z..., fθ, a, method.integrator_timeStep), +, zip(x, y))
-    end
-
-    # function ploss(a::AbstractVector)
-    #     pmapreduce(z -> loss_kernel(z..., fθ, a, method.integrator_timeStep), +, zip(x̄, ȳ))
-    # end
-
-    # loss(coeffs)
-    # @time loss(coeffs)
-
-    # ploss(coeffs)
-    # @time ploss(coeffs)
-
-    # initial guess
-    println("Initial Guess...")
-    result = Optim.optimize(
-        loss, coeffs, solver, Optim.Options(show_trace = true); autodiff = :forward)
-
-    coeffs .= result.minimizer
-
-    println(result)
-
-    for n in 1:method.nloops
-        println("Iteration #$n...")
-
-        # find coefficients below λ threshold
-        smallinds = abs.(coeffs) .< method.λ
-        biginds = .~smallinds
-
-        # check if there are any small coefficients != 0 left
-        all(coeffs[smallinds] .== 0) && break
-
-        # set all small coefficients to zero
-        coeffs[smallinds] .= 0
-
-        # Regress dynamics onto remaining terms to find sparse coeffs
-        function sparseloss(b::AbstractVector)
-            c = zeros(eltype(b), axes(coeffs))
-            c[biginds] .= b
-            loss(c)
-        end
-
-        b = coeffs[biginds]
-        result = Optim.optimize(
-            sparseloss, b, solver, Optim.Options(show_trace = true); autodiff = :forward)
-        b .= result.minimizer
-
-        println(result)
-    end
-
-    return coeffs
-end
+(vf::HamiltonianSINDyVectorField)(dz, t::Number, z::AbstractVector, params) = vf(dz, z)
