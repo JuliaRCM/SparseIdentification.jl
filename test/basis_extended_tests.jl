@@ -1,8 +1,11 @@
+using Random
 using SparseIdentification
 using Symbolics
 using Test
 
 using SparseIdentification: strip_constants
+
+Random.seed!(1234)
 
 @testset "Arguments" begin
     z = Symbolics.variables(:z, 1:4)
@@ -20,8 +23,39 @@ using SparseIdentification: strip_constants
     @test_throws ArgumentError Differences([1])        # need two to make a difference
     @test_throws ArgumentError Differences([1, 1, 2])  # duplicated index
 
+    # An index below 1 names no state component. Rejecting it at construction gives an error that
+    # says so, where deferring to the indexing gives a `BoundsError` from two layers down.
+    @test_throws ArgumentError Differences([0, 1])
+    @test_throws ArgumentError Differences([-1, 2])
+
     # Referencing a component the state does not have is caught, not silently truncated.
     @test_throws ArgumentError SparseIdentification.basis_arguments(Differences(1:6), z)
+end
+
+@testset "Bases built from the same parameters are equal and hash alike" begin
+    # This is what makes a basis usable as the evaluator cache's key. `Differences` holds a
+    # `Vector{Int}`, so the default identity comparison makes two structurally identical bases
+    # distinct and every `evaluate` recompiles.
+    mk() = ExponentialBasis(Differences(1:3; consecutive = true); rates = (-1.0,))
+
+    @test mk() == mk()
+    @test hash(mk()) == hash(mk())
+    @test isequal(mk(), mk())
+
+    # Different parameters must still compare unequal.
+    @test mk() != ExponentialBasis(Differences(1:3); rates = (-1.0,))
+    @test mk() != ExponentialBasis(Differences(1:3; consecutive = true); rates = (1.0,))
+    @test PolynomialBasis(2) != PolynomialBasis(3)
+    @test CompoundBasis(polyorder = 2) == CompoundBasis(polyorder = 2)
+
+    # And the cache must therefore hit: repeated calls with a freshly built basis add no entries.
+    data = randn(6, 20)
+    evaluate(data, mk())
+    n = length(SparseIdentification.EVALUATOR_CACHE)
+    for _ in 1:5
+        evaluate(data, mk())
+    end
+    @test length(SparseIdentification.EVALUATOR_CACHE) == n
 end
 
 @testset "Exponential basis" begin

@@ -101,7 +101,7 @@ function sparsify(method::SINDy, Θ, ẋ, solver)
 
     for _ in 1:nloops(method)
         # find coefficients below the λ threshold
-        smallinds = abs.(Ξ) .< method.λ
+        smallinds = abs.(Ξ) .< sparsity_threshold(method)
 
         # the support has stopped changing
         all(Ξ[smallinds] .== 0) && break

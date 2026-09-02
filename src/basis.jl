@@ -90,6 +90,8 @@ struct Differences <: BasisArguments
         length(idx) ≥ 2 ||
             throw(ArgumentError("need at least two indices to form a difference, got $idx"))
         allunique(idx) || throw(ArgumentError("indices must be unique, got $idx"))
+        minimum(idx) ≥ 1 ||
+            throw(ArgumentError("indices must be positive, got $idx"))
         new(idx, consecutive)
     end
 end
@@ -126,7 +128,7 @@ struct PolynomialBasis <: AbstractBasis
 end
 
 function basis_functions(basis::PolynomialBasis, z)
-    basis.p == 0 ? [Num(1)] : Num.(hamiltonian_poly(collect(z), basis.p))
+    Num.(hamiltonian_poly(collect(z), basis.p))
 end
 
 """
@@ -286,6 +288,34 @@ Concatenate two bases into a [`CompoundBasis`](@ref).
 # and a basis that displays the same at every degree is worse than a verbose one.
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────
+# Equality
+#
+# Two bases built from the same parameters describe the same library, so they compare equal and
+# hash alike — which is what makes a basis usable as the evaluator cache's key below.
+#
+# The definitions are needed rather than inherited: Julia's default `==` on an immutable struct is
+# `===`, which compares fields by identity. `Differences` holds a `Vector{Int}`, so two separately
+# constructed `Differences(1:3)` are not `===`, and neither are the bases holding them.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+
+function Base.:(==)(a::Differences, b::Differences)
+    a.indices == b.indices && a.consecutive == b.consecutive
+end
+
+function Base.hash(a::Differences, h::UInt)
+    hash(a.consecutive, hash(a.indices, hash(Differences, h)))
+end
+
+function Base.:(==)(a::T, b::T) where {T <: AbstractBasis}
+    all(f -> getfield(a, f) == getfield(b, f), fieldnames(T))
+end
+
+function Base.hash(a::AbstractBasis, h::UInt)
+    foldr((f, h) -> hash(getfield(a, f), h), fieldnames(typeof(a));
+        init = hash(typeof(a), h))
+end
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
 # Evaluation
 #
 # The evaluator is compiled from the symbolic definition, once per (basis, state dimension) pair
@@ -295,8 +325,12 @@ Concatenate two bases into a [`CompoundBasis`](@ref).
 
 const EVALUATOR_CACHE = Dict{Tuple{Any, Int}, Any}()
 
+# The cache is a mutable global, so a `get!` that compiles a new evaluator must not run
+# concurrently with another. The lock is uncontended in the single-threaded case.
+const EVALUATOR_CACHE_LOCK = ReentrantLock()
+
 function _evaluator(basis::AbstractBasis, d::Int)
-    get!(EVALUATOR_CACHE, (basis, d)) do
+    Base.@lock EVALUATOR_CACHE_LOCK get!(EVALUATOR_CACHE, (basis, d)) do
         z = _symbolic_state(d)
         φ = basis_functions(basis, z)
         @RuntimeGeneratedFunction(build_function(φ, z)[1])

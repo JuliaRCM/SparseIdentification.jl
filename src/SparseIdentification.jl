@@ -23,6 +23,13 @@ import GeometricBase: basis, datatype, arrtype, equations, functions, nsamples, 
                       isexplicit, isimplicit, issymmetric, issymplectic,
                       isenergypreserving, isstifflyaccurate, order
 
+# `AbstractSolver` is GeometricBase's, and the solvers here are subtypes of it rather than of a
+# second abstract type of the same name. Declaring one locally would make `using GeometricBase`
+# alongside `using SparseIdentification` resolve the name to neither, since both would export a
+# different binding — the same hazard the traits below are held back for. Subtyping the
+# ecosystem's also makes `GeometricBase.isAbstractSolver` answer correctly for free.
+import GeometricBase: AbstractSolver
+
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
 export basis, datatype, arrtype, equations, functions, nsamples, parameters, timestep
@@ -39,7 +46,7 @@ export name, description, reference
 # Four of them carry methods here; `issymmetric`, `isstifflyaccurate` and `order` describe a
 # Runge–Kutta tableau and are left at GeometricBase's `missing`.
 
-export calculate_nparams, hamiltonian, hamil_trig, hamiltonian_poly
+export calculate_nparams, hamiltonian_poly
 
 include("util.jl")
 

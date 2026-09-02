@@ -1,5 +1,8 @@
+using Random
 using SparseIdentification
 using Test
+
+Random.seed!(1234)
 
 @testset "TrainingData" begin
     x = randn(4, 20)

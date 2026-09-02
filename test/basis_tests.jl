@@ -1,5 +1,9 @@
+using Random
 using SparseIdentification
+using Symbolics
 using Test
+
+Random.seed!(1234)
 
 @testset "Polynomial basis" begin
     # Two degrees of freedom, degrees 0 through 3: 1 + 2 + 3 + 4 = 10 terms.
@@ -47,6 +51,25 @@ end
     # 1 + 2 + 3 polynomial terms, then 1 wavenumber × {sin, cos} × 2 dof
     @test size(Θ) == (6, 10)
     @test all(isfinite, Θ)
+end
+
+@testset "hamiltonian_poly" begin
+    z = Symbolics.variables(:z, 1:2)
+
+    # Degree 0 is the constant. It is the one degree whose term count does not depend on the
+    # number of variables, and returning it here is what lets `PolynomialBasis` share this single
+    # definition instead of special-casing degree 0 itself.
+    #
+    # `==` on `Num` builds a symbolic equation rather than deciding one, so these compare with
+    # `isequal` throughout.
+    @test isequal(hamiltonian_poly(z, 0), [Num(1)])
+    @test isequal(basis_functions(PolynomialBasis(0), z), [Num(1)])
+
+    # Every degree agrees with the basis that is built from it.
+    for p in 0:3
+        @test isequal(basis_functions(PolynomialBasis(p), z), Num.(hamiltonian_poly(z, p)))
+        @test nterms(PolynomialBasis(p), 2) == binomial(2 + p - 1, p)
+    end
 end
 
 @testset "calculate_nparams" begin

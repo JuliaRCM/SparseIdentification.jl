@@ -1,6 +1,4 @@
 
-abstract type AbstractSolver end
-
 """
     JuliaLeastSquare()
 

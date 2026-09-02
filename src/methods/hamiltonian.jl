@@ -3,36 +3,6 @@
 # Symbolic construction of a parametrised Hamiltonian
 ##########################################################
 
-" collects and sums only polynomial combinations of basis "
-function hamiltonian(z, a, order)
-    ham = []
-
-    for i in 1:order
-        ham = vcat(ham, hamiltonian_poly(z, i))
-    end
-
-    sum(collect(a .* ham))
-end
-
-" collects and sums polynomial and trigonometric combinations of basis "
-function hamil_trig(z, a, order, trig_wave_num)
-    ham = []
-
-    # Polynomial basis
-    for i in 1:order
-        ham = vcat(ham, hamiltonian_poly(z, i))
-    end
-
-    # Trigonometric basis
-    for k in 1:trig_wave_num
-        ham = vcat(ham, vcat(sin.(k*z)), vcat(cos.(k*z)))
-    end
-
-    ham = sum(collect(a .* ham))
-
-    return ham
-end
-
 """
     HamiltonianFunctions
 

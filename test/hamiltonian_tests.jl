@@ -1,7 +1,10 @@
+using Random
 using SparseIdentification
 using Test
 
 using SparseIdentification: hamilGrad_func_builder
+
+Random.seed!(1234)
 
 @testset "Hamiltonian gradient builder" begin
     # The builder generates J∇H symbolically and compiles it, and the compiled function is

@@ -1,5 +1,12 @@
+using Random
 using SparseIdentification
 using Test
+
+# The assertions below compare recovered coefficients to the truth at 1e-12 and 1e-10, which is
+# what clean data earns — but only for a well-conditioned draw. Seeding makes the regression
+# matrix the same on every run and every platform, so a failure here means the estimator changed
+# rather than that the sample was unlucky.
+Random.seed!(1234)
 
 "The Lorenz system, written out so the expected coefficients below are explicit."
 function lorenz_rhs(y, σ, β, ρ)

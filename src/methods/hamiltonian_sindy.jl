@@ -154,13 +154,17 @@ function sparsify(method::HamiltonianSINDy, hfuns::HamiltonianFunctions,
     for n in 1:nloops(method)
         verbose && println("Iteration #$n...")
 
-        smallinds = abs.(coeffs) .< method.λ
+        smallinds = abs.(coeffs) .< sparsity_threshold(method)
         biginds = .~smallinds
 
         # the support has stopped changing
         all(coeffs[smallinds] .== 0) && break
 
         coeffs[smallinds] .= 0
+
+        # Nothing survived the threshold, so there is no reduced problem left to regress — and
+        # handing the optimiser an empty parameter vector is not a well-posed call.
+        any(biginds) || break
 
         # regress onto the surviving terms only
         function sparseloss(b::AbstractVector)

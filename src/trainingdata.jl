@@ -134,14 +134,9 @@ _first_state(x::AbstractVector{<:AbstractVector}) = first(x)
 GeometricBase.arrtype(problem::TrainingData) = typeof(problem.x)
 GeometricBase.arrtype(problem::TrajectoryData) = typeof(problem.x)
 
-"""
-    states(problem)
-
-The state snapshots, as a vector of state vectors.
-"""
-states(problem::TrainingData) = _as_vector_of_states(problem.x)
-states(problem::TrajectoryData) = _as_vector_of_states(problem.x)
-
+# The snapshots as a vector of state vectors. Deliberately not a public `states` accessor:
+# `GeometricSolutions` exports `states`, and a second function of that name defined here would
+# shadow it inside this module and collide with it in any session that loads both.
 _as_vector_of_states(x::AbstractMatrix) = [x[:, j] for j in axes(x, 2)]
 _as_vector_of_states(x::AbstractVector{<:AbstractVector}) = x
 

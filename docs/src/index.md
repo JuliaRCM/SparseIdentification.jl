@@ -59,9 +59,12 @@ touches them ([Nonlinear Oscillator](@ref), [When It Fails](@ref)).
 
 ## Status
 
-Working and tested: classical SINDy with sequentially thresholded least squares, polynomial and
-trigonometric bases, and Hamiltonian SINDy in its flow-map formulation.
+Working and tested: classical SINDy with sequentially thresholded least squares, Hamiltonian SINDy
+in its flow-map formulation, and the polynomial, trigonometric, exponential, logarithmic and
+rational bases — the last three applied to differences of state components, which is what the Toda
+lattice, the point vortex and the N-body problem need. See [Basis Libraries](@ref).
 
 Not yet implemented, and tracked in the release notes: the linear vector-field formulation of
-Hamiltonian SINDy, rational/exponential/logarithmic bases, the autoencoder variant that discovers
-canonical coordinates, and the weak formulation for noisy data.
+Hamiltonian SINDy, the autoencoder variant that discovers canonical coordinates, and the weak
+formulation for noisy data. A *norm* of a difference of position vectors is not expressible either,
+so three-dimensional N-body is out of reach.

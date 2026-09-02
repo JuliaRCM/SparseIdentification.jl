@@ -2,8 +2,11 @@ using GeometricBase
 using GeometricEquations
 using GeometricIntegrators
 using GeometricProblems.HarmonicOscillator
+using Random
 using SparseIdentification
 using Test
+
+Random.seed!(1234)
 
 # The six `is*` traits are extended but not exported, because GeometricIntegratorsBase defines
 # its own generics of the same names. Reach them qualified.
@@ -79,6 +82,19 @@ end
 
     @test parameters(result) isa AbstractVector
     @test degreesoffreedom(result) == 1
+
+    # The round trip has to *identify*, not merely run: the pairing in `TrajectoryData(solution)`
+    # is what decides the recovered field, and asserting only that the output is finite would
+    # leave an off-by-one in that pairing — which its own comment warns about — passing.
+    # H = p²/2m + k q²/2 with m = 1, so ż = J∇H = (p, -k q).
+    k = parameters(ref).k
+    vf = HamiltonianSINDyVectorField(result)
+    dz = zeros(2)
+    for _ in 1:5
+        z = randn(2)
+        vf(dz, z)
+        @test dz≈[z[2], -k * z[1]] atol=1e-3
+    end
 
     # Back to a GeometricEquations problem, and integrable.
     prob = HODEProblem(result, (0.0, 1.0), 0.01, [0.5], [0.0])

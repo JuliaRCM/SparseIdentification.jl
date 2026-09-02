@@ -1,11 +1,26 @@
+using GeometricBase
+using Random
 using SparseIdentification
 using Test
+
+Random.seed!(1234)
 
 # `OptimizerSolver` is compared at 1e-6, not at the 1e-12 the direct solve reaches. Its
 # stopping criterion is on the gradient, so it bounds the residual and not the distance to the
 # minimiser; on these problems that lands a few times 1e-9 away. The test asserts the two solvers
 # agree, which is the property — a tighter number would only be pinning one run's luck.
 const OPTIMIZER_ATOL = 1e-6
+
+@testset "The solvers are the ecosystem's AbstractSolvers" begin
+    # `AbstractSolver` is GeometricBase's, not a second abstract type of the same name declared
+    # here — otherwise `using GeometricBase` alongside `using SparseIdentification` would resolve
+    # the exported name to neither of them.
+    @test AbstractSolver === GeometricBase.AbstractSolver
+    @test JuliaLeastSquare() isa GeometricBase.AbstractSolver
+    @test OptimizerSolver() isa GeometricBase.AbstractSolver
+    @test GeometricBase.isAbstractSolver(JuliaLeastSquare())
+    @test GeometricBase.isAbstractSolver(OptimizerSolver())
+end
 
 @testset "Least squares solvers" begin
     n = 10

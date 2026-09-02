@@ -1,6 +1,4 @@
-" functions to generate hamiltonian function of variable z and 
-order 3 of combinations with 2 dims for each variable "
-
+# Elementwise product of any number of arrays, used to form a monomial from its chosen factors.
 _prod(a, b, c, arrs...) = a .* _prod(b, c, arrs...)
 _prod(a, b) = a .* b
 _prod(a) = a
@@ -34,7 +32,10 @@ function hamiltonian_poly(z, order, inds...)
     ham = []
 
     if order == 0
-        Num(1)
+        # Degree zero is the constant, and it is the one degree with a single term regardless of
+        # how many variables there are. Returning it here rather than at the call site is what
+        # keeps `PolynomialBasis` from needing a second definition of the same thing.
+        ham = vcat(ham, Num(1))
     elseif order == length(inds)
         ham = vcat(ham, _prod([z[i] for i in inds]...))
     else
