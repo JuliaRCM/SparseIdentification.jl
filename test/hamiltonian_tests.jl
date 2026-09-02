@@ -1,12 +1,11 @@
 using SparseIdentification
 using Test
 
-using SparseIdentification: hamilGrad_func_builder, sparsify
+using SparseIdentification: hamilGrad_func_builder
 
 @testset "Hamiltonian gradient builder" begin
-    # The builder generates J∇H symbolically and compiles it. Under Symbolics 7 this needs no
-    # `inject_registered_module_functions` wrapper — that name exists in no released Symbolics,
-    # so the call used to fail as soon as it was reached.
+    # The builder generates J∇H symbolically and compiles it, and the compiled function is
+    # actually called here — a builder that only ever gets constructed proves nothing.
     for (d, polyorder, trig) in ((1, 3, 0), (1, 2, 1), (2, 3, 0), (2, 2, 1))
         fθ = hamilGrad_func_builder(d, polyorder, trig)
         nparam = calculate_nparams(d, polyorder, trig)
@@ -21,10 +20,9 @@ using SparseIdentification: hamilGrad_func_builder, sparsify
 end
 
 @testset "Basis size matches what the vector field consumes" begin
-    # Regression test for the parameter-count mismatch. `calculate_nparams` takes the number of
-    # degrees of freedom `d`, and the phase space has `2d` variables. Passing the full state
-    # dimension where `d` was expected made the optimiser search 212 coefficients for a basis
-    # that reads 58 of them.
+    # `calculate_nparams` takes the number of degrees of freedom `d`, and the phase space has
+    # `2d` variables. Passing the full state dimension where `d` is expected inflates the count,
+    # and the optimiser then searches coefficients the vector field never reads.
     for d in 1:3, polyorder in 2:3, trig in 0:1
         fθ = hamilGrad_func_builder(d, polyorder, trig)
         nparam = calculate_nparams(d, polyorder, trig)

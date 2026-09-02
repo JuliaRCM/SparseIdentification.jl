@@ -121,8 +121,8 @@ end
 end
 
 @testset "A Toda-type basis is expressible and identifiable" begin
-    # Two particles with a Toda interaction: H = ½(p₁² + p₂²) + exp(-(q₂ - q₁)).
-    # This system was not representable at all before exponential bases of differences existed.
+    # Two particles with a Toda interaction: H = ½(p₁² + p₂²) + exp(-(q₂ - q₁)). Expressing it
+    # needs an exponential of a *difference* of positions, not of a single state component.
     exact_H(z) = (z[3]^2 + z[4]^2) / 2 + exp(-(z[2] - z[1]))
 
     # ż = J∇H

@@ -28,13 +28,16 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 export basis, datatype, arrtype, equations, functions, nsamples, parameters, timestep
 export name, description, reference
 
-# `isexplicit`, `isimplicit`, `issymmetric`, `issymplectic`, `isenergypreserving` and
-# `isstifflyaccurate` are extended here but deliberately NOT exported. GeometricIntegratorsBase
-# defines its own generics of those six names rather than extending GeometricBase's stubs, and
-# exports them; a session with both `using SparseIdentification` and `using GeometricIntegrators`
-# would then see two different bindings under one name and resolve it to neither. Reach them
-# qualified — `SparseIdentification.issymplectic(method)` — as SimpleSolvers has callers do with
-# `status` and `isconverged`, and for the same reason.
+# `isexplicit`, `isimplicit`, `issymmetric`, `issymplectic`, `isenergypreserving`,
+# `isstifflyaccurate` and `order` are imported above but deliberately NOT exported.
+# GeometricIntegratorsBase defines its own generics of those names rather than extending
+# GeometricBase's stubs, and exports them; a session with both `using SparseIdentification` and
+# `using GeometricIntegrators` would then see two different bindings under one name and resolve it
+# to neither. Reach them qualified — `SparseIdentification.issymplectic(method)` — as SimpleSolvers
+# has callers do with `status` and `isconverged`, and for the same reason.
+#
+# Four of them carry methods here; `issymmetric`, `isstifflyaccurate` and `order` describe a
+# Runge–Kutta tableau and are left at GeometricBase's `missing`.
 
 export calculate_nparams, hamiltonian, hamil_trig, hamiltonian_poly
 

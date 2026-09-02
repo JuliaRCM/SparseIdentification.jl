@@ -280,13 +280,10 @@ Concatenate two bases into a [`CompoundBasis`](@ref).
 """
 ⊕(b₁::AbstractBasis, b₂::AbstractBasis) = CompoundBasis((bases(b₁)..., bases(b₂)...))
 
-function Base.show(io::IO, basis::AbstractBasis)
-    print(io, nameof(typeof(basis)), "()")
-end
-
-function Base.show(io::IO, basis::CompoundBasis)
-    print(io, "CompoundBasis of ", length(bases(basis)), " bases")
-end
+# No `Base.show` methods: the default struct display names every field, so a basis prints the
+# parameters that distinguish it — `PolynomialBasis(3)` rather than `PolynomialBasis()`, and the
+# argument selection and rates of the univariate bases. A summary line would have to drop those,
+# and a basis that displays the same at every degree is worse than a verbose one.
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 # Evaluation
@@ -311,8 +308,8 @@ end
 
 Evaluate every candidate function of `basis` on every snapshot of `data`.
 
-`data` is a matrix whose columns are snapshots, or a single state vector. The result `Θ` has one
-row per snapshot and one column per candidate function.
+`data` is a matrix whose columns are snapshots, a vector of state vectors, or a single state
+vector. The result `Θ` has one row per snapshot and one column per candidate function.
 
 # Examples
 
@@ -324,9 +321,7 @@ julia> size(Θ)      # 2 snapshots × (1 constant + 2 linear) terms
 ```
 """
 function evaluate(data::AbstractMatrix, basis::AbstractBasis)
-    d = size(data, 1)
-    f = _evaluator(basis, d)
-    reduce(vcat, transpose(f(view(data, :, j))) for j in axes(data, 2))
+    _tabulate(_evaluator(basis, size(data, 1)), eachcol(data))
 end
 
 function evaluate(data::AbstractVector{<:Number}, basis::AbstractBasis)
@@ -334,6 +329,24 @@ function evaluate(data::AbstractVector{<:Number}, basis::AbstractBasis)
 end
 
 function evaluate(data::AbstractVector{<:AbstractVector}, basis::AbstractBasis)
-    f = _evaluator(basis, length(first(data)))
-    reduce(vcat, transpose(f(x)) for x in data)
+    _tabulate(_evaluator(basis, length(first(data))), data)
+end
+
+# `Θ` is allocated once and filled row by row. Concatenating the rows as they are produced copies
+# the whole block accumulated so far on every snapshot, so it costs O(nsamples²) memory: on 2000
+# snapshots of a ten-term basis that is 174 MB to build a 160 kB matrix.
+function _tabulate(f, snapshots)
+    isempty(snapshots) &&
+        throw(ArgumentError("cannot evaluate a basis on an empty data set"))
+
+    # The first evaluation fixes the element type and the number of candidate functions, which is
+    # what the output is sized from.
+    φ = f(first(snapshots))
+    Θ = similar(φ, length(snapshots), length(φ))
+
+    for (i, snapshot) in enumerate(snapshots)
+        Θ[i, :] .= f(snapshot)
+    end
+
+    return Θ
 end

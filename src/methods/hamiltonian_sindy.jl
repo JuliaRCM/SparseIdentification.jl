@@ -117,8 +117,9 @@ Sequentially thresholded regression of the Hamiltonian coefficients against the 
 """
 function sparsify(method::HamiltonianSINDy, hfuns::HamiltonianFunctions,
         problem::TrajectoryData, solver; verbose = false)
-    # The coefficient count comes from the compiled basis itself. Recomputing it separately is
-    # what made the optimiser search 212 coefficients for a basis that reads 58 of them.
+    # The coefficient count comes from the compiled basis itself, so the optimiser searches
+    # exactly the coefficients the vector field reads. A second, independent count of the same
+    # quantity is what lets the two disagree.
     fθ = hfuns.ż
     coeffs = zeros(hfuns.nparam)
 
@@ -169,7 +170,7 @@ function sparsify(method::HamiltonianSINDy, hfuns::HamiltonianFunctions,
         end
 
         # `coeffs[biginds]` is a copy, so the result has to be written back through `biginds`.
-        # Assigning into the copy is what silently discarded every refit after the first.
+        # Assigning into the copy instead would discard every refit silently.
         coeffs[biginds] .= minimize(sparseloss, coeffs[biginds], solver)
     end
 

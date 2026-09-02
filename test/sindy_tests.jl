@@ -72,8 +72,8 @@ end
 end
 
 @testset "Identification is deterministic" begin
-    # The estimator used to add fresh `randn` noise to its own targets on every call, so two
-    # identical calls disagreed. Noise belongs to the data, not to the algorithm.
+    # The estimator draws no randomness of its own, so two identical calls agree exactly. Noise
+    # belongs to the data, not to the algorithm.
     A = [-0.1 2.0
          -2.0 -0.1]
     x = randn(2, 200)
@@ -81,6 +81,22 @@ end
     method = SINDy(CompoundBasis(polyorder = 3, trigonometric = 0); λ = 0.05)
 
     @test parameters(identify(data, method)) == parameters(identify(data, method))
+end
+
+@testset "Training data given as vectors of states" begin
+    # `TrainingData` accepts both shapes, and `TrainingData(solution)` produces the vector one, so
+    # `identify` must give the same answer for both.
+    A = [-0.1 2.0
+         -2.0 -0.1]
+    x = randn(2, 200)
+    basis = CompoundBasis(polyorder = 3, trigonometric = 0)
+    method = SINDy(basis; λ = 0.05)
+
+    from_matrix = parameters(identify(TrainingData(x, A * x), method))
+    from_vectors = parameters(identify(
+        TrainingData([x[:, j] for j in axes(x, 2)], [(A * x)[:, j] for j in axes(x, 2)]), method))
+
+    @test from_vectors == from_matrix
 end
 
 @testset "Identified vector field evaluates" begin

@@ -22,6 +22,19 @@ makes it worth keeping.
   precompile on Julia 1.13. All of it arrived through `DifferentialEquations`, which is no longer
   a dependency, so the whole class of failure is gone rather than worked around.
 
+- **`evaluate` allocated quadratically in the number of snapshots.** It built one row per
+  snapshot and folded them with `reduce(vcat, <generator>)`, which has no array fast path and so
+  copies the whole accumulated block each time. Measured at 2000 snapshots of a ten-term basis:
+  **174 MB and 8.17 ms to produce a 160 kB matrix** — about 1090× the output it was building. The
+  result is now preallocated and filled in place: **452 kB and 0.036 ms**, 386× fewer bytes and
+  227× faster, and linear rather than quadratic. Verified bitwise identical (`===`, not `≈`) to
+  the previous expression across six bases, four sizes and both entry points.
+
+- **`identify` threw on training data given as vectors of states** — which is exactly the shape
+  `TrainingData(solution)` produces, so the documented `integrate → identify` round trip did not
+  work for `SINDy` at all. The derivatives are now normalised to a matrix before the regression,
+  and a test asserts both shapes give identical coefficients.
+
 - **`hamilGrad_func_builder` could never have run.** It wrapped `build_function` in
   `Symbolics.inject_registered_module_functions`, a name that exists in *no* released Symbolics —
   not in the pinned 5.36.0 and not in 7.x. Every Hamiltonian identification would have hit an
@@ -78,9 +91,12 @@ makes it worth keeping.
 
 - **`issymplectic` and `isenergypreserving` now state the difference between the methods** as a
   property rather than as prose: both are `true` for `HamiltonianSINDy` and `false` for `SINDy`.
-  Those two, with `isexplicit`, `isimplicit`, `issymmetric` and `isstifflyaccurate`, are extended
-  but **not exported** — `GeometricIntegratorsBase` defines its own generics of those six names
-  instead of extending `GeometricBase`'s stubs, so exporting them would make
+  Those two and `isexplicit`/`isimplicit` are the four traits this package answers; `issymmetric`,
+  `isstifflyaccurate` and `order` describe a Runge–Kutta tableau, have no meaning for a regression,
+  and are left at `GeometricBase`'s `missing`.
+
+  None of the seven names is **exported** — `GeometricIntegratorsBase` defines its own generics of
+  six of them instead of extending `GeometricBase`'s stubs, so exporting them would make
   `using SparseIdentification` alongside `using GeometricIntegrators` resolve the name to neither.
   Reach them qualified.
 

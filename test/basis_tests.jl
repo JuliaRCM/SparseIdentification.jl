@@ -21,9 +21,8 @@ using Test
 end
 
 @testset "Trigonometric basis" begin
-    # Regression test. `evaluate` used to build a two-element Vector of matrices and `hcat` it
-    # onto a matrix, and it read `data` in the opposite orientation to PolynomialBasis, so it
-    # could neither run on its own nor be combined with polynomials.
+    # `evaluate` returns a matrix, and reads `data` in the same orientation for every basis:
+    # one row per snapshot, one column per candidate function.
     basis = TrigonometricBasis(2)
     x = randn(2, 5)
     Θ = evaluate(x, basis)
@@ -40,7 +39,7 @@ end
 end
 
 @testset "Compound basis" begin
-    # A compound basis must be able to mix the two, which the orientation mismatch prevented.
+    # A compound basis mixes the two, which needs both to agree on the orientation.
     basis = CompoundBasis(polyorder = 2, trigonometric = 1)
     x = randn(2, 6)
     Θ = evaluate(x, basis)

@@ -145,6 +145,10 @@ states(problem::TrajectoryData) = _as_vector_of_states(problem.x)
 _as_vector_of_states(x::AbstractMatrix) = [x[:, j] for j in axes(x, 2)]
 _as_vector_of_states(x::AbstractVector{<:AbstractVector}) = x
 
+# The other direction: one column per snapshot, for the methods that index the data as a matrix.
+_as_matrix_of_states(x::AbstractMatrix) = x
+_as_matrix_of_states(x::AbstractVector{<:AbstractVector}) = reduce(hcat, x)
+
 function Base.show(io::IO, problem::TrainingData)
     print(io, "TrainingData with ", nsamples(problem), " snapshots of dimension ",
         statedimension(problem))

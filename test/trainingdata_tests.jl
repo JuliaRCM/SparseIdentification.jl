@@ -9,8 +9,8 @@ using Test
     @test nsamples(data) == 20
     @test statedimension(data) == 4
 
-    # The struct used to have three fields and no constructor at all, so every caller in
-    # `scripts/` was passing two arguments to something that needed three.
+    # Shapes are validated at construction, so a mismatch surfaces here rather than as a wrong
+    # answer several layers down.
     @test_throws DimensionMismatch TrainingData(randn(4, 20), randn(4, 19))
     @test_throws DimensionMismatch TrainingData(randn(4, 20), randn(3, 20))
     @test_throws ArgumentError TrainingData(randn(4, 20), [randn(4) for _ in 1:20])

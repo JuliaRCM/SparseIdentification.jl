@@ -124,7 +124,9 @@ function identify(problem::TrainingData, method::SINDy;
     # evaluate the library of candidate functions on the training data
     Θ = evaluate(problem.x, method.basis)
 
-    Ξ = sparsify(method, Θ, problem.ẋ, solver)
+    # `sparsify` indexes the derivatives as a matrix, one column per snapshot. `TrainingData`
+    # also accepts a vector of state vectors, which is the shape `TrainingData(solution)` builds.
+    Ξ = sparsify(method, Θ, _as_matrix_of_states(problem.ẋ), solver)
 
     SINDyResult(method, method.basis, Ξ)
 end

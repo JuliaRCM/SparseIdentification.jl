@@ -14,7 +14,7 @@ struct JuliaLeastSquare <: AbstractSolver end
 solve(Θ, ẋ, ::JuliaLeastSquare) = Θ \ ẋ
 
 """
-    OptimizerSolver(; algorithm = BFGS(), linesearch = Backtracking(), options...)
+    OptimizerSolver(; algorithm = BFGS(), linesearch = Backtracking())
 
 Minimise a nonlinear least-squares loss with [`GeometricOptimizers`](https://github.com/JuliaGNI/GeometricOptimizers.jl).
 
