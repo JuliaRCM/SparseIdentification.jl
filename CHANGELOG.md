@@ -238,8 +238,10 @@ makes it worth keeping.
   exactly zero; and the harmonic oscillator recovered through the Hamiltonian path.
 
   These compare against the truth at `1e-12` and `1e-10`, which clean data earns only for a
-  well-conditioned draw, so **every test file now seeds its RNG**. A failure means the estimator
-  changed rather than that the sample was unlucky.
+  well-conditioned draw, so **every test file now seeds its RNG**. Repeated runs on one Julia
+  version therefore agree, and a failure means the estimator changed rather than that the sample
+  was unlucky. The stream is not guaranteed across Julia versions, so what is pinned is the
+  tolerance, not the matrix.
 
   The `integrate → identify → integrate` round trip also **asserts the identified field**, not
   merely that it is finite and the right shape. The pairing in `TrajectoryData(solution)` is what
