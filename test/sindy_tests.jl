@@ -79,6 +79,33 @@ end
     @test few == many
 end
 
+@testset "The thresholding objective decreases" begin
+    # Zhang & Schaeffer (2019): STLSQ decreases `F(x) = ‖Θx - ẋ‖² + λ²‖x‖₀` at every
+    # non-stationary step. `nloops` exposes the iterates, so fitting the same data with an
+    # increasing number of loops recovers the sequence of iterates and `F` along it must be
+    # non-increasing — `nloops = 0` is the initial dense least-squares fit the loop starts from.
+    A = [-0.1 2.0
+         -2.0 -0.1]
+    x = randn(2, 300)
+    ẋ = A * x
+    data = TrainingData(x, ẋ)
+    basis = CompoundBasis(polyorder = 3, trigonometric = 0)
+    λ = 0.05
+
+    Θ = evaluate(x, basis)
+    F(Ξ, j) = sum(abs2, Θ * Ξ[:, j] - ẋ[j, :]) + λ^2 * count(!iszero, view(Ξ, :, j))
+
+    iterates = [parameters(identify(data, SINDy(basis; λ = λ, nloops = n))) for n in 0:8]
+
+    for j in axes(ẋ, 1)
+        @test issorted([F(Ξ, j) for Ξ in iterates], rev = true)
+    end
+
+    # The penalty term is what the decrease buys: the support really does shrink from the dense
+    # fit, so this is not a statement about the residual alone.
+    @test count(!iszero, iterates[end]) < count(!iszero, iterates[1])
+end
+
 @testset "Identification is deterministic" begin
     # The estimator draws no randomness of its own, so two identical calls agree exactly. Noise
     # belongs to the data, not to the algorithm.

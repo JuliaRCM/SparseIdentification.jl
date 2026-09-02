@@ -9,7 +9,7 @@ every method in this package that fits a fixed library of candidate functions.
 """
 struct JuliaLeastSquare <: AbstractSolver end
 
-solve(Θ, ẋ, ::JuliaLeastSquare) = Θ \ ẋ
+solve(Θ::AbstractMatrix, ẋ, ::JuliaLeastSquare) = Θ \ ẋ
 
 """
     OptimizerSolver(; algorithm = BFGS(), linesearch = Backtracking())
@@ -42,7 +42,7 @@ function minimize(loss, x₀::AbstractVector, solver::OptimizerSolver)
     return x
 end
 
-function solve(Θ, ẋ::AbstractVector, solver::OptimizerSolver)
+function solve(Θ::AbstractMatrix, ẋ::AbstractVector, solver::OptimizerSolver)
     loss(x) = sum(abs2, ẋ .- Θ * x)
     minimize(loss, zeros(size(Θ, 2)), solver)
 end
@@ -50,6 +50,6 @@ end
 # The optimizer works on a vector, so a matrix right-hand side is solved column by column. Each
 # column is an independent least-squares problem — the coefficients are not coupled across
 # columns — so this is the same solution the matrix form would give, not an approximation of it.
-function solve(Θ, ẋ::AbstractMatrix, solver::OptimizerSolver)
+function solve(Θ::AbstractMatrix, ẋ::AbstractMatrix, solver::OptimizerSolver)
     reduce(hcat, solve(Θ, view(ẋ, :, j), solver) for j in axes(ẋ, 2))
 end

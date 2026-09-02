@@ -102,7 +102,15 @@ end
 
     data = reshape([1.0, 3.0, 7.0], 3, 1)
     Θ = evaluate(data, basis)
-    @test sort(abs.(vec(Θ))) ≈ sort([1 / 2, 1 / 6, 1 / 4])
+
+    @test size(Θ) == (1, 3)
+    @test sort(vec(Θ)) ≈ sort([1 / 2, 1 / 6, 1 / 4])
+
+    # `abs` inside the power means the terms are positive and the sign of the difference does not
+    # matter — a reciprocal distance, not a reciprocal signed difference.
+    @test all(>(0), Θ)
+    flipped = reshape([7.0, 3.0, 1.0], 3, 1)
+    @test sort(vec(evaluate(flipped, basis))) ≈ sort(vec(Θ))
 
     @test nterms(RationalBasis(; powers = (1, 2)), 3) == 6
 end
@@ -151,6 +159,26 @@ end
         z = randn(2)
         vf(dz, z)
         @test dz≈[z[2], -z[1]] atol=1e-3
+    end
+end
+
+@testset "The Hamiltonian path accepts the logarithmic and rational bases" begin
+    # These two are the bases whose stated purpose is the Hamiltonian path — the point vortex and
+    # the N-body problem — and both put `abs` inside, which `hamiltonian_functions` has to
+    # differentiate symbolically to build `ż = J∇H`. Compiling and evaluating them is what pins
+    # that, independently of whether a fit recovers anything.
+    for args in (Differences(1:2), StateComponents())
+        for b in (LogarithmicBasis(args), RationalBasis(args))
+            basis = hamiltonian_basis(polyorder = 2) ⊕ b
+            H = hamiltonian_functions(basis, 1)
+
+            @test H.nparam == length(basis_functions(basis, Symbolics.variables(:z, 1:2)))
+
+            # Away from the singularity at a vanishing argument, the field is finite.
+            ż = zeros(2)
+            H.ż(ż, [0.7, 1.3], 0.1 .* collect(1:(H.nparam)))
+            @test all(isfinite, ż)
+        end
     end
 end
 

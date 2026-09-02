@@ -55,24 +55,23 @@ GeometricBase.isimplicit(::SINDy) = false
 
 The outcome of [`identify`](@ref) with [`SINDy`](@ref).
 
-Carries the coefficient matrix, the basis it refers to, and the method that produced it. Reach the
-coefficients with `parameters`; convert to a `GeometricEquations.ODEProblem` to integrate
-the identified system.
+Carries the coefficient matrix and the method that produced it. Reach the coefficients with
+`parameters` and the basis they refer to with `basis`; convert to a
+`GeometricEquations.ODEProblem` to integrate the identified system.
 """
-struct SINDyResult{DT, BT <: AbstractBasis, CT <: AbstractArray{DT}, MT <: SINDy}
+struct SINDyResult{DT, CT <: AbstractArray{DT}, MT <: SINDy}
     method::MT
-    basis::BT
     coefficients::CT
 
-    function SINDyResult(method::MT, basis::BT,
-            coefficients::CT) where {DT, MT <: SINDy, BT <: AbstractBasis,
-            CT <: AbstractArray{DT}}
-        new{DT, BT, CT, MT}(method, basis, coefficients)
+    function SINDyResult(method::MT,
+            coefficients::CT) where {DT, MT <: SINDy, CT <: AbstractArray{DT}}
+        new{DT, CT, MT}(method, coefficients)
     end
 end
 
 GeometricBase.parameters(result::SINDyResult) = result.coefficients
-GeometricBase.basis(result::SINDyResult) = result.basis
+# The basis is the method's; a result cannot refer to a different one than it was fitted with.
+GeometricBase.basis(result::SINDyResult) = result.method.basis
 GeometricBase.datatype(::SINDyResult{DT}) where {DT} = DT
 method(result::SINDyResult) = result.method
 
@@ -128,7 +127,7 @@ function identify(problem::TrainingData, method::SINDy;
     # also accepts a vector of state vectors, which is the shape `TrainingData(solution)` builds.
     Ξ = sparsify(method, Θ, _as_matrix_of_states(problem.ẋ), solver)
 
-    SINDyResult(method, method.basis, Ξ)
+    SINDyResult(method, Ξ)
 end
 
 """
@@ -146,7 +145,7 @@ struct SINDyVectorField{DT, BT, CT} <: VectorField
     end
 end
 
-SINDyVectorField(result::SINDyResult) = SINDyVectorField(result.basis, result.coefficients)
+SINDyVectorField(result::SINDyResult) = SINDyVectorField(basis(result), result.coefficients)
 
 function (vf::SINDyVectorField)(dy, y)
     yPool = evaluate(y, vf.basis)

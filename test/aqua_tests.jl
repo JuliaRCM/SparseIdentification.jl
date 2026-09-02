@@ -4,9 +4,11 @@ using Test
 
 # Piracy is the check that matters here: this package adds methods to `SimpleSolvers.solve`, and
 # those are legitimate only because the dispatching argument is one of our own solver types.
-# `test_ambiguities` is not run, for the reason given in GeometricOptimizers' own aqua_tests.jl —
-# it reports large numbers of LinearAlgebra pairs that are not this package's to fix.
+# Those same methods are what `test_ambiguities` guards: `Θ` is annotated `AbstractMatrix` so that
+# they cannot be ambiguous against `SimpleSolvers.solve`'s own `LinearSolver`, `Linesearch` and
+# `LinesearchProblem` methods, none of which is an `AbstractMatrix`.
 @testset "Aqua" begin
+    Aqua.test_ambiguities(SparseIdentification)
     Aqua.test_piracies(SparseIdentification)
     Aqua.test_stale_deps(SparseIdentification)
     Aqua.test_undefined_exports(SparseIdentification)

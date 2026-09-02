@@ -89,7 +89,9 @@ the ``\ell^0``-penalised least-squares objective. They prove, for ``A`` of full 
 - ``F`` **strictly decreases** at every non-stationary step;
 - the limit is a **local minimiser** of ``F``, and every global minimiser is a fixed point.
 
-Both of the first two are directly testable, and are asserted in this package's test suite.
+Both of the first two are directly testable, and each has a testset in `test/sindy_tests.jl`:
+"Thresholding is exact and terminating" pins the step bound, and "The thresholding objective
+decreases" recovers the iterates through `nloops` and checks ``F`` along them.
 
 Note the guarantee is *local*. STLSQ converging does not certify that you found the true model —
 only that you found a local minimiser of a sparsity-penalised objective. Recovery of the true
@@ -107,7 +109,8 @@ F_1(x) = \lVert Ax - b \rVert_2^2 + \gamma \lVert x \rVert_2^2 + \lambda^2 \lVer
 
 implemented by augmenting ``A`` with ``\sqrt{\gamma}\, I`` and ``b`` with zeros. ``\gamma`` and
 ``\lambda`` are **independent knobs composed by matrix augmentation**, not a trade-off: ``\gamma``
-conditions each refit, ``\lambda`` selects the support.
+conditions each refit, ``\lambda`` selects the support. It is not implemented here — [`SINDy`](@ref)
+exposes ``\lambda`` alone, and there is no ``\gamma``.
 
 ## Where the derivatives come from
 

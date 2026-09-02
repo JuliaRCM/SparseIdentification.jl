@@ -118,10 +118,11 @@ end
 """
     PolynomialBasis(p)
 
-All monomials of degree exactly `p`, without repetition.
+All monomials of degree exactly `p`, each one once.
 
-Degree 0 is the constant. For a state of dimension `d` there are `binomial(d + p - 1, p)` terms of
-degree `p`.
+Variables may repeat within a monomial, so degree 2 in two variables is `z₁², z₁z₂, z₂²`. Degree 0
+is the constant. For a state of dimension `d` there are `binomial(d + p - 1, p)` terms of degree
+`p`.
 """
 struct PolynomialBasis <: AbstractBasis
     p::Int
@@ -209,10 +210,13 @@ end
 """
     RationalBasis(args = StateComponents(); powers = (1,))
 
-The basis functions `u^-k` for each `k` in `powers`, over the arguments `args`.
+The basis functions `abs(u)^-k` for each `k` in `powers`, over the arguments `args`.
 
 An N-body gravitational Hamiltonian is built from `1/|qᵢ - qⱼ|`, so this is normally paired with
-[`Differences`](@ref). Singular where the argument vanishes.
+[`Differences`](@ref). `abs` is applied inside the power, as it is in
+[`LogarithmicBasis`](@ref), so that the basis functions depend on the distance between two
+coordinates and not on their order. Singular where the argument vanishes, which for a difference
+means two coordinates coinciding.
 """
 struct RationalBasis{A <: BasisArguments, P} <: AbstractBasis
     args::A
@@ -226,7 +230,7 @@ end
 
 function basis_functions(basis::RationalBasis, z)
     u = basis_arguments(basis.args, z)
-    Num[uᵢ^(-k) for k in basis.powers for uᵢ in u]
+    Num[abs(uᵢ)^(-k) for k in basis.powers for uᵢ in u]
 end
 
 """
@@ -366,9 +370,9 @@ function evaluate(data::AbstractVector{<:AbstractVector}, basis::AbstractBasis)
     _tabulate(_evaluator(basis, length(first(data))), data)
 end
 
-# `Θ` is allocated once and filled row by row. Concatenating the rows as they are produced copies
-# the whole block accumulated so far on every snapshot, so it costs O(nsamples²) memory: on 2000
-# snapshots of a ten-term basis that is 174 MB to build a 160 kB matrix.
+# `Θ` is allocated once and filled row by row, so the cost is linear in the number of snapshots.
+# Concatenating the rows as they are produced would copy the whole block accumulated so far on
+# every snapshot, which is quadratic in the snapshot count.
 function _tabulate(f, snapshots)
     isempty(snapshots) &&
         throw(ArgumentError("cannot evaluate a basis on an empty data set"))

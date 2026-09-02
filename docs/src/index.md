@@ -22,7 +22,9 @@ considered, including wrong ones — the constraint is structural, not a penalty
 
 The payoff is measurable. On the Toda lattice, the structure-preserving method reaches a maximum
 coefficient residual of **0.006** where classical SINDy on the same data reaches **0.5** — roughly
-two orders of magnitude, at half the optimiser iterations. See [Toda Lattice](@ref).
+two orders of magnitude, at half the optimiser iterations. Those two figures are *reported from the
+thesis* rather than recomputed here; see [Toda Lattice](@ref), which says which of its numbers are
+quoted and which are run at build time.
 
 ## Two lines to try it
 

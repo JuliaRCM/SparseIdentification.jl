@@ -73,8 +73,8 @@ function TrainingData(solution::GeometricSolutions.GeometricSolution)
     params = GeometricEquations.parameters(prob)
 
     # A solution's data series are `OffsetArray`s indexed from 0. `collect` on the index range
-    # gives a plain 1-based vector of those indices; a comprehension over the range itself would
-    # produce another OffsetVector, and slicing that silently drops an element.
+    # gives a plain 1-based vector of those indices, which is what the comprehensions below index
+    # with; a comprehension over the range itself would produce another OffsetVector.
     idx = collect(eachindex(solution.q))
     ts = [solution.t[n] for n in idx]
 
@@ -106,7 +106,14 @@ function TrainingData(solution::GeometricSolutions.GeometricSolution)
     TrainingData(qs, ẋ)
 end
 
-"Does this solution store a conjugate momentum alongside the position?"
+"""
+    _ispartitioned(solution)
+
+Whether `solution` stores a conjugate momentum alongside the position.
+
+`GeometricSolutions` defines `hasproperty` on the type of the data series, so this is answered at
+compile time rather than by probing the object.
+"""
 _ispartitioned(solution) = hasproperty(solution, :p)
 
 """

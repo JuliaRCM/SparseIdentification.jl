@@ -93,6 +93,28 @@ makes it worth keeping.
 
 - `sparsify_hamiltonian_dynamics` was exported but never defined anywhere.
 
+- **`RationalBasis` produced `1/u` where its docstring and the documentation promised `1/|u|`.**
+  The terms were therefore odd in their argument, so a basis meant to carry a reciprocal
+  *distance* changed sign when two coordinates crossed. `abs` is now applied inside the power, as
+  it already was inside `LogarithmicBasis`'s logarithm, and the test asserts positivity and
+  invariance under reordering instead of taking the absolute value of what it is checking. This
+  changes results for any fit using `RationalBasis` on data where a difference is negative.
+
+- **Seven method ambiguities against `SimpleSolvers.solve`.** The three `solve` methods left `Θ`
+  untyped, which made them ambiguous with `SimpleSolvers`' own `LinearSolver`, `Linesearch` and
+  `LinesearchProblem` methods. No call could reach one, but `test/aqua_tests.jl` was suppressing
+  `test_ambiguities` with a justification — LinearAlgebra pairs — that no longer described what
+  was being hidden. `Θ` is now `AbstractMatrix`, the count is zero, and the Aqua check is on.
+
+- **`hamiltonian_poly` returned `Vector{Any}`** and accumulated with `vcat` in a loop. It now
+  builds a `Vector{Num}` with `append!`, which is concrete and linear in the term count.
+
+- **The documentation claimed a test that did not exist.** `theory/sindy.md` said both of the
+  first two STLSQ guarantees were asserted in the test suite; only the termination bound was.
+  The monotone decrease of `F(x) = ‖Θx - ẋ‖² + λ²‖x‖₀` now has a testset of its own, which
+  recovers the iterates through `nloops` and checks `F` along them, and the front page no longer
+  presents the thesis's Toda figures as though they had been recomputed here.
+
 ### Breaking Changes
 
 - **The package now follows the JuliaGNI API.** Identification mirrors integration:
@@ -130,8 +152,8 @@ makes it worth keeping.
 - **`src/lorenz.jl` is gone.** `GeometricProblems.LorenzAttractor` covers it; a package in this
   ecosystem should not carry its own copy of a standard test problem.
 
-- **Minimum Julia is now 1.11**, raised from 1.10 because `SimpleSolvers` requires it. This is the
-  second floor in use across the tree, for dependencies that need it.
+- **Minimum Julia is now 1.11**, raised from 1.10 because `GeometricOptimizers` 0.7.0 requires it.
+  This is the second floor in use across the tree, for dependencies that need it.
 
 - **`DifferentialEquations`, `ODE`, `Optim`, `Plots`, `Distributions`, `Zygote`, `ThreadsX`,
   `ParallelUtilities`, `Distances` and `DelimitedFiles` are no longer dependencies.** Optimisation
@@ -171,6 +193,11 @@ makes it worth keeping.
   package, its tests, its documentation or `scripts/`. `hamiltonian_functions` builds the
   parametrised Hamiltonian from a basis and supersedes both. `states` is likewise gone: it had no
   caller, and defining it here shadowed `GeometricSolutions.states`, which is exported.
+
+- **`SINDyResult` no longer stores the basis separately from the method.** It held both, and the
+  only constructor passed `method.basis` for both, so the two could never differ. The constructor
+  now takes `SINDyResult(method, coefficients)`; `basis(result)` is unchanged and is the supported
+  way to reach it.
 
 ### New Features
 
@@ -273,5 +300,13 @@ makes it worth keeping.
   `3 × nsamples × niterations` allocations. They cannot simply be hoisted: their element type
   follows the coefficients, which the optimiser passes as dual numbers, so a fix needs buffers
   keyed on that type. This is the dominant allocation site left in the package.
+
+- **`SINDyVectorField` allocates 320 B per right-hand-side call** — 160 B for the library row
+  `evaluate` returns and 192 B for `yPool * coefficients` — against 0 B for
+  `HamiltonianSINDyVectorField`. This is the `ODEProblem(result, …) → integrate` path, so it is
+  the hot loop for anyone integrating an identified system. `evaluate` is also not inferable,
+  because `EVALUATOR_CACHE`'s value type is `Any`; the function barrier in `_tabulate` keeps the
+  batch path fast, so the cost falls on the single-state path alone. Nothing in `test/` pins
+  either figure.
 
 - **The scripts in `scripts/` have not been ported** and still call the old API and `Plots`.

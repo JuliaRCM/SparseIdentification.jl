@@ -22,12 +22,9 @@ makedocs(;
         assets = String[],
         size_threshold = 500_000
     ),
-    # `Documenter.except` returns the COMPLEMENT of what it is given, so every name listed here
-    # is a *hard error* and everything else is a warning. `:doctest` is listed deliberately.
-    warnonly = Documenter.except(
-        :autodocs_block, :cross_references, :docs_block, :doctest,
-        :eval_block, :example_block, :footnote, :linkcheck_remotes,
-        :linkcheck, :meta_block, :parse_error, :setup_block),
+    # Every error class is fatal except missing docstrings, so a broken doctest, `@example` or
+    # cross-reference fails the build.
+    warnonly = [:missing_docs],
     pages = [
         "Home" => "index.md",
         "Theory" => [

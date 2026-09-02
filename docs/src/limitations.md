@@ -57,8 +57,9 @@ This is not a soft limitation that shows up as reduced accuracy — it shows up 
 dense, wrong model, because the fit will use whatever it has to approximate what it cannot express.
 
 The package supplies polynomial, trigonometric, exponential, logarithmic and rational bases, and —
-crucially — lets each be applied to *differences* of state components rather than to components
-alone, which is what interacting systems need. What remains out of reach is a **norm** of a
+crucially — lets every *univariate* one of them be applied to *differences* of state components
+rather than to components alone, which is what interacting systems need. (`PolynomialBasis` is the
+exception: it takes no argument selection.) What remains out of reach is a **norm** of a
 difference of position *vectors*, ``1/\lVert \mathbf{q}_i - \mathbf{q}_j\rVert``, so a genuinely
 three-dimensional ``N``-body problem is still not expressible. See [Basis Libraries](@ref).
 
@@ -78,8 +79,13 @@ near the correct coordinates.
 ## Canonical structure is assumed
 
 The implementation hard-codes the canonical ``J``. Systems that are Poisson but not canonically
-Hamiltonian — rigid bodies, point vortices, guiding-centre motion — have a state-dependent
-structure matrix ``J(z)``, and assuming a constant one identifies the wrong object.
+Hamiltonian — the free rigid body, guiding-centre motion — have a state-dependent structure matrix
+``J(z)``, and assuming a constant one identifies the wrong object.
+
+Point vortices are *not* an example of this, which is worth stating because the thesis's treatment
+of them invites the confusion: in the conjugate coordinates given below they are canonical, and it
+is the thesis's choice of ``p`` as the vortex strength that is the problem, not the structure
+matrix.
 
 !!! warning "The thesis's point-vortex example does not hold up"
     Its Equation (4.4) gives the point-vortex Hamiltonian as

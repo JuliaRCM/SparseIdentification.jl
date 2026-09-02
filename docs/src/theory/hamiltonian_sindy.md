@@ -135,8 +135,11 @@ initialised to zero.
 
 ## Which formulation to use
 
-The package does not pick for you, because the two suit genuinely different data and silently
-applying one to data meant for the other gives a wrong answer rather than an error.
+Only flow-map matching is implemented; the vector-field column below describes what the
+formulation would offer and is included because it is what the comparison is against. The
+package therefore does not yet pick for you in practice — but the two suit genuinely different
+data, and silently applying one to data meant for the other would give a wrong answer rather than
+an error.
 
 | | vector-field matching | flow-map matching |
 |:--|:--|:--|

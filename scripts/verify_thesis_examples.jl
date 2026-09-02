@@ -185,7 +185,8 @@ end
 #
 #   H = Σᵢ pᵢ²/(2mᵢ) - Σᵢ<ⱼ G mᵢmⱼ / |qⱼ - qᵢ|
 #
-# The equation is the standard N-body Hamiltonian. The interesting claim is *why* the method
+# That this is the standard N-body Hamiltonian is checked below by deriving ż = J∇H from it and
+# comparing against Newton's law of gravitation. The interesting claim is *why* the method
 # fails on it: the two coefficient families are separated by so many orders of magnitude that no
 # single global threshold λ can keep one and discard the other. The thesis quotes "order 10⁻²⁴"
 # and "order 10³⁷"; both are checked, as is the ratio, which is what actually does the damage.
@@ -219,7 +220,26 @@ let
     println(spread ? PASS : FAIL,
         "the coefficient families are far too far apart for one global λ to separate")
 
-    record("Thesis Eq. (4.5) N-body Hamiltonian", true, "standard form, correct as printed")
+    # Two bodies in one spatial dimension pin both halves of the printed form: that the momentum
+    # equation is q̇ = p/m, and that the potential differentiates to an inverse-square force.
+    @variables q₁ q₂ p₁ p₂
+    zsym = [q₁, q₂, p₁, p₂]
+    H_nbody = p₁^2 / (2m_earth) + p₂^2 / (2m_sun) - G * m_earth * m_sun / abs(q₂ - q₁)
+
+    zval = [1.0e11, 1.4e11, 2.0e29, 1.0e34]
+    got = numeval(hamiltonian_vectorfield(H_nbody, zsym, 2), zsym, zval)
+
+    separation = zval[2] - zval[1]
+    force = G * m_earth * m_sun / separation^2
+    want = [zval[3] / m_earth, zval[4] / m_sun, force, -force]
+
+    newton_ok = all(isapprox.(got, want; rtol = 1e-10))
+    @printf("     q̇ = p/m and ṗ = ∓G mᵢmⱼ/r²:  max relative deviation = %.3e\n",
+        maximum(abs.((got .- want) ./ want)))
+    println(newton_ok ? PASS : FAIL, "J∇H of the printed Hamiltonian is Newtonian gravity")
+
+    record("Thesis Eq. (4.5) N-body Hamiltonian", newton_ok,
+        "J∇H reproduces q̇ = p/m and the inverse-square force")
     record("Thesis quoted magnitudes", kin_ok && pot_ok,
         @sprintf("actual orders are 1e%d and 1e%d, not 1e-24 and 1e37", kin_order,
             pot_order))

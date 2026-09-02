@@ -102,6 +102,11 @@ The number of degrees of freedom `d`; the phase space has `2d` dimensions.
 """
 degreesoffreedom(result::HamiltonianSINDyResult) = result.hamiltonian.d
 
+"""
+    nterms(result)
+
+The number of Hamiltonian basis terms retained after sparsification.
+"""
 nterms(result::HamiltonianSINDyResult) = count(!iszero, result.coefficients)
 
 function Base.show(io::IO, result::HamiltonianSINDyResult)
