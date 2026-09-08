@@ -275,6 +275,16 @@ makes it worth keeping.
   decides the recovered field, and an off-by-one there — which its own comment warns about — passed
   the previous version of that test.
 
+### Changed
+
+- The ten scripts under `scripts/` are now Unicode NFC-normalised. They stored `ẋ` as a base letter
+  plus a combining mark, 74 times, inherited from macOS rather than chosen; it is the only glyph in
+  the diff that composes. Nothing they compute changes — Julia's parser normalises identifiers to
+  NFC either way — but a `grep` pattern or an editor search typed in NFC now matches them, where
+  before it silently matched nothing. Each file is exactly the NFC normalisation of its
+  predecessor, and no string literal was affected. Nothing under `src/` or `test/` was affected,
+  and nothing there needed it.
+
 ## Open Issues
 
 - **The autoencoder variant of the method is not implemented.** Nigel Khan's thesis describes both

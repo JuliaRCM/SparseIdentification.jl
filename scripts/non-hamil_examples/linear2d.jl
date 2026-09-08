@@ -47,16 +47,16 @@ x = Array(data)
 
 # compute vector field from x state values at each timestep
 # stored as matrix with dims [nd,ntime]
-ẋ = zero(x)
-for i in axes(ẋ, 2)
-    ẋ[:, i] .= A*x[:, i]
+ẋ = zero(x)
+for i in axes(ẋ, 2)
+    ẋ[:, i] .= A*x[:, i]
 end
 
 # collect training data
-tdata = TrainingData(x, ẋ)
+tdata = TrainingData(x, ẋ)
 
 # println("x = ", tdata.x)
-# println("ẋ = ", tdata.ẋ)
+# println("ẋ = ", tdata.ẋ)
 
 # ----------------------------------------
 # Identify SINDy Vector Field

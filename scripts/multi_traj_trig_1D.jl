@@ -100,16 +100,16 @@ x = reduce(vcat, x)
 
 # compute vector field from x state values at each timestep
 # stored as matrix with dims [nd,ntime]
-ẋ = zero(x)
+ẋ = zero(x)
 
-for i in axes(ẋ, 2)
-    for j in 1:(size(ẋ, 1) - 3)
-        ẋ[j:(j + 3), i] = grad_H_ana(x[j:(j + 3), i], 0, 0)
+for i in axes(ẋ, 2)
+    for j in 1:(size(ẋ, 1) - 3)
+        ẋ[j:(j + 3), i] = grad_H_ana(x[j:(j + 3), i], 0, 0)
     end
 end
 
 # collect training data
-tdata = TrainingData(x, ẋ)
+tdata = TrainingData(x, ẋ)
 
 #########################################################################
 # HAM = hamiltonianFunction(x₀, a)
