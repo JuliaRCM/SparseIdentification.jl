@@ -14,6 +14,15 @@ makes it worth keeping.
 
 ## [Unreleased] — targeting 0.1.0
 
+### Changed
+
+- The ten scripts under `scripts/` are now Unicode NFC-normalised. They stored `ẋ` as a base letter
+  plus a combining mark, 74 times, inherited from macOS rather than chosen. Nothing they compute
+  changes — Julia's parser normalises identifiers to NFC either way — but a `grep` pattern or an
+  editor search typed in NFC now matches them, where before it silently matched nothing. Each file
+  is exactly the NFC normalisation of its predecessor, and no string literal was affected. Nothing
+  under `src/` or `test/` was affected.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the

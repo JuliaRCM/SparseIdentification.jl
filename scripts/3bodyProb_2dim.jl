@@ -74,17 +74,17 @@ samp_range = LinRange(-20, 20, num_samp)
 # compute vector field from x state values
 # stored as matrix with dims [nd,ntime]
 x = zeros(nd, num_samp^nd)
-ẋ = zero(x)
+ẋ = zero(x)
 s = collect(Iterators.product(
     samp_range, samp_range, samp_range, samp_range, samp_range, samp_range))
 
 for j in eachindex(s)
     x[:, j] .= s[j]
-    ẋ[:, j] .= grad_H_ana(x[:, j])
+    ẋ[:, j] .= grad_H_ana(x[:, j])
 end
 
 # collect training data
-tdata = TrainingData(x, ẋ)
+tdata = TrainingData(x, ẋ)
 
 # ----------------------------------------
 # Compute Sparse Regression
@@ -112,10 +112,10 @@ println("Plotting...")
 
 println("Compute approximate gradient...")
 
-ẋid = zero(ẋ)
+ẋid = zero(ẋ)
 
-for j in axes(ẋid, 2)
-    @views vectorfield(ẋid[:, j], x[:, j])
+for j in axes(ẋid, 2)
+    @views vectorfield(ẋid[:, j], x[:, j])
 end
 
 # ----------------------------------------

@@ -63,16 +63,16 @@ samp_range = LinRange(-20, 20, num_samp)
 # compute vector field from x state values
 # stored as matrix with dims [nd,ntime]
 x = zeros(nd, num_samp*num_samp)
-ẋ = zero(x)
+ẋ = zero(x)
 s = collect(Iterators.product(samp_range, samp_range))
 
 for j in eachindex(s)
     x[:, j] .= s[j]
-    ẋ[:, j] .= grad_H_ana(x[:, j])
+    ẋ[:, j] .= grad_H_ana(x[:, j])
 end
 
 # collect training data
-tdata = TrainingData(x, ẋ)
+tdata = TrainingData(x, ẋ)
 
 # ----------------------------------------
 # Compute Sparse Regression
@@ -100,16 +100,16 @@ println("Plotting...")
 
 println("Compute approximate gradient...")
 
-ẋid = zero(ẋ)
+ẋid = zero(ẋ)
 
-for j in axes(ẋid, 2)
-    @views vectorfield(ẋid[:, j], x[:, j])
+for j in axes(ẋid, 2)
+    @views vectorfield(ẋid[:, j], x[:, j])
 end
 
 # calculate difference between answers
-ẋerr = sqrt.((ẋid .- ẋ) .^ 2 ./ ẋ .^ 2)
+ẋerr = sqrt.((ẋid .- ẋ) .^ 2 ./ ẋ .^ 2)
 
-plot(heatmap(ẋerr),
+plot(heatmap(ẋerr),
     title = "Cos(q₁): Relative difference b/w analytical and calculated gradient in a 1D system",
     titlefontsize = 8)
 savefig("uniform_sample_ham_1d.png")
