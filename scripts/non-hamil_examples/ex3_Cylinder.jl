@@ -55,11 +55,11 @@ M = size(x, 1)
 # noise level
 eps = 0
 
-ẋ = Array{Float64}(undef, M, size(x, 2) - 3 - 2)
+ẋ = Array{Float64}(undef, M, size(x, 2) - 3 - 2)
 
 for i in 3:(size(x, 2) - 3)
     for k in 1:M
-        ẋ[k, i - 2] = (1 / (12 * dt)) *
+        ẋ[k, i - 2] = (1 / (12 * dt)) *
                       (-x[k, i + 2] + 8 .* x[k, i + 1] - 8 .* x[k, i - 1] + x[k, i - 2])
     end
 end
@@ -79,10 +79,10 @@ x1 = x1'
 
 M = size(x1, 1)
 
-ẋ_one = Array{Float64}(undef, M, size(x1, 2)-3-2)
+ẋ_one = Array{Float64}(undef, M, size(x1, 2)-3-2)
 for i in 3:(size(x1, 2) - 3)
     for k in 1:M
-        ẋ_one[k, i - 2] = (1 / (12 * dt)) *
+        ẋ_one[k, i - 2] = (1 / (12 * dt)) *
                           (-x1[k, i + 2] + 8 * x1[k, i + 1] - 8 * x1[k, i - 1] +
                            x1[k, i - 2])
     end
@@ -91,7 +91,7 @@ end
 # concatenate
 x = [x[:, 3:(end - 3)] x1[:, 3:(end - 3)]]
 
-ẋ = [ẋ ẋ_one]
+ẋ = [ẋ ẋ_one]
 
 # ------------------------------------------------------------
 # Pool Data (evaluate library of candidate basis functions on training data)
@@ -103,7 +103,7 @@ println("Pool Data...")
 
 m = size(Θ, 2)
 
-ẋ = ẋ[:, 1:end]
+ẋ = ẋ[:, 1:end]
 
 # ----------------------------------------
 # Compute Sparse Regression
@@ -111,8 +111,8 @@ ẋ = ẋ[:, 1:end]
 
 println("Sparsify Dynamics...")
 
-#Ξ = sparsify_dynamics(Θ, ẋ, lambda)
-Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
+#Ξ = sparsify_dynamics(Θ, ẋ, lambda)
+Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
 
 ######Test to check if Theta and dx from matlab are equal to theta and dx obtained in Julia
 # #load data from first run and compute derivative

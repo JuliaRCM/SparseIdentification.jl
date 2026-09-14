@@ -73,7 +73,7 @@ s = collect(Iterators.product(samp_range, samp_range, samp_range, samp_range))
 
 # compute vector field from x state values
 x = [collect(s[i]) for i in eachindex(s)]
-ẋ = [grad_H_ana(_x) for _x in x]
+ẋ = [grad_H_ana(_x) for _x in x]
 
 # ----------------------------------------
 # Compute Sparse Regression
@@ -90,7 +90,7 @@ method = HamiltonianSINDy(
 y = SparseIdentification.gen_noisy_ref_data(method, x)
 
 # collect training data
-tdata = TrainingData(x, ẋ, y)
+tdata = TrainingData(x, ẋ, y)
 
 # compute vector field
 vectorfield = VectorField(method, tdata)
@@ -109,10 +109,10 @@ println("Plotting...")
 
 println("Compute approximate gradient...")
 
-ẋid = zero.(ẋ)
+ẋid = zero.(ẋ)
 
-for j in eachindex(ẋid)
-    vectorfield(ẋid[j], x[j])
+for j in eachindex(ẋid)
+    vectorfield(ẋid[j], x[j])
 end
 
 # ----------------------------------------

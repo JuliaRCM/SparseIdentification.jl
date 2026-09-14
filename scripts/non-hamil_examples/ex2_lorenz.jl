@@ -58,14 +58,14 @@ x = Array(data)
 
 # compute Derivative
 
-# ẋ is of dims [states x iter]
-ẋ = Array{Float64}(undef, size(x, 1), size(x, 2))
+# ẋ is of dims [states x iter]
+ẋ = Array{Float64}(undef, size(x, 1), size(x, 2))
 for i in axes(x, 2)
-    ẋ[:, i] = lorenz(x[:, i], p, 0)
+    ẋ[:, i] = lorenz(x[:, i], p, 0)
 end
 
 # add noise
-ẋ = ẋ + eps*rand(Normal(), size(ẋ))
+ẋ = ẋ + eps*rand(Normal(), size(ẋ))
 
 # ------------------------------------------------------------
 # Pool Data (evaluate library of candidate basis functions on training data)
@@ -81,8 +81,8 @@ println("Pool Data...")
 
 println("Sparsify Dynamics...")
 
-#Ξ = sparsify_dynamics(Θ, ẋ, lambda)
-Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
+#Ξ = sparsify_dynamics(Θ, ẋ, lambda)
+Ξ = sparsify_dynamics(Θ, ẋ, lambda; solver = OptimSolver())
 
 #println(Ξ)
 
