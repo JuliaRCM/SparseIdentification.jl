@@ -284,39 +284,3 @@ makes it worth keeping.
   before it silently matched nothing. Each file is exactly the NFC normalisation of its
   predecessor, and no string literal was affected. Nothing under `src/` or `test/` was affected,
   and nothing there needed it.
-
-## Open Issues
-
-- **The autoencoder variant of the method is not implemented.** Nigel Khan's thesis describes both
-  a *Hamiltonian-SINDy* and an *Auto-Encoder-Hamiltonian-SINDy* algorithm, the latter identifying
-  canonical conjugate coordinates alongside the dynamics. Only the first exists here. The file that
-  was to become it never worked and has been removed.
-
-- **A norm of a difference of position vectors is not expressible.** `Differences` forms scalar
-  differences `zᵢ - zⱼ`, which is exactly right in one spatial dimension. A three-dimensional
-  N-body problem needs `1/‖𝐪ᵢ - 𝐪ⱼ‖`, a norm over a block of components, which needs a block
-  structure the current argument selection does not carry.
-
-- **Matching the vector field directly is not implemented yet.** `J∇H` is linear in the
-  coefficients, so fitting against measured `ż` is an ordinary linear sparse regression — far
-  cheaper than the flow-map fit, which needs an optimiser. Only the flow-map form exists.
-
-- **The implicit midpoint step in the flow-map loss uses a fixed four Picard iterations** rather
-  than a convergence test, so the step it computes is not the implicit midpoint step to any stated
-  tolerance.
-
-- **The flow-map loss allocates three vectors per snapshot per evaluation.** `loss_kernel` builds
-  its midpoint, iterate and gradient buffers on every call, so an optimiser run costs
-  `3 × nsamples × niterations` allocations. They cannot simply be hoisted: their element type
-  follows the coefficients, which the optimiser passes as dual numbers, so a fix needs buffers
-  keyed on that type. This is the dominant allocation site left in the package.
-
-- **`SINDyVectorField` allocates 320 B per right-hand-side call** — 160 B for the library row
-  `evaluate` returns and 192 B for `yPool * coefficients` — against 0 B for
-  `HamiltonianSINDyVectorField`. This is the `ODEProblem(result, …) → integrate` path, so it is
-  the hot loop for anyone integrating an identified system. `evaluate` is also not inferable,
-  because `EVALUATOR_CACHE`'s value type is `Any`; the function barrier in `_tabulate` keeps the
-  batch path fast, so the cost falls on the single-state path alone. Nothing in `test/` pins
-  either figure.
-
-- **The scripts in `scripts/` have not been ported** and still call the old API and `Plots`.
