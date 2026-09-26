@@ -70,7 +70,7 @@ file when its fix merges, and the CHANGELOG entry of the fix names its ID.
 
 ### K8 · The Hamiltonian tests cannot see a wrong symplectic structure.
 
-- location: `test/methods/hamiltonian.jl:48–70`, `src/methods/hamiltonian.jl`
+- location: `test/methods/hamiltonian.jl:48–71`, `src/methods/hamiltonian.jl`
 - evidence: two mutants survive `mutate.jl <package> src/methods/hamiltonian.jl <from> <to>
   methods/hamiltonian.jl`: `f_expr = -∇H[1:d]` → `f_expr = ∇H[1:d]`, and
   `vcat(v_expr, f_expr)` → `vcat(f_expr, v_expr)`. The harmonic-oscillator testset compares the
@@ -80,11 +80,11 @@ file when its fix merges, and the CHANGELOG entry of the fix names its ID.
 - kind: missing test
 - found: 2026-09-26
 
-### K9 · The docstring doctests draw random numbers without a seed.
+### K9 · Four of the eight docstring doctests draw random numbers without a seed.
 
 - location: `src/methods/method.jl:84`, `src/methods/sindy.jl:21`, `src/trainingdata.jl:35`,
   `src/trainingdata.jl:64`
-- evidence: all four `jldoctest` blocks call `randn` with no `Random.seed!`. Their printed output
+- evidence: these four `jldoctest` blocks call `randn` with no `Random.seed!`. Their printed output
   is a size, a term count or a `Bool`, never a drawn value, so they pass; an output that shows a
   drawn value is not reproducible.
 - kind: missing test
