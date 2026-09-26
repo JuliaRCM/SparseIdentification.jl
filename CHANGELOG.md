@@ -284,3 +284,13 @@ makes it worth keeping.
   before it silently matched nothing. Each file is exactly the NFC normalisation of its
   predecessor, and no string literal was affected. Nothing under `src/` or `test/` was affected,
   and nothing there needed it.
+
+- The test suite follows the JuliaGNI test convention. Each test file is named after the source
+  file it tests: `test/basis.jl`, `test/trainingdata.jl`, `test/solvers.jl`,
+  `test/methods/sindy.jl` and `test/methods/hamiltonian.jl`; `test/basis_extended.jl` keeps its
+  own file, the conformance tests are `test/integration/conformance.jl`, and the Aqua checks are
+  `test/quality/aqua.jl`. `test/runtests.jl` runs them in the `core` group, and
+  `julia --project=test test/runtests.jl slow` selects the new `test/quality/doctests.jl`, which
+  runs the docstring doctests as the `Doctests` CI job does. The test dependencies moved from
+  `[extras]` and `[targets]` to `test/Project.toml`, with their bounds unchanged; Documenter is a
+  new test dependency. No test changed: the same 217 assertions pass, plus the doctest run.
