@@ -290,7 +290,8 @@ makes it worth keeping.
   `test/methods/sindy.jl` and `test/methods/hamiltonian.jl`; `test/basis_extended.jl` keeps its
   own file, the conformance tests are `test/integration/conformance.jl`, and the Aqua checks are
   `test/quality/aqua.jl`. `test/runtests.jl` runs them in the `core` group, and
-  `julia --project=test test/runtests.jl slow` selects the new `test/quality/doctests.jl`, which
-  runs the docstring doctests as the `Doctests` CI job does. The test dependencies moved from
-  `[extras]` and `[targets]` to `test/Project.toml`, with their bounds unchanged; Documenter is a
-  new test dependency. No test changed: the same 217 assertions pass, plus the doctest run.
+  `Pkg.test(test_args = ["slow"])` selects the new `test/quality/doctests.jl`, which runs the
+  docstring doctests as the `Doctests` CI job does. The test dependencies moved from `[extras]`
+  and `[targets]` to `test/Project.toml`, with their bounds unchanged. `test/Project.toml` also
+  lists GeometricBase, GeometricEquations and Symbolics, which the tests load directly, with the
+  root's bounds, and Documenter, a new test dependency. No test changed: the same 217 assertions pass, plus the doctest run.

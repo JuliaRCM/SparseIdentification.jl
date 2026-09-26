@@ -67,3 +67,22 @@ file when its fix merges, and the CHANGELOG entry of the fix names its ID.
 - evidence: and still call the old API and `Plots`.
 - kind: defect
 - found: 2026-09-01
+
+### K8 · The Hamiltonian tests cannot see a wrong symplectic structure.
+
+- location: `test/methods/hamiltonian.jl:48–70`, `src/methods/hamiltonian.jl`
+- evidence: two mutants survive `mutate.jl <package> src/methods/hamiltonian.jl <from> <to>
+  methods/hamiltonian.jl`: `f_expr = -∇H[1:d]` → `f_expr = ∇H[1:d]`, and
+  `vcat(v_expr, f_expr)` → `vcat(f_expr, v_expr)`. The harmonic-oscillator testset does not
+  compare the identified vector field against `J∇H` with a fixed sign.
+- kind: missing test
+- found: 2026-09-26
+
+### K9 · The docstring doctests draw random numbers without a seed.
+
+- location: `src/trainingdata.jl:35`, `src/trainingdata.jl:64`
+- evidence: both `jldoctest` blocks call `randn` with no `Random.seed!`. Their printed output
+  depends only on the sizes, so they pass today, but an output that shows a drawn value would
+  not be reproducible.
+- kind: missing test
+- found: 2026-09-26
