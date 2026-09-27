@@ -13,5 +13,5 @@ SparseIdentification = {path = ".."}
 CairoMakie = "0.15"
 Documenter = "1"
 GeometricIntegrators = "0.18"
-GeometricProblems = "0.8"
+GeometricProblems = "0.8, 0.9"
 Symbolics = "7"
