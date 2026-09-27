@@ -89,7 +89,7 @@ the ``\ell^0``-penalised least-squares objective. They prove, for ``A`` of full 
 - ``F`` **strictly decreases** at every non-stationary step;
 - the limit is a **local minimiser** of ``F``, and every global minimiser is a fixed point.
 
-Both of the first two are directly testable, and each has a testset in `test/sindy_tests.jl`:
+Both of the first two are directly testable, and each has a testset in `test/methods/sindy.jl`:
 "Thresholding is exact and terminating" pins the step bound, and "The thresholding objective
 decreases" recovers the iterates through `nloops` and checks ``F`` along them.
 
