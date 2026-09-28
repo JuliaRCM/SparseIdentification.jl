@@ -277,6 +277,13 @@ makes it worth keeping.
 
 ### Changed
 
+- `test/Project.toml` and `docs/Project.toml` no longer carry a `[compat]` entry for a dependency
+  of the root `Project.toml`. Removed: `GeometricBase`, `GeometricEquations` and `Symbolics` from
+  `test/Project.toml`, and `Symbolics` from `docs/Project.toml`. Both environments contain the
+  package, so the resolver applies the root's bounds to every shared dependency; an entry there
+  could only duplicate or narrow them, and the tests and docs would then run on narrower bounds
+  than the package claims. Test-only and docs-only bounds are unchanged.
+
 - The ten scripts under `scripts/` are now Unicode NFC-normalised. They stored `ẋ` as a base letter
   plus a combining mark, 74 times, inherited from macOS rather than chosen; it is the only glyph in
   the diff that composes. Nothing they compute changes — Julia's parser normalises identifiers to
