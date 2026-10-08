@@ -277,6 +277,9 @@ makes it worth keeping.
 
 ### Changed
 
+- CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of `Julia min`, and a test
+  job saves the Julia cache only when it succeeds.
+
 - `test/Project.toml` and `docs/Project.toml` no longer carry a `[compat]` entry for a dependency
   of the root `Project.toml`. Removed: `GeometricBase`, `GeometricEquations` and `Symbolics` from
   `test/Project.toml`, and `Symbolics` from `docs/Project.toml`. Both environments contain the
