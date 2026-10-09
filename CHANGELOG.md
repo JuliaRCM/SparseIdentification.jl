@@ -14,6 +14,12 @@ makes it worth keeping.
 
 ## [Unreleased] — targeting 0.1.0
 
+### Changed
+
+- `Pkg.test()` no longer runs the doctests. `test/quality/doctests.jl` is now the group
+  `doctests`, which an empty `ARGS` does not run; `Pkg.test(test_args = ["doctests"])` runs it.
+  In CI the Doctests job stays their runner, so the test matrix no longer runs them a second time.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the

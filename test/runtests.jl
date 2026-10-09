@@ -12,6 +12,6 @@ if "core" in GROUPS
     @safetestset "Hamiltonian SINDy" include("methods/hamiltonian.jl")
     @safetestset "JuliaGNI Conformance" include("integration/conformance.jl")
 end
-if "slow" in GROUPS
+if "doctests" in GROUPS
     @safetestset "Doctests" include("quality/doctests.jl")
 end
