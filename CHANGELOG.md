@@ -20,6 +20,13 @@ makes it worth keeping.
   `doctests`, which an empty `ARGS` does not run; `Pkg.test(test_args = ["doctests"])` runs it.
   In CI the Doctests job stays their runner, so the test matrix no longer runs them a second time.
 
+- `test/basis_extended.jl` is now `test/integration/basis_extended.jl`. The test convention keeps
+  a test file at the top level of `test/` only where it mirrors `src/<name>.jl`, and there is no
+  `src/basis_extended.jl`. The file tests `src/basis.jl` together with `src/methods/hamiltonian.jl`,
+  `src/methods/hamiltonian_sindy.jl`, `src/methods/method.jl` and `src/trainingdata.jl`, whose
+  deepest common directory is `src/` itself, so it goes under `test/integration/`. Its label,
+  group and content are unchanged.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the
