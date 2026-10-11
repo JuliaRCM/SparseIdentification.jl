@@ -30,7 +30,7 @@ x = 10 .* randn(3, 2000)
 ẋ = reduce(hcat, [lorenz_rhs(x[:, j]) for j in axes(x, 2)])
 
 basis = CompoundBasis(polyorder = 2, trigonometric = 0)
-Ξ = parameters(identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.1)))
+Ξ = parameters(identify(SINDyData(x, ẋ), SINDy(basis; λ = 0.1)))
 
 count(!iszero, Ξ)     # the true model has 7 terms
 ```
@@ -76,7 +76,7 @@ using Random
 Random.seed!(7)
 
 ẋ_noisy = ẋ .+ 0.5 .* randn(size(ẋ))
-Ξn = parameters(identify(TrainingData(x, ẋ_noisy), SINDy(basis; λ = 0.5)))
+Ξn = parameters(identify(SINDyData(x, ẋ_noisy), SINDy(basis; λ = 0.5)))
 
 println("active terms: ", count(!iszero, Ξn), "   (true: 7)")
 println("max coefficient error: ", maximum(abs, Ξn - truth))

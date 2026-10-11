@@ -83,9 +83,20 @@ file when its fix merges, and the CHANGELOG entry of the fix names its ID.
 ### K9 · Four of the eight docstring doctests draw random numbers without a seed.
 
 - location: `src/methods/method.jl:84`, `src/methods/sindy.jl:21`, `src/trainingdata.jl:35`,
-  `src/trainingdata.jl:64`
+  `src/trainingdata.jl:68`
 - evidence: these four `jldoctest` blocks call `randn` with no `Random.seed!`. Their printed output
   is a size, a term count or a `Bool`, never a drawn value, so they pass; an output that shows a
   drawn value is not reproducible.
 - kind: missing test
 - found: 2026-09-26
+
+### K10 · `TrajectoryData`'s `Δt` is not the step the fit integrates with.
+
+- location: `src/methods/hamiltonian_sindy.jl:154`
+- evidence: the flow-map loss integrates with `method.integrator_timestep` and never reads
+  `problem.Δt` (`src/trainingdata.jl:77`), so a `TrajectoryData` built at one step and fitted with a
+  method carrying another fits the wrong interval without a word. Nothing in the package compares
+  the two, and `timestep(data)` reports the field the fit ignores. A caller who reaches the fit
+  through an entry point that checks the step is protected; nothing else is.
+- kind: defect
+- found: 2026-10-11

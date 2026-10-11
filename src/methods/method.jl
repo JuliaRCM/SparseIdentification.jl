@@ -70,7 +70,7 @@ different data:
 
 | problem | method | fits |
 |:--|:--|:--|
-| [`TrainingData`](@ref) | [`SINDy`](@ref) | a vector field, against measured derivatives |
+| [`SINDyData`](@ref) | [`SINDy`](@ref) | a vector field, against measured derivatives |
 | [`TrajectoryData`](@ref) | [`HamiltonianSINDy`](@ref) | a Hamiltonian, against the flow map |
 
 Applying a method to a problem it does not accept raises an `ArgumentError` naming both, rather
@@ -83,7 +83,7 @@ julia> A = [-0.1 2.0; -2.0 -0.1];
 
 julia> x = randn(2, 400);
 
-julia> result = identify(TrainingData(x, A * x), SINDy(CompoundBasis(polyorder = 3); λ = 0.05));
+julia> result = identify(SINDyData(x, A * x), SINDy(CompoundBasis(polyorder = 3); λ = 0.05));
 
 julia> nterms(result)
 4

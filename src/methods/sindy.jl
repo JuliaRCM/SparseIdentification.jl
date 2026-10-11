@@ -11,7 +11,7 @@ repeat until the support stops changing or `nloops` is reached.
 `λ` is a hard threshold on coefficient magnitude applied *after* each least-squares fit — it is not
 an ℓ¹ penalty and does not appear in the objective being minimised.
 
-Apply it to a [`TrainingData`](@ref) problem with [`identify`](@ref).
+Apply it to a [`SINDyData`](@ref) problem with [`identify`](@ref).
 
 # Examples
 
@@ -20,7 +20,7 @@ julia> A = [-0.1 2.0; -2.0 -0.1];
 
 julia> x = randn(2, 500);
 
-julia> result = identify(TrainingData(x, A * x), SINDy(CompoundBasis(polyorder = 3)));
+julia> result = identify(SINDyData(x, A * x), SINDy(CompoundBasis(polyorder = 3)));
 
 julia> isapprox(parameters(result)[2:3, :], A'; atol = 1e-10)
 true
@@ -118,13 +118,13 @@ function sparsify(method::SINDy, Θ, ẋ, solver)
     return Ξ
 end
 
-function identify(problem::TrainingData, method::SINDy;
+function identify(problem::SINDyData, method::SINDy;
         solver::AbstractSolver = JuliaLeastSquare())
     # evaluate the library of candidate functions on the training data
     Θ = evaluate(problem.x, method.basis)
 
-    # `sparsify` indexes the derivatives as a matrix, one column per snapshot. `TrainingData`
-    # also accepts a vector of state vectors, which is the shape `TrainingData(solution)` builds.
+    # `sparsify` indexes the derivatives as a matrix, one column per snapshot. `SINDyData`
+    # also accepts a vector of state vectors, which is the shape `SINDyData(solution)` builds.
     Ξ = sparsify(method, Θ, _as_matrix_of_states(problem.ẋ), solver)
 
     SINDyResult(method, Ξ)

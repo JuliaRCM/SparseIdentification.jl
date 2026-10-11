@@ -57,7 +57,7 @@ A = [-0.1 2.0; -2.0 -0.1]
 x = randn(2, 500)
 ẋ = A * x .+ 0.02 .* randn(2, 500)
 basis = CompoundBasis(polyorder = 3, trigonometric = 0)
-data = TrainingData(x, ẋ)
+data = SINDyData(x, ẋ)
 
 for λ in (0.001, 0.01, 0.05, 0.2, 0.5)
     Ξ = parameters(identify(data, SINDy(basis; λ)))

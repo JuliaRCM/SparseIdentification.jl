@@ -12,7 +12,8 @@ considers is a symplectic gradient field, whatever the coefficients happen to be
 The coefficients are fitted by matching the flow map — minimising `Σⱼ ‖Φ_Δt(zⱼ; a) − zⱼ₊₁‖²` where
 `Φ_Δt` is an implicit-midpoint step. This is nonlinear in `a` and needs an optimiser.
 
-Apply it to a [`TrajectoryData`](@ref) problem with [`identify`](@ref).
+Apply it to a [`TrajectoryData`](@ref) problem with [`identify`](@ref). The states of a
+`TrajectoryData` are taken to be canonical `(q, p)`, in that order.
 
 The basis may be given directly, which is what the systems the thesis treats require — a Toda
 lattice needs `exp` of a *difference* of positions, a point vortex `log` of one:

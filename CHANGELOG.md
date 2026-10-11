@@ -44,7 +44,7 @@ makes it worth keeping.
   the previous expression across six bases, four sizes and both entry points.
 
 - **`identify` threw on training data given as vectors of states** — which is exactly the shape
-  `TrainingData(solution)` produces, so the documented `integrate → identify` round trip did not
+  `SINDyData(solution)` produces, so the documented `integrate → identify` round trip did not
   work for `SINDy` at all. The derivatives are now normalised to a matrix before the regression,
   and a test asserts both shapes give identical coefficients.
 
@@ -69,7 +69,7 @@ makes it worth keeping.
   `hcat`ed it onto a matrix, and it read its input in the opposite orientation to
   `PolynomialBasis`, so it could neither run alone nor be combined with polynomials.
 
-- **`TrainingData` had no constructor.** A third field had been added without one, so all but one
+- **`SINDyData` had no constructor.** A third field had been added without one, so all but one
   of the scripts in `scripts/` were calling a two-argument form that no longer existed. Shapes are
   now validated at construction.
 
@@ -136,7 +136,7 @@ makes it worth keeping.
   result = identify(problem, method)      # was: VectorField(method, basis, data)
   ```
 
-  `TrainingData` and `TrajectoryData` are `GeometricBase.AbstractProblem`s and the methods are
+  `SINDyData` and `TrajectoryData` are `GeometricBase.AbstractProblem`s and the methods are
   `GeometricBase.AbstractMethod`s, so the ecosystem's accessors work on them — `nsamples`,
   `timestep`, `datatype`, `arrtype`, `parameters`, `functions`, `basis`, `name`, `description`,
   `reference`. The basis moved into the method, `SINDy(basis; λ)`, which is what the source's own
@@ -146,7 +146,7 @@ makes it worth keeping.
 - **The loop closes.** An identified system converts to a `GeometricEquations` problem —
   `ODEProblem(result, timespan, timestep, ics...)` and
   `HODEProblem(result, timespan, timestep, q₀, p₀)` — so it integrates with `GeometricIntegrators`.
-  Conversely `TrainingData(solution)` and `TrajectoryData(solution)` build training data from a
+  Conversely `SINDyData(solution)` and `TrajectoryData(solution)` build training data from a
   `GeometricSolution`. These extend the ecosystem's own constructors rather than inventing names,
   as `EulerLagrange` does. The Hamiltonian side generates `v = ∂H/∂p` and `f = -∂H/∂q` separately,
   which is what a `HODEProblem` needs, alongside the combined field the regression uses.
@@ -185,7 +185,7 @@ makes it worth keeping.
   positional argument — the method required the very thing it was supposed to identify. It takes
   `TrajectoryData`, and the regression targets come from data.
 
-- **`TrainingData` is split by meaning**: `TrainingData(x, ẋ)` for matching a vector field,
+- **`SINDyData` is split by meaning**: `SINDyData(x, ẋ)` for matching a vector field,
   `TrajectoryData(x, y, Δt)` for matching a flow map. One struct previously served both with a
   field whose meaning depended on the method and which nothing validated.
 
@@ -211,6 +211,13 @@ makes it worth keeping.
   only constructor passed `method.basis` for both, so the two could never differ. The constructor
   now takes `SINDyResult(method, coefficients)`; `basis(result)` is unchanged and is the supported
   way to reach it.
+
+- **`TrainingData` is now `SINDyData`.** The type holding states and their derivatives was named
+  `TrainingData`, which is also the name of `ReducedComplexityModeling`'s type for data on a
+  solution space, so a session that used both packages resolved the name to neither. `SINDyData` is
+  the only name that changed: the constructors are `SINDyData(x, ẋ)` and `SINDyData(solution)`, and
+  nothing else about the type moved. The package has never been registered, so no released code is
+  affected.
 
 ### New Features
 
@@ -269,7 +276,7 @@ makes it worth keeping.
 
 - **A test suite.** It previously checked `A \ y` two ways and nothing else — no basis, no SINDy,
   no Hamiltonian path — which is why none of the defects above were caught. It now covers basis
-  evaluation against closed forms, `TrainingData` validation, both solvers, and Aqua. Each bug
+  evaluation against closed forms, `SINDyData` validation, both solvers, and Aqua. Each bug
   above has a regression test.
 
 - **Recovery tests against known coefficients**: the linear 2D oscillator

@@ -34,7 +34,7 @@ using SparseIdentification
 A = [-0.1 2.0; -2.0 -0.1]          # the system to rediscover
 x = randn(2, 500); ẋ = A * x
 
-result = identify(TrainingData(x, ẋ), SINDy(CompoundBasis(polyorder = 3); λ = 0.05))
+result = identify(SINDyData(x, ẋ), SINDy(CompoundBasis(polyorder = 3); λ = 0.05))
 parameters(result)[2:3, :]         # recovered: A transposed
 ```
 
