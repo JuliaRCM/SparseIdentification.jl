@@ -88,4 +88,6 @@ include("methods/hamiltonian_sindy.jl")
 
 include("geometricequations.jl")
 
+include("reducedcomplexitymodeling.jl")
+
 end

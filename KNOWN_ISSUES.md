@@ -68,18 +68,6 @@ file when its fix merges, and the CHANGELOG entry of the fix names its ID.
 - kind: defect
 - found: 2026-09-01
 
-### K8 · The Hamiltonian tests cannot see a wrong symplectic structure.
-
-- location: `test/methods/hamiltonian.jl:48–71`, `src/methods/hamiltonian.jl`
-- evidence: two mutants survive `mutate.jl <package> src/methods/hamiltonian.jl <from> <to>
-  methods/hamiltonian.jl`: `f_expr = -∇H[1:d]` → `f_expr = ∇H[1:d]`, and
-  `vcat(v_expr, f_expr)` → `vcat(f_expr, v_expr)`. The harmonic-oscillator testset compares the
-  identified vector field with the exact `(p, -q)` only, and each mutant fits that field with a
-  different Hamiltonian from the same basis — `(p² - q²)/2` and `-qp`. No test checks the
-  identified Hamiltonian itself.
-- kind: missing test
-- found: 2026-09-26
-
 ### K9 · Four of the eight docstring doctests draw random numbers without a seed.
 
 - location: `src/methods/method.jl:84`, `src/methods/sindy.jl:21`, `src/trainingdata.jl:35`,

@@ -128,6 +128,15 @@ makes it worth keeping.
   recovers the iterates through `nloops` and checks `F` along them, and the front page no longer
   presents the thesis's Toda figures as though they had been recomputed here.
 
+- **The Hamiltonian recovery test could not see a wrong symplectic structure (K8).** The
+  harmonic-oscillator testset compared the identified *vector field* with the exact `(p, -q)`, and
+  the two mutants K8 records — `f_expr = -∇H[1:d]` → `f_expr = ∇H[1:d]` and a swapped
+  `vcat(v_expr, f_expr)` in `src/methods/hamiltonian.jl` — each fit that field with a different
+  Hamiltonian drawn from the same basis, `(p² - q²)/2` and `-qp`, so neither comparison failed.
+  `test/reducedcomplexitymodeling.jl` now asserts the identified *coefficients* — `½` on `q²` and
+  on `p²`, zero on the other three terms of the order-2 polynomial basis — and both mutants change
+  them. K8 leaves `KNOWN_ISSUES.md`.
+
 ### Breaking Changes
 
 - **The package now follows the JuliaGNI API.** Identification mirrors integration:
@@ -294,6 +303,33 @@ makes it worth keeping.
   merely that it is finite and the right shape. The pairing in `TrajectoryData(solution)` is what
   decides the recovered field, and an off-by-one there — which its own comment warns about — passed
   the previous version of that test.
+
+- **`HamiltonianSINDy` takes a `ReducedComplexityModeling` `TrainingData` whose states are
+  canonical `(q, p)`.** A `TrainingData` tagged `IntrinsicSpace` with `StateData` on a
+  `CanonicalHamiltonianSystem` describes the same thing `TrajectoryData` does, so `identify`
+  builds the state pairs from it: a `d×N` matrix is one trajectory whose consecutive columns are
+  paired, RCM's `d×M×N` ensemble pairs consecutive times *within* each member, and any other
+  layout, or fewer than two times, is an `ArgumentError`.
+
+  Every other `TrainingData` — on an `ObservableSpace`, or on another data or system type — is
+  refused rather than fitted, with an `ArgumentError` that names the method, the space, the data
+  type and the system type and says to map the data to canonical `(q, p)` and tag it
+  `IntrinsicSpace`. The fit takes its states to be canonically conjugate and cannot check, so the
+  space parameter is what records which coordinates they are in, and the check is at the entry
+  point rather than several layers down.
+
+  The data's step must be the method's `integrator_timestep`, to `√eps`: the flow-map loss
+  integrates at the method's step and never reads the data's (K10), so a `TrainingData` built at
+  another step would be fitted for the interval it does not describe. Times that accumulated
+  round-off are at the step and fit.
+
+  `ReducedComplexityModeling` becomes a dependency at `"0.3"`. Version 0.2.0 could not be held
+  beside any `GeometricOptimizers` this package admits: it required `AbstractNeuralNetworks =
+  "0.6"` while `GeometricOptimizers` 0.7.0 and 0.8.0 both declare a weak dependency on `"0.8"`,
+  so no environment held both. 0.3.0 narrowed that to `"0.8"` and raised its own floor to Julia
+  1.11, which this package already requires. Nothing is re-exported and no name is added to either
+  package: `TrainingData` stays RCM's, `TrajectoryData` stays ours, and the conversion between
+  them is private.
 
 ### Changed
 

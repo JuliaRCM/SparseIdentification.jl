@@ -10,6 +10,7 @@ if "core" in GROUPS
     @safetestset "Solvers" include("solvers.jl")
     @safetestset "SINDy" include("methods/sindy.jl")
     @safetestset "Hamiltonian SINDy" include("methods/hamiltonian.jl")
+    @safetestset "Reduced Complexity Modeling" include("reducedcomplexitymodeling.jl")
     @safetestset "JuliaGNI Conformance" include("integration/conformance.jl")
 end
 if "doctests" in GROUPS
