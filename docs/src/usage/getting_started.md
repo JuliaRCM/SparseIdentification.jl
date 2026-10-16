@@ -42,7 +42,7 @@ x = randn(2, 500)
 basis = CompoundBasis(polyorder = 3, trigonometric = 0)
 
 # identify
-result = identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.05))
+result = identify(SINDyData(x, ẋ), SINDy(basis; λ = 0.05))
 nothing # hide
 ```
 
@@ -102,7 +102,7 @@ exactly, whether or not the coefficients are right.
 Two container types, distinguished by what they mean rather than by shape:
 
 ```@docs; canonical=false
-SparseIdentification.TrainingData
+SparseIdentification.SINDyData
 SparseIdentification.TrajectoryData
 ```
 
@@ -130,7 +130,7 @@ x  = randn(2, 500)
 ẋ_noisy = ẋ .+ η .* randn(size(ẋ))       # noise added here, deliberately and reproducibly
 
 basis = CompoundBasis(polyorder = 3, trigonometric = 0)
-Ξ = parameters(identify(TrainingData(x, ẋ_noisy), SINDy(basis; λ = 0.05)))
+Ξ = parameters(identify(SINDyData(x, ẋ_noisy), SINDy(basis; λ = 0.05)))
 Ξ[2:3, :]
 ```
 

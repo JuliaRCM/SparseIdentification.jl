@@ -64,7 +64,7 @@ export solve, minimize
 
 include("solvers.jl")
 
-export IdentificationProblem, TrainingData, TrajectoryData
+export IdentificationProblem, SINDyData, TrajectoryData
 export statedimension
 
 include("trainingdata.jl")
@@ -87,5 +87,7 @@ include("methods/hamiltonian.jl")
 include("methods/hamiltonian_sindy.jl")
 
 include("geometricequations.jl")
+
+include("reducedcomplexitymodeling.jl")
 
 end

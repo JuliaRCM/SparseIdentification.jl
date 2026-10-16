@@ -42,7 +42,7 @@ using SparseIdentification: isexplicit, isimplicit, issymplectic, isenergypreser
 end
 
 @testset "Problems are GeometricBase problems" begin
-    data = TrainingData(randn(2, 20), randn(2, 20))
+    data = SINDyData(randn(2, 20), randn(2, 20))
     traj = TrajectoryData([randn(2) for _ in 1:8], [randn(2) for _ in 1:8], 0.01)
 
     @test data isa GeometricBase.AbstractProblem
@@ -106,12 +106,12 @@ end
         eachindex(idsol.q))
 end
 
-@testset "TrainingData from a GeometricSolution" begin
+@testset "SINDyData from a GeometricSolution" begin
     ref = odeproblem()
     sol = integrate(ref, ExplicitEuler())
 
-    data = TrainingData(sol)
-    @test data isa TrainingData
+    data = SINDyData(sol)
+    @test data isa SINDyData
     @test nsamples(data) == length(eachindex(sol.t))
     @test statedimension(data) == 2
 end

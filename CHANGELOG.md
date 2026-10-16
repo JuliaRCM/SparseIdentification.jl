@@ -44,7 +44,7 @@ makes it worth keeping.
   the previous expression across six bases, four sizes and both entry points.
 
 - **`identify` threw on training data given as vectors of states** — which is exactly the shape
-  `TrainingData(solution)` produces, so the documented `integrate → identify` round trip did not
+  `SINDyData(solution)` produces, so the documented `integrate → identify` round trip did not
   work for `SINDy` at all. The derivatives are now normalised to a matrix before the regression,
   and a test asserts both shapes give identical coefficients.
 
@@ -69,7 +69,7 @@ makes it worth keeping.
   `hcat`ed it onto a matrix, and it read its input in the opposite orientation to
   `PolynomialBasis`, so it could neither run alone nor be combined with polynomials.
 
-- **`TrainingData` had no constructor.** A third field had been added without one, so all but one
+- **`SINDyData` had no constructor.** A third field had been added without one, so all but one
   of the scripts in `scripts/` were calling a two-argument form that no longer existed. Shapes are
   now validated at construction.
 
@@ -128,6 +128,16 @@ makes it worth keeping.
   recovers the iterates through `nloops` and checks `F` along them, and the front page no longer
   presents the thesis's Toda figures as though they had been recomputed here.
 
+- **The Hamiltonian recovery test could not see a wrong symplectic structure (K8).** The
+  harmonic-oscillator testset compared the identified *vector field* with the exact `(p, -q)`, and
+  the two mutants K8 records — `f_expr = -∇H[1:d]` → `f_expr = ∇H[1:d]` and a swapped
+  `vcat(v_expr, f_expr)` in `src/methods/hamiltonian.jl` — each fit that field with a different
+  Hamiltonian drawn from the same basis, `(p² - q²)/2` and `-qp`, so neither comparison failed.
+  The harmonic-oscillator testset in `test/methods/hamiltonian.jl` now asserts the identified
+  *coefficients* — `½` on `q²` and on `p²`, zero on the other three terms of the order-2 polynomial
+  basis — and both mutants change them, so that testset alone catches both. K8 leaves
+  `KNOWN_ISSUES.md`.
+
 ### Breaking Changes
 
 - **The package now follows the JuliaGNI API.** Identification mirrors integration:
@@ -136,7 +146,7 @@ makes it worth keeping.
   result = identify(problem, method)      # was: VectorField(method, basis, data)
   ```
 
-  `TrainingData` and `TrajectoryData` are `GeometricBase.AbstractProblem`s and the methods are
+  `SINDyData` and `TrajectoryData` are `GeometricBase.AbstractProblem`s and the methods are
   `GeometricBase.AbstractMethod`s, so the ecosystem's accessors work on them — `nsamples`,
   `timestep`, `datatype`, `arrtype`, `parameters`, `functions`, `basis`, `name`, `description`,
   `reference`. The basis moved into the method, `SINDy(basis; λ)`, which is what the source's own
@@ -146,7 +156,7 @@ makes it worth keeping.
 - **The loop closes.** An identified system converts to a `GeometricEquations` problem —
   `ODEProblem(result, timespan, timestep, ics...)` and
   `HODEProblem(result, timespan, timestep, q₀, p₀)` — so it integrates with `GeometricIntegrators`.
-  Conversely `TrainingData(solution)` and `TrajectoryData(solution)` build training data from a
+  Conversely `SINDyData(solution)` and `TrajectoryData(solution)` build training data from a
   `GeometricSolution`. These extend the ecosystem's own constructors rather than inventing names,
   as `EulerLagrange` does. The Hamiltonian side generates `v = ∂H/∂p` and `f = -∂H/∂q` separately,
   which is what a `HODEProblem` needs, alongside the combined field the regression uses.
@@ -185,7 +195,7 @@ makes it worth keeping.
   positional argument — the method required the very thing it was supposed to identify. It takes
   `TrajectoryData`, and the regression targets come from data.
 
-- **`TrainingData` is split by meaning**: `TrainingData(x, ẋ)` for matching a vector field,
+- **`SINDyData` is split by meaning**: `SINDyData(x, ẋ)` for matching a vector field,
   `TrajectoryData(x, y, Δt)` for matching a flow map. One struct previously served both with a
   field whose meaning depended on the method and which nothing validated.
 
@@ -211,6 +221,13 @@ makes it worth keeping.
   only constructor passed `method.basis` for both, so the two could never differ. The constructor
   now takes `SINDyResult(method, coefficients)`; `basis(result)` is unchanged and is the supported
   way to reach it.
+
+- **`TrainingData` is now `SINDyData`.** The type holding states and their derivatives was named
+  `TrainingData`, which is also the name of `ReducedComplexityModeling`'s type for data on a
+  solution space, so a session that used both packages resolved the name to neither. `SINDyData` is
+  the only name that changed: the constructors are `SINDyData(x, ẋ)` and `SINDyData(solution)`, and
+  nothing else about the type moved. The package has never been registered, so no released code is
+  affected.
 
 ### New Features
 
@@ -269,7 +286,7 @@ makes it worth keeping.
 
 - **A test suite.** It previously checked `A \ y` two ways and nothing else — no basis, no SINDy,
   no Hamiltonian path — which is why none of the defects above were caught. It now covers basis
-  evaluation against closed forms, `TrainingData` validation, both solvers, and Aqua. Each bug
+  evaluation against closed forms, `SINDyData` validation, both solvers, and Aqua. Each bug
   above has a regression test.
 
 - **Recovery tests against known coefficients**: the linear 2D oscillator
@@ -287,6 +304,40 @@ makes it worth keeping.
   merely that it is finite and the right shape. The pairing in `TrajectoryData(solution)` is what
   decides the recovered field, and an off-by-one there — which its own comment warns about — passed
   the previous version of that test.
+
+- **`HamiltonianSINDy` takes a `ReducedComplexityModeling` `TrainingData` whose states are
+  canonical `(q, p)`.** A `TrainingData` tagged `IntrinsicSpace` with `StateData` on a
+  `CanonicalHamiltonianSystem` describes the same thing `TrajectoryData` does, so `identify`
+  builds the state pairs from it: a `d×N` matrix is one trajectory whose consecutive columns are
+  paired, RCM's `d×M×N` ensemble pairs consecutive times *within* each member, and any other
+  layout, fewer than two times, or an ensemble with no member, is an `ArgumentError`.
+
+  For `HamiltonianSINDy`, every other `TrainingData` — on an `ObservableSpace`, or on another data
+  or system type — is refused rather than fitted, with an `ArgumentError` that names the method, the
+  space, the data type and the system type and says to map the data to canonical `(q, p)` and tag
+  it `IntrinsicSpace`. `SINDy`, which fits a vector field, refuses any `TrainingData` with the
+  package's generic `ArgumentError`, which names both types and points to the documentation. The
+  fit takes its states to be canonically conjugate and cannot check, so the space parameter is what
+  records which coordinates they are in, and the check is at the entry point rather than several
+  layers down.
+
+  The data's step must be the method's `integrator_timestep`, to `√eps` of its own type. The
+  flow-map loss integrates at the method's step and never reads the data's, so a fit at another
+  step would describe the wrong interval. `identify` makes this check for every `TrajectoryData`,
+  and a `TrainingData` reaches it through its conversion; a step that differs is an `ArgumentError`
+  that names both steps. **This is a behaviour change for existing `TrajectoryData` callers**: one
+  at another step was fitted silently before and is refused now. It fixes K10, which leaves
+  `KNOWN_ISSUES.md`: the `Δt` of a `TrajectoryData` was not the step the fit integrates with. Times
+  that accumulated round-off are at the step and fit, and a `TrainingData` whose times are not
+  evenly spaced is refused before the fit.
+
+  `ReducedComplexityModeling` becomes a dependency at `"0.3"`. Version 0.2.0 could not be held
+  beside any `GeometricOptimizers` this package admits: it required `AbstractNeuralNetworks =
+  "0.6"` while `GeometricOptimizers` 0.7.0 and 0.8.0 both declare a weak dependency on `"0.8"`,
+  so no environment held both. 0.3.0 narrowed that to `"0.8"` and raised its own floor to Julia
+  1.11, which this package already requires. Nothing is re-exported and no name is added to either
+  package: `TrainingData` stays RCM's, `TrajectoryData` stays ours, and the conversion between
+  them is private.
 
 ### Changed
 
@@ -320,3 +371,19 @@ makes it worth keeping.
   `test/Project.toml` also lists GeometricBase, GeometricEquations and Symbolics, which the tests
   load directly, with the root's bounds, and Documenter, a new test dependency. No test changed:
   the same 217 assertions pass, plus the doctest run.
+
+- **Four floors in `[compat]` are raised**: `GeometricBase` from `"0.14"` to `"0.14.9"`,
+  `RuntimeGeneratedFunctions` from `"0.5"` to `"0.5.12"`, `SimpleSolvers` from `"0.13, 0.14"` to
+  `"0.13.2, 0.14"`, and `GeometricSolutions` from `"0.6"` to `"0.6.5"`. The Downgrade CI job resolves
+  every dependency to its lowest bound, and under the old floors it could not install the first
+  three: it resolved them to 0.14.9, 0.5.12 and 0.13.2.
+  `ReducedComplexityModeling` 0.3.0 alone needs `GeometricBase` 0.14.6 or later. An environment on
+  `GeometricBase` 0.14.0–0.14.8, `RuntimeGeneratedFunctions` 0.5.0–0.5.11 or `SimpleSolvers`
+  0.13.0–0.13.1 cannot resolve this version until it moves those packages up.
+
+  The fourth floor is needed by the test environment, not by the package's code. The test-only
+  `GeometricIntegrators` 0.18, beside `SimpleSolvers` 0.13.2, can only be 0.18.4 or 0.18.5, and both
+  need `GeometricSolutions` 0.6.5 or later. At the old floor of 0.6.0, `Pkg.test` cannot resolve the
+  test environment, so an environment on `GeometricSolutions` 0.6.0–0.6.4 cannot resolve it either.
+  The package's own code does not need 0.6.5; the floor is raised so that the tests can run at the
+  package's floors.

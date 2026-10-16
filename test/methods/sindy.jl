@@ -26,7 +26,7 @@ end
     ẋ = A * x
 
     basis = CompoundBasis(polyorder = 3, trigonometric = 0)
-    result = identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.05))
+    result = identify(SINDyData(x, ẋ), SINDy(basis; λ = 0.05))
     Ξ = parameters(result)
 
     # Rows 2 and 3 are the linear terms; `Ξ` maps library terms to state components, so the
@@ -48,7 +48,7 @@ end
     ẋ = reduce(hcat, [lorenz_rhs(x[:, j], σ, β, ρ) for j in axes(x, 2)])
 
     basis = CompoundBasis(polyorder = 2, trigonometric = 0)
-    Ξ = parameters(identify(TrainingData(x, ẋ), SINDy(basis; λ = 0.1)))
+    Ξ = parameters(identify(SINDyData(x, ẋ), SINDy(basis; λ = 0.1)))
 
     # Library order for 3 dof: [1, x, y, z, x², xy, xz, y², yz, z²]
     truth = zeros(10, 3)
@@ -70,7 +70,7 @@ end
     A = [-0.1 2.0
          -2.0 -0.1]
     x = randn(2, 300)
-    data = TrainingData(x, A * x)
+    data = SINDyData(x, A * x)
     basis = CompoundBasis(polyorder = 3, trigonometric = 0)
 
     few = parameters(identify(data, SINDy(basis; λ = 0.05, nloops = 10)))
@@ -88,7 +88,7 @@ end
          -2.0 -0.1]
     x = randn(2, 300)
     ẋ = A * x
-    data = TrainingData(x, ẋ)
+    data = SINDyData(x, ẋ)
     basis = CompoundBasis(polyorder = 3, trigonometric = 0)
     λ = 0.05
 
@@ -112,14 +112,14 @@ end
     A = [-0.1 2.0
          -2.0 -0.1]
     x = randn(2, 200)
-    data = TrainingData(x, A * x)
+    data = SINDyData(x, A * x)
     method = SINDy(CompoundBasis(polyorder = 3, trigonometric = 0); λ = 0.05)
 
     @test parameters(identify(data, method)) == parameters(identify(data, method))
 end
 
 @testset "Training data given as vectors of states" begin
-    # `TrainingData` accepts both shapes, and `TrainingData(solution)` produces the vector one, so
+    # `SINDyData` accepts both shapes, and `SINDyData(solution)` produces the vector one, so
     # `identify` must give the same answer for both.
     A = [-0.1 2.0
          -2.0 -0.1]
@@ -127,9 +127,9 @@ end
     basis = CompoundBasis(polyorder = 3, trigonometric = 0)
     method = SINDy(basis; λ = 0.05)
 
-    from_matrix = parameters(identify(TrainingData(x, A * x), method))
+    from_matrix = parameters(identify(SINDyData(x, A * x), method))
     from_vectors = parameters(identify(
-        TrainingData([x[:, j] for j in axes(x, 2)], [(A * x)[:, j] for j in axes(x, 2)]), method))
+        SINDyData([x[:, j] for j in axes(x, 2)], [(A * x)[:, j] for j in axes(x, 2)]), method))
 
     @test from_vectors == from_matrix
 end
@@ -138,7 +138,7 @@ end
     A = [-0.1 2.0
          -2.0 -0.1]
     x = randn(2, 300)
-    result = identify(TrainingData(x, A * x),
+    result = identify(SINDyData(x, A * x),
         SINDy(CompoundBasis(polyorder = 3, trigonometric = 0); λ = 0.05))
 
     vf = SINDyVectorField(result)

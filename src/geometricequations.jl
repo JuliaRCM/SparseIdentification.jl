@@ -20,7 +20,7 @@ The identified system as a `GeometricEquations.ODEProblem`, ready for `integrate
 # Examples
 
 ```julia
-result = identify(TrainingData(x, ẋ), SINDy(CompoundBasis(polyorder = 3)))
+result = identify(SINDyData(x, ẋ), SINDy(CompoundBasis(polyorder = 3)))
 prob   = ODEProblem(result, (0.0, 10.0), 0.01, x₀)
 
 using GeometricIntegrators
@@ -45,7 +45,8 @@ can be checked directly with `GeometricSolutions.compute_invariant_error`.
 # Examples
 
 ```julia
-result = identify(TrajectoryData(x, y, Δt), HamiltonianSINDy(λ = 0.05, polyorder = 2))
+result = identify(TrajectoryData(x, y, Δt),
+    HamiltonianSINDy(λ = 0.05, integrator_timestep = Δt, polyorder = 2))
 prob   = HODEProblem(result, (0.0, 10.0), 0.01, q₀, p₀)
 
 using GeometricIntegrators
@@ -60,14 +61,14 @@ function GeometricEquations.HODEProblem(result::HamiltonianSINDyResult, timespan
 end
 
 """
-    TrainingData(solution::GeometricSolution)
+    SINDyData(solution::GeometricSolution)
 
 Training data from an integrated solution, pairing each stored state with the vector field
 evaluated there.
 
 This closes the loop: integrate a known problem, identify it from the solution, and compare.
 """
-function TrainingData(solution::GeometricSolutions.GeometricSolution)
+function SINDyData(solution::GeometricSolutions.GeometricSolution)
     prob = solution.problem
     funs = GeometricEquations.functions(prob)
     params = GeometricEquations.parameters(prob)
@@ -93,7 +94,7 @@ function TrainingData(solution::GeometricSolutions.GeometricSolution)
             vcat(v, f)
         end
 
-        return TrainingData(zs, żs)
+        return SINDyData(zs, żs)
     end
 
     qs = [collect(solution.q[n]) for n in idx]
@@ -103,7 +104,7 @@ function TrainingData(solution::GeometricSolutions.GeometricSolution)
         out
     end
 
-    TrainingData(qs, ẋ)
+    SINDyData(qs, ẋ)
 end
 
 """

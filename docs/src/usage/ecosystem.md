@@ -18,7 +18,7 @@ this package has
 result = identify(problem, method)
 ```
 
-`TrainingData` and `TrajectoryData` are `GeometricBase.AbstractProblem`s, and the methods are
+`SINDyData` and `TrajectoryData` are `GeometricBase.AbstractProblem`s, and the methods are
 `GeometricBase.AbstractMethod`s, so the ecosystem's accessors work on them: `nsamples`,
 `statedimension`, `timestep`, `datatype`, `arrtype`, `parameters`, `functions`.
 
@@ -66,9 +66,17 @@ behaviour of the integrated solution can be checked with `GeometricSolutions`' o
 rather than by hand.
 
 ```@docs; canonical=false
-SparseIdentification.TrainingData
+SparseIdentification.SINDyData
 SparseIdentification.TrajectoryData
 ```
+
+## Data from `ReducedComplexityModeling`
+
+`identify` also accepts a `ReducedComplexityModeling` `TrainingData` whose states are canonical
+`(q, p)` tagged `IntrinsicSpace`; its docstring above gives the layouts and the step check. Any
+other `TrainingData`, such as data on an `ObservableSpace`, is refused: this package never guesses
+the map to canonical coordinates, which belongs to whatever produced the data (see
+[When It Fails](@ref)).
 
 ## Method traits
 
@@ -105,6 +113,6 @@ returns `false` for these methods — which is correct, since it is a conformanc
 
 `GeometricBase.GeometricData` wraps a `NamedTuple` of series tagged by system and data type. It
 is not used here: it carries no dimensions or sample count, has no outer constructor, and adding
-one from this package would be type piracy. `TrainingData` and `TrajectoryData` validate their
+one from this package would be type piracy. `SINDyData` and `TrajectoryData` validate their
 shapes at construction and answer the ecosystem's accessors, which is what the wrapper would have
 been for.

@@ -70,8 +70,9 @@ different data:
 
 | problem | method | fits |
 |:--|:--|:--|
-| [`TrainingData`](@ref) | [`SINDy`](@ref) | a vector field, against measured derivatives |
+| [`SINDyData`](@ref) | [`SINDy`](@ref) | a vector field, against measured derivatives |
 | [`TrajectoryData`](@ref) | [`HamiltonianSINDy`](@ref) | a Hamiltonian, against the flow map |
+| `ReducedComplexityModeling.TrainingData` | [`HamiltonianSINDy`](@ref) | the same fit, on `(q, p)` states tagged `IntrinsicSpace` |
 
 Applying a method to a problem it does not accept raises an `ArgumentError` naming both, rather
 than a `MethodError` from several layers down.
@@ -83,7 +84,7 @@ julia> A = [-0.1 2.0; -2.0 -0.1];
 
 julia> x = randn(2, 400);
 
-julia> result = identify(TrainingData(x, A * x), SINDy(CompoundBasis(polyorder = 3); λ = 0.05));
+julia> result = identify(SINDyData(x, A * x), SINDy(CompoundBasis(polyorder = 3); λ = 0.05));
 
 julia> nterms(result)
 4
@@ -93,7 +94,7 @@ function identify end
 
 # Unimplemented (problem, method) combinations report what is missing rather than surfacing a
 # `MethodError` from several layers down.
-function identify(problem::IdentificationProblem, method::SparsificationMethod; kwargs...)
+function identify(problem, method::SparsificationMethod; kwargs...)
     throw(ArgumentError("$(typeof(method).name.name) cannot be applied to " *
                         "$(typeof(problem).name.name). See the documentation for which " *
                         "formulation each method needs."))
