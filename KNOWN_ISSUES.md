@@ -99,3 +99,42 @@ file when its fix merges, and the CHANGELOG entry of the fix names its ID.
   is.
 - kind: defect
 - found: 2026-10-11
+
+### K11 · `_check_timestep`'s tolerance is not inferable.
+
+- location: `src/reducedcomplexitymodeling.jl:136`
+- evidence: `rtol = √eps(float(mapreduce(typeof, promote_type, steps)))` computes a type from
+  runtime values, so `rtol` is `Any` and the closure it feeds is not inferable wherever `steps` has
+  an abstract element type. On an eleven-point time vector (ten steps), measured after a warm call
+  through the one-argument barrier `g(A) = (SparseIdentification._check_timestep(A, M); nothing)`,
+  `@allocated g(t)` prints `144 B` on `Vector{Float64}`, `96 B` on `Vector{Float32}` and `800 B` on
+  `Vector{AbstractFloat}`, `Vector{Any}` and `Vector{Real}`, while on the same five
+  `Base.return_types(SparseIdentification._check_timestep, (typeof(t), typeof(M)))` prints
+  `Any[Nothing]` — the local and its closure are not inferable, the return is. This does not bind
+  §L, which binds a method a time step, a solver iteration or a right-hand-side evaluation calls;
+  `_check_timestep` runs once, on about ten steps.
+- kind: defect
+- found: 2026-10-16
+
+### K12 · `_check_timestep` materialises the step vector it only traverses.
+
+- location: `src/reducedcomplexitymodeling.jl:135`
+- evidence: `steps = diff(time)` builds all `N - 1` differences eagerly although they are traversed
+  only for a reduction and a comparison — `mapreduce(typeof, promote_type, steps)`, `all(…, steps)`
+  and, on the failing path, the `minimum` and `maximum` of the message. Nothing needs the vector;
+  an iterator over the differences would serve both.
+- kind: defect
+- found: 2026-10-16
+
+### K13 · The comment over `_state_pairs` describes the flattening wrongly.
+
+- location: `src/reducedcomplexitymodeling.jl:83`
+- evidence: the comment at `:83-86` says that flattening RCM's `d×M×N` ensemble column-major "would
+  pair every member's last state with the next member's first — `M - 1` pairs whose two states are
+  not a step of anything apart". A probe on a `2×2×3` array, `A = reshape(collect(1:12), 2, 2, 3)`,
+  prints the flattened states `(1, 2), (3, 4), (5, 6), (7, 8), (9, 10), (11, 12)` while the member
+  trajectories are `(1, 2), (5, 6), (9, 10)` and `(3, 4), (7, 8), (11, 12)`: flattening the two
+  axes first interleaves the members at each time, so the pairs it adds are not the `M - 1`
+  end-to-start ones the comment names. The code at `:88` is right; the comment is not.
+- kind: docs
+- found: 2026-10-16
