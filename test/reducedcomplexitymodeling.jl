@@ -229,9 +229,9 @@ end
         @test identify(stored, method) isa HamiltonianSINDyResult
     end
 
-    # The tolerance comes from the values' own floating type, not from `Float64`'s: each step of a
-    # `Float32` time vector sits a relative ~2e-8 from `Δt`, which `√eps(Float32)` takes and
-    # `√eps(Float64)` would refuse, so the fit is accepted here and only here.
+    # The tolerance comes from the values' own floating type, not from `Float64`'s: a `Float32`
+    # time vector's steps sit a relative 2.2e-8 to 5.4e-7 from `Δt`, which `√eps(Float32)` takes
+    # and `√eps(Float64)` would refuse, so the fit is accepted here and only here.
     @test refusal(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             Float32.(time), reduce(hcat, zs)),
