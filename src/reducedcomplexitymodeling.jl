@@ -29,7 +29,7 @@ result = identify(data, method)
 function identify(
         problem::RCM.TrainingData{<:IntrinsicSpace, StateData, CanonicalHamiltonianSystem},
         method::HamiltonianSINDy; kwargs...)
-    identify(_trajectory_data(problem, method), method; kwargs...)
+    identify(_trajectory_data(problem), method; kwargs...)
 end
 
 function identify(::RCM.TrainingData{ST, DT, SY}, ::HamiltonianSINDy;
@@ -59,19 +59,20 @@ end
 
 # The `TrajectoryData` the flow-map fit is applied to. Private, so that the two packages stay free
 # to change their types independently.
-function _trajectory_data(problem::RCM.TrainingData, method::HamiltonianSINDy)
+function _trajectory_data(problem::RCM.TrainingData)
     x, y = _state_pairs(problem.data)
     isempty(x) && throw(ArgumentError(
         "the states of shape $(size(problem.data)) form no state pair: a fit needs " *
         "at least two times and at least one member"))
 
-    # Every interval is compared, relative to `√eps` of the step's own floating type: a time
-    # vector stored as `Any[...]` has an element type with no `eps`.
-    Δt = method.integrator_timestep
+    # Every interval is compared with the first, relative to `√eps` of its own floating type: a
+    # time vector stored as `Any[...]` has an element type with no `eps`. `identify` compares the
+    # step with the method's.
     steps = diff(problem.time)
+    Δt = first(steps)
     all(s -> isapprox(s, Δt; rtol = √eps(float(typeof(s)))), steps) || throw(ArgumentError(
-        "`diff(time)` runs from $(minimum(steps)) to $(maximum(steps)), but HamiltonianSINDy " *
-        "integrates at `integrator_timestep = $Δt` and never reads the step of the data"))
+        "the times of a TrainingData must be evenly spaced, but `diff(time)` runs from " *
+        "$(minimum(steps)) to $(maximum(steps))"))
 
     TrajectoryData(x, y, Δt)
 end

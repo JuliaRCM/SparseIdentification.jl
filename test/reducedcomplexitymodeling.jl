@@ -158,19 +158,17 @@ end
     data = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
         time, reduce(hcat, zs))
 
-    # The data are one `Δt` apart and the method integrates at `Δt`, so the conversion reports
-    # that step: `sparsify` reads `method.integrator_timestep` and never the data's, and a fit can
-    # then fail because of the step rather than because of the coordinates.
-    converted = SparseIdentification._trajectory_data(data, method)
-    @test timestep(converted) == method.integrator_timestep
+    # The conversion carries the step of the data, and `identify` of the `TrajectoryData` compares
+    # it with the method's: `sparsify` reads `method.integrator_timestep` and never the data's.
+    converted = SparseIdentification._trajectory_data(data)
+    @test timestep(converted) == Δt
 
-    # A time vector whose own step is the method's only to `√eps` — here it differs in the ninth
-    # significant figure, well inside the tolerance, so the fit is accepted — still carries the
-    # method's step into the conversion, and not the first step of the data.
+    # A time vector whose step is the method's only to `√eps` — here it differs in the ninth
+    # significant figure, well inside the tolerance — is converted at its own step and accepted.
     near = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
         (1 + 1e-9) .* time, reduce(hcat, zs))
-    @test timestep(SparseIdentification._trajectory_data(near, method)) ==
-          method.integrator_timestep
+    @test timestep(SparseIdentification._trajectory_data(near)) ≈ (1 + 1e-9) * Δt
+    @test identify(near, method) isa HamiltonianSINDyResult
 
     # Data at another step are refused rather than fitted for the wrong interval...
     other = HamiltonianSINDy(λ = 0.3, integrator_timestep = 2Δt, polyorder = 2)

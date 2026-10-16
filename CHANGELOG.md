@@ -133,9 +133,10 @@ makes it worth keeping.
   the two mutants K8 records — `f_expr = -∇H[1:d]` → `f_expr = ∇H[1:d]` and a swapped
   `vcat(v_expr, f_expr)` in `src/methods/hamiltonian.jl` — each fit that field with a different
   Hamiltonian drawn from the same basis, `(p² - q²)/2` and `-qp`, so neither comparison failed.
-  `test/reducedcomplexitymodeling.jl` now asserts the identified *coefficients* — `½` on `q²` and
-  on `p²`, zero on the other three terms of the order-2 polynomial basis — and both mutants change
-  them. K8 leaves `KNOWN_ISSUES.md`.
+  The harmonic-oscillator testset in `test/methods/hamiltonian.jl` now asserts the identified
+  *coefficients* — `½` on `q²` and on `p²`, zero on the other three terms of the order-2 polynomial
+  basis — and both mutants change them, so that testset alone catches both. K8 leaves
+  `KNOWN_ISSUES.md`.
 
 ### Breaking Changes
 
@@ -320,10 +321,15 @@ makes it worth keeping.
   records which coordinates they are in, and the check is at the entry point rather than several
   layers down.
 
-  The data's step must be the method's `integrator_timestep`, to `√eps`: the flow-map loss
-  integrates at the method's step and never reads the data's (K10), so a `TrainingData` built at
-  another step would be fitted for the interval it does not describe. Times that accumulated
-  round-off are at the step and fit.
+  The data's step must be the method's `integrator_timestep`, to `√eps` of its own type. The
+  flow-map loss integrates at the method's step and never reads the data's, so a fit at another
+  step would describe the wrong interval. `identify` makes this check for every `TrajectoryData`,
+  and a `TrainingData` reaches it through its conversion; a step that differs is an `ArgumentError`
+  that names both steps. **This is a behaviour change for existing `TrajectoryData` callers**: one
+  at another step was fitted silently before and is refused now. It fixes K10, which leaves
+  `KNOWN_ISSUES.md`: the `Δt` of a `TrajectoryData` was not the step the fit integrates with. Times
+  that accumulated round-off are at the step and fit, and a `TrainingData` whose times are not
+  evenly spaced is refused before the fit.
 
   `ReducedComplexityModeling` becomes a dependency at `"0.3"`. Version 0.2.0 could not be held
   beside any `GeometricOptimizers` this package admits: it required `AbstractNeuralNetworks =
@@ -365,3 +371,11 @@ makes it worth keeping.
   `test/Project.toml` also lists GeometricBase, GeometricEquations and Symbolics, which the tests
   load directly, with the root's bounds, and Documenter, a new test dependency. No test changed:
   the same 217 assertions pass, plus the doctest run.
+
+- **Three floors in `[compat]` are raised**: `GeometricBase` from `"0.14"` to `"0.14.9"`,
+  `RuntimeGeneratedFunctions` from `"0.5"` to `"0.5.12"`, and `SimpleSolvers` from `"0.13, 0.14"` to
+  `"0.13.2, 0.14"`. The Downgrade CI job resolves every dependency to its lowest bound, and under
+  the old floors it could not install these three: it resolved them to 0.14.9, 0.5.12 and 0.13.2.
+  `ReducedComplexityModeling` 0.3.0 alone needs `GeometricBase` 0.14.6 or later. An environment on
+  `GeometricBase` 0.14.0–0.14.8, `RuntimeGeneratedFunctions` 0.5.0–0.5.11 or `SimpleSolvers`
+  0.13.0–0.13.1 cannot resolve this version until it moves those packages up.

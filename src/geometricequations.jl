@@ -45,7 +45,8 @@ can be checked directly with `GeometricSolutions.compute_invariant_error`.
 # Examples
 
 ```julia
-result = identify(TrajectoryData(x, y, Δt), HamiltonianSINDy(λ = 0.05, polyorder = 2))
+result = identify(TrajectoryData(x, y, Δt),
+    HamiltonianSINDy(λ = 0.05, integrator_timestep = Δt, polyorder = 2))
 prob   = HODEProblem(result, (0.0, 10.0), 0.01, q₀, p₀)
 
 using GeometricIntegrators

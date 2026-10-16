@@ -13,7 +13,8 @@ The coefficients are fitted by matching the flow map — minimising `Σⱼ ‖Φ
 `Φ_Δt` is an implicit-midpoint step. This is nonlinear in `a` and needs an optimiser.
 
 Apply it to a [`TrajectoryData`](@ref) problem with [`identify`](@ref). The states of a
-`TrajectoryData` are taken to be canonical `(q, p)`, in that order.
+`TrajectoryData` are taken to be canonical `(q, p)`, in that order, and its `Δt` must be
+`integrator_timestep` to `√eps`; any other step raises an `ArgumentError`.
 
 The basis may be given directly, which is what the systems the thesis treats require — a Toda
 lattice needs `exp` of a *difference* of positions, a point vortex `log` of one:
@@ -192,6 +193,13 @@ function identify(problem::TrajectoryData, method::HamiltonianSINDy;
     nd = statedimension(problem)
     iseven(nd) ||
         throw(ArgumentError("a Hamiltonian system needs an even state dimension, got $nd"))
+
+    # `sparsify` integrates at the method's step and never reads the data's.
+    Δt = timestep(problem)
+    isapprox(Δt, method.integrator_timestep; rtol = √eps(float(typeof(Δt)))) ||
+        throw(ArgumentError("the step of the data is $Δt, but HamiltonianSINDy integrates at " *
+                            "`integrator_timestep = $(method.integrator_timestep)` and never " *
+                            "reads the step of the data"))
 
     hfuns = hamiltonian_functions(method.basis, nd ÷ 2)
     coeffs = sparsify(method, hfuns, problem, solver; verbose)
