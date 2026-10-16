@@ -85,9 +85,11 @@ message(err) = err isa ArgumentError ? sprint(showerror, err) : ""
 # ── the checks ───────────────────────────────────────────────────────────────────────────────
 
 @testset "The name `TrainingData` is unambiguous" begin
-    # `ReducedComplexityModeling` exports `TrainingData` for data on a solution space and
-    # `SparseIdentification` used to export the same name for states with their derivatives, which
-    # made a session that used both resolve it to neither. The type is now `SINDyData`.
+    # Each package owns one name: `ReducedComplexityModeling`'s `TrainingData` carries data on a
+    # solution space, with the space it lives in as a type parameter, and `SparseIdentification`'s
+    # `SINDyData` carries states with their derivatives, for the derivative-based fit. Two modules
+    # exporting one name make every unqualified reference to it an `UndefVarError`, so the two
+    # types are named apart and each is read here by its owner.
     @test TrainingData === ReducedComplexityModeling.TrainingData
     @test SINDyData === SparseIdentification.SINDyData
     @test parentmodule(TrainingData) === ReducedComplexityModeling
@@ -126,11 +128,12 @@ end
 
     @test err isa ArgumentError
     msg = message(err)
-    @test occursin("HamiltonianSINDy", msg)              # the method
-    @test occursin("ObservableSpace", msg)               # the space
-    @test occursin("StateData", msg)                     # the data type
-    @test occursin("CanonicalHamiltonianSystem", msg)    # the system type
-    @test occursin("IntrinsicSpace", msg)                # and what to tag it as instead
+    @test occursin("HamiltonianSINDy cannot be applied", msg)   # the method
+    @test occursin("ObservableSpace", msg)                      # the space
+    @test occursin("StateData", msg)                            # the data type
+    @test occursin("CanonicalHamiltonianSystem", msg)           # the system type
+    @test occursin("map the data to canonical", msg)            # and what to do instead
+    @test occursin("tag them `IntrinsicSpace`", msg)
 end
 
 @testset "The composed fit recovers H, the plain fit does not" begin
@@ -182,16 +185,49 @@ end
     converted = SparseIdentification._trajectory_data(data, method)
     @test timestep(converted) == method.integrator_timestep
 
+    # A time vector whose own step is the method's only to `√eps` — here it differs in the ninth
+    # significant figure, well inside the tolerance, so the fit is accepted — still carries the
+    # method's step into the conversion, and not the first step of the data.
+    near = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
+        (1 + 1e-9) .* time, reduce(hcat, zs))
+    @test timestep(SparseIdentification._trajectory_data(near, method)) ==
+          method.integrator_timestep
+
     # Data at another step are refused rather than fitted for the wrong interval...
     other = HamiltonianSINDy(λ = 0.3, integrator_timestep = 2Δt, polyorder = 2)
     err = refusal(data, other)
     @test err isa ArgumentError
+
+    # ... and so is one interior irregular interval, which a check that reads only the first step —
+    # or only one step — accepts: every interval has to be at the step, because a pair one and a
+    # half steps apart describes a flow map that no Hamiltonian reproduces.
+    irregular = copy(collect(time))
+    irregular[3] += Δt / 2
+    @test first(diff(irregular)) == Δt    # the first interval is at the step, the third is not
+    @test refusal(
+        TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
+            irregular, reduce(hcat, zs)),
+        method) isa ArgumentError
+
+    # The tolerance is `√eps` of the time values and not a loose bound: a step 1e-4 relative away
+    # is refused, where a tolerance of a few percent would take it.
+    close = HamiltonianSINDy(λ = 0.3, integrator_timestep = (1 + 1e-4) * Δt, polyorder = 2)
+    @test refusal(data, close) isa ArgumentError
 
     # ... while times that accumulate round-off are at `Δt` to `√eps` and are accepted, which is
     # what the relative comparison is for.
     accumulated = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
         cumsum(fill(Δt, length(zs))), reduce(hcat, zs))
     @test identify(accumulated, method) isa HamiltonianSINDyResult
+
+    # A time vector stored in a container whose element type is abstract holds `Float64` values
+    # like any other: the tolerance comes from the values, while `AbstractFloat` and `Any` are not
+    # types with an `eps` of their own.
+    for storage in (AbstractFloat, Any)
+        stored = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
+            Vector{storage}(time), reduce(hcat, zs))
+        @test identify(stored, method) isa HamiltonianSINDyResult
+    end
 end
 
 @testset "An ensemble pairs consecutive times within each member" begin
@@ -243,6 +279,13 @@ end
         [0.0], reshape(repeat(zs[1], 2), 2, 2, 1))
     @test refusal(single, method) isa ArgumentError
     @test refusal(single_ensemble, method) isa ArgumentError
+
+    # An ensemble with no member holds no state pair at all, so there is nothing to fit: that is
+    # the same refusal and not a `BoundsError` from the regression.
+    @test refusal(
+        TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
+            time, zeros(2, 0, length(time))),
+        method) isa ArgumentError
 end
 
 @testset "Only canonical states on an `IntrinsicSpace` are accepted" begin
@@ -268,12 +311,13 @@ end
         msg = message(err)
         @test occursin(string(DT), msg)
         @test occursin(string(SY), msg)
-        @test occursin("IntrinsicSpace", msg)
+        @test occursin("map the data to canonical", msg)
+        @test occursin("tag them `IntrinsicSpace`", msg)
     end
 
     # The refusal is of the *pair*, so the other method this package has is refused on the same
-    # data by the same rule.
+    # data by the same rule, and the refusal names that method.
     err = refusal(canonical_data(zs), SINDy(CompoundBasis(polyorder = 2); λ = 0.05))
     @test err isa ArgumentError
-    @test occursin("SINDy", message(err))
+    @test occursin("SINDy cannot be applied", message(err))
 end

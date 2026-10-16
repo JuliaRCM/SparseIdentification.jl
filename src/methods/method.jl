@@ -72,6 +72,7 @@ different data:
 |:--|:--|:--|
 | [`SINDyData`](@ref) | [`SINDy`](@ref) | a vector field, against measured derivatives |
 | [`TrajectoryData`](@ref) | [`HamiltonianSINDy`](@ref) | a Hamiltonian, against the flow map |
+| `ReducedComplexityModeling.TrainingData` | [`HamiltonianSINDy`](@ref) | the same fit, on `(q, p)` states tagged `IntrinsicSpace` |
 
 Applying a method to a problem it does not accept raises an `ArgumentError` naming both, rather
 than a `MethodError` from several layers down.

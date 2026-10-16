@@ -309,7 +309,7 @@ makes it worth keeping.
   `CanonicalHamiltonianSystem` describes the same thing `TrajectoryData` does, so `identify`
   builds the state pairs from it: a `d×N` matrix is one trajectory whose consecutive columns are
   paired, RCM's `d×M×N` ensemble pairs consecutive times *within* each member, and any other
-  layout, or fewer than two times, is an `ArgumentError`.
+  layout, fewer than two times, or an ensemble with no member, is an `ArgumentError`.
 
   Every other `TrainingData` — on an `ObservableSpace`, or on another data or system type — is
   refused rather than fitted, with an `ArgumentError` that names the method, the space, the data

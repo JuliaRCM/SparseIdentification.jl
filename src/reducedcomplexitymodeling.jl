@@ -1,25 +1,3 @@
-# ─────────────────────────────────────────────────────────────────────────────────────────────
-# Bridge into `ReducedComplexityModeling`.
-#
-# In:  a `TrainingData` whose space is an `IntrinsicSpace` and whose data are canonical `(q, p)`
-#      states, tagged `StateData` on a `CanonicalHamiltonianSystem`, becomes the `TrajectoryData`
-#      the Hamiltonian flow-map fit takes. That is the same entry point the docstring of
-#      `HamiltonianSINDy` describes, reached from the data type the rest of the ecosystem uses.
-# Out: nothing. This package adds no constructor to `TrainingData` and no accessor for it, so a
-#      caller converts nothing by hand and there is no second public name for RCM's type.
-#
-# The space, the data type and the system type of a `TrainingData` are type parameters, so which
-# data this package accepts is decided by dispatch and not by a check at run time: the accepted
-# combination is a method, every other one reaches the refusal method below, and a combination
-# added later cannot be fitted in silence because no method accepts it.
-#
-# The space is the load-bearing one. `ObservableSpace` marks what a measurement or a simulation
-# produced, `IntrinsicSpace` the coordinates in which the structure of the system is manifest. The
-# fit assumes its states are canonically conjugate and has no way to tell, so data that are not
-# canonical are refused where they enter, and the map to canonical coordinates stays with whoever
-# produced it.
-# ─────────────────────────────────────────────────────────────────────────────────────────────
-
 import ReducedComplexityModeling as RCM
 using ReducedComplexityModeling: IntrinsicSpace
 
@@ -41,7 +19,8 @@ The data are the states of one or more trajectories, with time along the last di
 `data[:, n]` is paired with `data[:, n+1]`; a `d×M×N` array holds `M` trajectories, `data[:, i, n]`
 being member `i` at time `n`, and consecutive times are paired *within* a member — never one
 member's last state with the next member's first, which is not a flow-map pair at all. Any other
-number of dimensions, and fewer than two times, raise an `ArgumentError`.
+number of dimensions, fewer than two times, and an ensemble with no member raise an
+`ArgumentError`.
 
 The states of a pair must be one step of `method.integrator_timestep` apart, to `√eps` relative:
 the flow-map loss integrates at the method's step and never reads the step of the data, so a
@@ -132,20 +111,29 @@ function _trajectory_data(problem::RCM.TrainingData, method::HamiltonianSINDy)
         "a trajectory needs at least two times to form a state pair, this TrainingData has " *
         "$times"))
 
-    Δt = _check_timestep(problem.time, method)
-
     x, y = _state_pairs(data)
-    TrajectoryData(x, y, Δt)
+    isempty(x) && throw(ArgumentError(
+        "the states of a TrainingData for $(nameof(typeof(method))) form no state pair to fit: " *
+        "its data have shape $(size(data)), and an ensemble needs at least one member"))
+
+    _check_timestep(problem.time, method)
+
+    # The fit integrates the flow map at the method's step and never reads the data's (K10), so
+    # that is the step the pairs describe, whatever the time vector holds.
+    TrajectoryData(x, y, method.integrator_timestep)
 end
 
 # `sparsify` integrates the flow map at `method.integrator_timestep` and never reads the step of the
-# data (K10), so data at another step would be fitted for the wrong interval without a word. The two
-# steps are compared to `√eps(T)`: a time vector built by accumulation is at the step to round-off,
-# and a different step is not at it at all. The data's step is the one reported.
-function _check_timestep(time::AbstractVector{TT}, method::HamiltonianSINDy) where {TT}
+# data (K10), so data at another step would be fitted for the wrong interval without a word. Every
+# interval has to be at the step: one interval of another size describes a flow map that nothing
+# reproduces. The comparison is relative to `√eps` of the floating type of the step *values* — a
+# time vector may be stored in an `AbstractFloat[...]` or an `Any[...]`, whose declared element type
+# is abstract and has no `eps` — so a time vector built by accumulation is at the step to round-off
+# and an interval of another size is not at it at all.
+function _check_timestep(time::AbstractVector, method::HamiltonianSINDy)
     Δt = method.integrator_timestep
     steps = diff(time)
-    rtol = √eps(float(TT))
+    rtol = √eps(float(mapreduce(typeof, promote_type, steps)))
 
     all(step -> isapprox(step, Δt; rtol = rtol), steps) || throw(ArgumentError(
         "the time steps of this TrainingData are not the step $(nameof(typeof(method))) " *
@@ -153,5 +141,5 @@ function _check_timestep(time::AbstractVector{TT}, method::HamiltonianSINDy) whe
         "$(maximum(steps)), while `integrator_timestep` is $Δt. The fit reads the method's " *
         "step and not the data's, so this pair would be fitted for the wrong interval."))
 
-    return first(steps)
+    return nothing
 end
