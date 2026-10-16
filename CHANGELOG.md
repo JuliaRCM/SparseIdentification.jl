@@ -372,10 +372,18 @@ makes it worth keeping.
   load directly, with the root's bounds, and Documenter, a new test dependency. No test changed:
   the same 217 assertions pass, plus the doctest run.
 
-- **Three floors in `[compat]` are raised**: `GeometricBase` from `"0.14"` to `"0.14.9"`,
-  `RuntimeGeneratedFunctions` from `"0.5"` to `"0.5.12"`, and `SimpleSolvers` from `"0.13, 0.14"` to
-  `"0.13.2, 0.14"`. The Downgrade CI job resolves every dependency to its lowest bound, and under
-  the old floors it could not install these three: it resolved them to 0.14.9, 0.5.12 and 0.13.2.
+- **Four floors in `[compat]` are raised**: `GeometricBase` from `"0.14"` to `"0.14.9"`,
+  `RuntimeGeneratedFunctions` from `"0.5"` to `"0.5.12"`, `SimpleSolvers` from `"0.13, 0.14"` to
+  `"0.13.2, 0.14"`, and `GeometricSolutions` from `"0.6"` to `"0.6.5"`. The Downgrade CI job resolves
+  every dependency to its lowest bound, and under the old floors it could not install the first
+  three: it resolved them to 0.14.9, 0.5.12 and 0.13.2.
   `ReducedComplexityModeling` 0.3.0 alone needs `GeometricBase` 0.14.6 or later. An environment on
   `GeometricBase` 0.14.0–0.14.8, `RuntimeGeneratedFunctions` 0.5.0–0.5.11 or `SimpleSolvers`
   0.13.0–0.13.1 cannot resolve this version until it moves those packages up.
+
+  The fourth floor is needed by the test environment, not by the package's code. The test-only
+  `GeometricIntegrators` 0.18, beside `SimpleSolvers` 0.13.2, can only be 0.18.4 or 0.18.5, and both
+  need `GeometricSolutions` 0.6.5 or later. At the old floor of 0.6.0, `Pkg.test` cannot resolve the
+  test environment, so an environment on `GeometricSolutions` 0.6.0–0.6.4 cannot resolve it either.
+  The package's own code does not need 0.6.5; the floor is raised so that the tests can run at the
+  package's floors.
