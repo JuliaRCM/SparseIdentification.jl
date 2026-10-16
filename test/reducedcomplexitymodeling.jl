@@ -128,7 +128,7 @@ end
 
     @test err isa ArgumentError
     msg = message(err)
-    @test occursin("HamiltonianSINDy cannot be applied", msg)   # the method
+    @test startswith(err.msg, "HamiltonianSINDy cannot be applied")   # the method
     @test occursin("ObservableSpace", msg)                      # the space
     @test occursin("StateData", msg)                            # the data type
     @test occursin("CanonicalHamiltonianSystem", msg)           # the system type
@@ -228,6 +228,14 @@ end
             Vector{storage}(time), reduce(hcat, zs))
         @test identify(stored, method) isa HamiltonianSINDyResult
     end
+
+    # The tolerance comes from the values' own floating type, not from `Float64`'s: each step of a
+    # `Float32` time vector sits a relative ~2e-8 from `Δt`, which `√eps(Float32)` takes and
+    # `√eps(Float64)` would refuse, so the fit is accepted here and only here.
+    @test refusal(
+        TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
+            Float32.(time), reduce(hcat, zs)),
+        method) === nothing
 end
 
 @testset "An ensemble pairs consecutive times within each member" begin
@@ -259,33 +267,46 @@ end
     zs = canonical_trajectory([0.4, 0.9], 5, method.picard_iterations)
     time = (0:(length(zs) - 1)) .* Δt
 
+    # Each layout guard is read here by its own phrase, so that dropping one and letting another
+    # refusal answer in its place fails rather than passing as the same `ArgumentError`.
+
     # A vector of states is not one trajectory of a `TrainingData`: the states are along the last
     # dimension, and here that is the time axis itself, so one number per time is all there is.
-    @test refusal(
+    err = refusal(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             time, fill(1.0, length(time))),
-        method) isa ArgumentError
+        method)
+    @test err isa ArgumentError
+    @test occursin("is 2 or 3, got 1", message(err))
 
     # Four dimensions name no layout the bridge knows.
-    @test refusal(
+    err = refusal(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             time, fill(1.0, 2, 2, 2, length(time))),
-        method) isa ArgumentError
+        method)
+    @test err isa ArgumentError
+    @test occursin("is 2 or 3, got 4", message(err))
 
     # Fewer than two times cannot form a pair, in either layout.
     single = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
         [0.0], reduce(hcat, [zs[1]]))
     single_ensemble = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
         [0.0], reshape(repeat(zs[1], 2), 2, 2, 1))
-    @test refusal(single, method) isa ArgumentError
-    @test refusal(single_ensemble, method) isa ArgumentError
+    err = refusal(single, method)
+    @test err isa ArgumentError
+    @test occursin("at least two times", message(err))
+    err = refusal(single_ensemble, method)
+    @test err isa ArgumentError
+    @test occursin("at least two times", message(err))
 
     # An ensemble with no member holds no state pair at all, so there is nothing to fit: that is
     # the same refusal and not a `BoundsError` from the regression.
-    @test refusal(
+    err = refusal(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             time, zeros(2, 0, length(time))),
-        method) isa ArgumentError
+        method)
+    @test err isa ArgumentError
+    @test occursin("at least one member", message(err))
 end
 
 @testset "Only canonical states on an `IntrinsicSpace` are accepted" begin
@@ -319,5 +340,5 @@ end
     # data by the same rule, and the refusal names that method.
     err = refusal(canonical_data(zs), SINDy(CompoundBasis(polyorder = 2); λ = 0.05))
     @test err isa ArgumentError
-    @test occursin("SINDy cannot be applied", message(err))
+    @test startswith(err.msg, "SINDy cannot be applied")
 end

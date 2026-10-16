@@ -82,14 +82,20 @@ file when its fix merges, and the CHANGELOG entry of the fix names its ID.
 
 - location: `src/methods/hamiltonian_sindy.jl:154`
 - evidence: `grep -n 'integrator_timestep\|problem\.Δt' src/methods/hamiltonian_sindy.jl` prints
-  only the method's field and its one use inside the loss —
+  five lines, the field in four places and its one use inside the loss —
+  `3:    HamiltonianSINDy(; λ, polyorder, trigonometric, integrator_timestep, nloops, picard_iterations)`,
+  `37:    integrator_timestep::T`,
+  `44:            integrator_timestep::T = DEFAULT_INTEGRATOR_TIMESTEP,`,
+  `48:        new{T, BT}(basis, λ, integrator_timestep, nloops, picard_iterations)` and
   `154:        mapreduce(z -> loss_kernel(z..., a, method.integrator_timestep), +, zip(xs, ys))` — and
   no line reading `problem.Δt`; `src/trainingdata.jl:77` declares that field, and
   `src/trainingdata.jl:130` is `GeometricBase.timestep(problem::TrajectoryData) = problem.Δt`. The
-  fit therefore runs at the method's step while `timestep` reports the field it ignores:
-  `identify(TrajectoryData(x, y, 0.02), HamiltonianSINDy(integrator_timestep = 0.01, polyorder = 2))`
-  on four states prints `HamiltonianSINDyResult   timestep(data) = 0.02   integrator_timestep =
-  0.01`. Nothing in the package compares the two. A caller who reaches the fit through an entry
-  point that checks the step is protected; nothing else is.
+  fit therefore runs at the method's step while `timestep` reports the field it ignores: on four
+  states, `timestep(TrajectoryData(x, y, 0.02))` prints `0.02` and
+  `HamiltonianSINDy(integrator_timestep = 0.01, polyorder = 2).integrator_timestep` prints `0.01`,
+  while `identify` of the one under the other prints nothing and returns a result that carries no
+  step of its own — `timestep` of it is a `MethodError`. Nothing in the package compares the two. A
+  caller who reaches the fit through an entry point that checks the step is protected; nothing else
+  is.
 - kind: defect
 - found: 2026-10-11
