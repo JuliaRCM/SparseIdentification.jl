@@ -94,7 +94,7 @@ function identify end
 
 # Unimplemented (problem, method) combinations report what is missing rather than surfacing a
 # `MethodError` from several layers down.
-function identify(problem::IdentificationProblem, method::SparsificationMethod; kwargs...)
+function identify(problem, method::SparsificationMethod; kwargs...)
     throw(ArgumentError("$(typeof(method).name.name) cannot be applied to " *
                         "$(typeof(problem).name.name). See the documentation for which " *
                         "formulation each method needs."))

@@ -311,12 +311,14 @@ makes it worth keeping.
   paired, RCM's `d×M×N` ensemble pairs consecutive times *within* each member, and any other
   layout, fewer than two times, or an ensemble with no member, is an `ArgumentError`.
 
-  Every other `TrainingData` — on an `ObservableSpace`, or on another data or system type — is
-  refused rather than fitted, with an `ArgumentError` that names the method, the space, the data
-  type and the system type and says to map the data to canonical `(q, p)` and tag it
-  `IntrinsicSpace`. The fit takes its states to be canonically conjugate and cannot check, so the
-  space parameter is what records which coordinates they are in, and the check is at the entry
-  point rather than several layers down.
+  For `HamiltonianSINDy`, every other `TrainingData` — on an `ObservableSpace`, or on another data
+  or system type — is refused rather than fitted, with an `ArgumentError` that names the method, the
+  space, the data type and the system type and says to map the data to canonical `(q, p)` and tag
+  it `IntrinsicSpace`. `SINDy`, which fits a vector field, refuses any `TrainingData` with the
+  package's generic `ArgumentError`, which names both types and points to the documentation. The
+  fit takes its states to be canonically conjugate and cannot check, so the space parameter is what
+  records which coordinates they are in, and the check is at the entry point rather than several
+  layers down.
 
   The data's step must be the method's `integrator_timestep`, to `√eps`: the flow-map loss
   integrates at the method's step and never reads the data's (K10), so a `TrainingData` built at

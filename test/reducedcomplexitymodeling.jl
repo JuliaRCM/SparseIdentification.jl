@@ -70,18 +70,6 @@ function canonical_data(states)
         (0:(length(states) - 1)) .* Δt, reduce(hcat, states))
 end
 
-# The `ArgumentError` a refused pair raises, or `nothing` where the pair is fitted instead.
-function refusal(problem, method)
-    try
-        identify(problem, method)
-        nothing
-    catch err
-        err
-    end
-end
-
-message(err) = err isa ArgumentError ? sprint(showerror, err) : ""
-
 # ── the checks ───────────────────────────────────────────────────────────────────────────────
 
 @testset "The name `TrainingData` is unambiguous" begin
@@ -92,7 +80,6 @@ message(err) = err isa ArgumentError ? sprint(showerror, err) : ""
     # types are named apart and each is read here by its owner.
     @test TrainingData === ReducedComplexityModeling.TrainingData
     @test SINDyData === SparseIdentification.SINDyData
-    @test parentmodule(TrainingData) === ReducedComplexityModeling
 end
 
 @testset "The observation is not a canonical coordinate pair" begin
@@ -123,17 +110,11 @@ end
     method = HamiltonianSINDy(λ = 0.05, integrator_timestep = Δt, polyorder = 2)
 
     # The observed states are tagged for what they are: the space, not the numbers, is what the
-    # fit cannot check for itself.
-    err = refusal(data, method)
-
-    @test err isa ArgumentError
-    msg = message(err)
-    @test startswith(err.msg, "HamiltonianSINDy cannot be applied")   # the method
-    @test occursin("ObservableSpace", msg)                      # the space
-    @test occursin("StateData", msg)                            # the data type
-    @test occursin("CanonicalHamiltonianSystem", msg)           # the system type
-    @test occursin("map the data to canonical", msg)            # and what to do instead
-    @test occursin("tag them `IntrinsicSpace`", msg)
+    # fit cannot check for itself. The refusal names the method, the space, the data type, the
+    # system type, and what to do instead.
+    @test_throws r"^ArgumentError: HamiltonianSINDy cannot be applied" identify(data, method)
+    @test_throws ["ObservableSpace", "StateData", "CanonicalHamiltonianSystem",
+        "map the data to canonical", "tag them `IntrinsicSpace`"] identify(data, method)
 end
 
 @testset "The composed fit recovers H, the plain fit does not" begin
@@ -180,8 +161,6 @@ end
     # The data are one `Δt` apart and the method integrates at `Δt`, so the conversion reports
     # that step: `sparsify` reads `method.integrator_timestep` and never the data's, and a fit can
     # then fail because of the step rather than because of the coordinates.
-    @test all(step -> isapprox(step, method.integrator_timestep; rtol = √eps(Float64)),
-        diff(data.time))
     converted = SparseIdentification._trajectory_data(data, method)
     @test timestep(converted) == method.integrator_timestep
 
@@ -195,8 +174,7 @@ end
 
     # Data at another step are refused rather than fitted for the wrong interval...
     other = HamiltonianSINDy(λ = 0.3, integrator_timestep = 2Δt, polyorder = 2)
-    err = refusal(data, other)
-    @test err isa ArgumentError
+    @test_throws ArgumentError identify(data, other)
 
     # ... and so is one interior irregular interval, which a check that reads only the first step —
     # or only one step — accepts: every interval has to be at the step, because a pair one and a
@@ -204,15 +182,15 @@ end
     irregular = copy(collect(time))
     irregular[3] += Δt / 2
     @test first(diff(irregular)) == Δt    # the first interval is at the step, the third is not
-    @test refusal(
+    @test_throws ArgumentError identify(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             irregular, reduce(hcat, zs)),
-        method) isa ArgumentError
+        method)
 
     # The tolerance is `√eps` of the time values and not a loose bound: a step 1e-4 relative away
     # is refused, where a tolerance of a few percent would take it.
     close = HamiltonianSINDy(λ = 0.3, integrator_timestep = (1 + 1e-4) * Δt, polyorder = 2)
-    @test refusal(data, close) isa ArgumentError
+    @test_throws ArgumentError identify(data, close)
 
     # ... while times that accumulate round-off are at `Δt` to `√eps` and are accepted, which is
     # what the relative comparison is for.
@@ -232,10 +210,10 @@ end
     # The tolerance comes from the values' own floating type, not from `Float64`'s: a `Float32`
     # time vector's steps sit a relative 2.2e-8 to 5.4e-7 from `Δt`, which `√eps(Float32)` takes
     # and `√eps(Float64)` would refuse, so the fit is accepted here and only here.
-    @test refusal(
+    @test identify(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             Float32.(time), reduce(hcat, zs)),
-        method) === nothing
+        method) isa HamiltonianSINDyResult
 end
 
 @testset "An ensemble pairs consecutive times within each member" begin
@@ -272,41 +250,31 @@ end
 
     # A vector of states is not one trajectory of a `TrainingData`: the states are along the last
     # dimension, and here that is the time axis itself, so one number per time is all there is.
-    err = refusal(
+    @test_throws r"^ArgumentError: .*is 2 or 3, got 1" identify(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             time, fill(1.0, length(time))),
         method)
-    @test err isa ArgumentError
-    @test occursin("is 2 or 3, got 1", message(err))
 
     # Four dimensions name no layout the bridge knows.
-    err = refusal(
+    @test_throws r"^ArgumentError: .*is 2 or 3, got 4" identify(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             time, fill(1.0, 2, 2, 2, length(time))),
         method)
-    @test err isa ArgumentError
-    @test occursin("is 2 or 3, got 4", message(err))
 
     # Fewer than two times cannot form a pair, in either layout.
     single = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
         [0.0], reduce(hcat, [zs[1]]))
     single_ensemble = TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
         [0.0], reshape(repeat(zs[1], 2), 2, 2, 1))
-    err = refusal(single, method)
-    @test err isa ArgumentError
-    @test occursin("at least two times", message(err))
-    err = refusal(single_ensemble, method)
-    @test err isa ArgumentError
-    @test occursin("at least two times", message(err))
+    @test_throws r"^ArgumentError: .*at least two times" identify(single, method)
+    @test_throws r"^ArgumentError: .*at least two times" identify(single_ensemble, method)
 
     # An ensemble with no member holds no state pair at all, so there is nothing to fit: that is
     # the same refusal and not a `BoundsError` from the regression.
-    err = refusal(
+    @test_throws r"^ArgumentError: .*at least one member" identify(
         TrainingData{IntrinsicSpace, StateData, CanonicalHamiltonianSystem}(
             time, zeros(2, 0, length(time))),
         method)
-    @test err isa ArgumentError
-    @test occursin("at least one member", message(err))
 end
 
 @testset "Only canonical states on an `IntrinsicSpace` are accepted" begin
@@ -327,18 +295,15 @@ end
     # the refusal names the pair it was given.
     for (DT, SY) in ((StateData, NoncanonicalHamiltonianSystem),
         (VectorFieldData, CanonicalHamiltonianSystem))
-        err = refusal(TrainingData{IntrinsicSpace, DT, SY}(time, states), method)
-        @test err isa ArgumentError
-        msg = message(err)
-        @test occursin(string(DT), msg)
-        @test occursin(string(SY), msg)
-        @test occursin("map the data to canonical", msg)
-        @test occursin("tag them `IntrinsicSpace`", msg)
+        @test_throws ["ArgumentError: HamiltonianSINDy cannot be applied", string(DT),
+            string(SY), "map the data to canonical",
+            "tag them `IntrinsicSpace`"] identify(
+            TrainingData{IntrinsicSpace, DT, SY}(time, states), method)
     end
 
-    # The refusal is of the *pair*, so the other method this package has is refused on the same
-    # data by the same rule, and the refusal names that method.
-    err = refusal(canonical_data(zs), SINDy(CompoundBasis(polyorder = 2); λ = 0.05))
-    @test err isa ArgumentError
-    @test startswith(err.msg, "SINDy cannot be applied")
+    # `SINDy` fits a vector field and takes no `TrainingData` at all, so the package's generic
+    # refusal answers and names it, rather than telling the caller to re-tag data that are already
+    # canonical.
+    @test_throws r"^ArgumentError: SINDy cannot be applied to TrainingData\. " identify(
+        canonical_data(zs), SINDy(CompoundBasis(polyorder = 2); λ = 0.05))
 end

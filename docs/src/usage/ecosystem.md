@@ -72,19 +72,11 @@ SparseIdentification.TrajectoryData
 
 ## Data from `ReducedComplexityModeling`
 
-`ReducedComplexityModeling` tags its training data with the space the data live in, and a
-`TrainingData{<:IntrinsicSpace, StateData, CanonicalHamiltonianSystem}` is accepted directly: the
-states are the canonical `(q, p)` this package's flow-map fit assumes, so `identify` builds the
-pairs from them — a `d×N` matrix is one trajectory, a `d×M×N` array is an ensemble of them with
-consecutive times paired within each member, and time runs along the last dimension, as
-`ReducedComplexityModeling` lays it out. The states of a pair must be one step of the method's
-`integrator_timestep` apart, which the bridge checks before the fit runs.
-
-Anything else is refused rather than fitted. Data on an `ObservableSpace` — a measurement, or a
-simulation in coordinates that are not canonical — raises an `ArgumentError` naming the space and
-tells you to map the data to canonical `(q, p)` and tag it `IntrinsicSpace`. This package never
-guesses that mapping: it belongs to whatever produced it, and learning one is the autoencoder
-route this package does not implement (see [When It Fails](@ref)).
+`identify` also accepts a `ReducedComplexityModeling` `TrainingData` whose states are canonical
+`(q, p)` tagged `IntrinsicSpace`; its docstring above gives the layouts and the step check. Any
+other `TrainingData`, such as data on an `ObservableSpace`, is refused: this package never guesses
+the map to canonical coordinates, which belongs to whatever produced the data (see
+[When It Fails](@ref)).
 
 ## Method traits
 
