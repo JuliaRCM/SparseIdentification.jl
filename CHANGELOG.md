@@ -27,6 +27,10 @@ makes it worth keeping.
   deepest common directory is `src/` itself, so it goes under `test/integration/`. Its label,
   group and content are unchanged.
 
+- **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A breaking change under
+  this package's pre-1.0 convention: a caller on Julia 1.11 can no longer install this version.
+  Nothing in the package's code or tests changes; no workaround existed for the older floor.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the
