@@ -17,7 +17,7 @@ Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 [compat]
 GeometricBase = "0.14.9, 0.15"
 GeometricEquations = "0.21"
-GeometricOptimizers = "0.7, 0.8"
+GeometricOptimizers = "0.7, 0.8, 0.9"
 GeometricSolutions = "0.6.5"
 LinearAlgebra = "1"
 ReducedComplexityModeling = "0.3"
