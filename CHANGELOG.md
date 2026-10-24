@@ -27,6 +27,12 @@ makes it worth keeping.
   deepest common directory is `src/` itself, so it goes under `test/integration/`. Its label,
   group and content are unchanged.
 
+- **Minimum Julia is now 1.12** (`[compat] julia = "1.12"`). A breaking change under this
+  package's pre-1.0 convention: a caller on Julia 1.11 or earlier can no longer install this
+  version. `GeometricOptimizers` 0.7.0 requires Julia 1.11, and `ReducedComplexityModeling` 0.3.0
+  raises its own floor to 1.11. Nothing in the package's code or tests changes for 1.12; no
+  workaround existed for an older floor.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the
@@ -174,9 +180,6 @@ makes it worth keeping.
 
 - **`src/lorenz.jl` is gone.** `GeometricProblems.LorenzAttractor` covers it; a package in this
   ecosystem should not carry its own copy of a standard test problem.
-
-- **Minimum Julia is now 1.11**, raised from 1.10 because `GeometricOptimizers` 0.7.0 requires it.
-  This is the second floor in use across the tree, for dependencies that need it.
 
 - **`DifferentialEquations`, `ODE`, `Optim`, `Plots`, `Distributions`, `Zygote`, `ThreadsX`,
   `ParallelUtilities`, `Distances` and `DelimitedFiles` are no longer dependencies.** Optimisation
@@ -335,7 +338,7 @@ makes it worth keeping.
   beside any `GeometricOptimizers` this package admits: it required `AbstractNeuralNetworks =
   "0.6"` while `GeometricOptimizers` 0.7.0 and 0.8.0 both declare a weak dependency on `"0.8"`,
   so no environment held both. 0.3.0 narrowed that to `"0.8"` and raised its own floor to Julia
-  1.11, which this package already requires. Nothing is re-exported and no name is added to either
+  1.11, which this package's floor covers. Nothing is re-exported and no name is added to either
   package: `TrainingData` stays RCM's, `TrajectoryData` stays ours, and the conversion between
   them is private.
 

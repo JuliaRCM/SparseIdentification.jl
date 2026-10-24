@@ -7,7 +7,7 @@ using Pkg
 Pkg.add(url = "https://github.com/JuliaRCM/SparseIdentification.jl")
 ```
 
-The package requires Julia 1.11 or later.
+The package requires Julia 1.12 or later.
 
 ## The shape of a SINDy run
 
