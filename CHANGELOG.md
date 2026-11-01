@@ -42,9 +42,9 @@ makes it worth keeping.
   `TrainingData` and `IntrinsicSpace` from `ReducedComplexityModeling`; the tests also use
   `ObservableSpace`. Both releases keep these names.
 
-  Four floors rise with them: `GeometricBase` from `"0.14.9, 0.15"` to `"0.15"`, and
+  Four floors rise with them. `GeometricBase` rises from `"0.14.9, 0.15"` to `"0.15"`, and
   `SimpleSolvers` from `"0.13.2, 0.14"` to `"0.14.2"`. Every `GeometricOptimizers` 0.9 release
-  requires `GeometricBase` 0.15 and `SimpleSolvers` 0.14.2 or later, so the old floors can no longer
+  requires `GeometricBase` 0.15 and `SimpleSolvers` 0.14.2–0.14, so the old floors can no longer
   resolve beside it. With `GeometricBase` at 0.15, `GeometricEquations` rises from `"0.21"` to
   `"0.21.5"` and `GeometricSolutions` from `"0.6.5"` to `"0.6.6"`: `GeometricEquations`
   0.21.0–0.21.4 and `GeometricSolutions` 0.6.0–0.6.5 require `GeometricBase` 0.14.
