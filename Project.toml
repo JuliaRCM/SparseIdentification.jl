@@ -16,9 +16,9 @@ Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
 [compat]
 GeometricBase = "0.15"
-GeometricEquations = "0.21"
+GeometricEquations = "0.21.5"
 GeometricOptimizers = "0.9"
-GeometricSolutions = "0.6.5"
+GeometricSolutions = "0.6.6"
 LinearAlgebra = "1"
 ReducedComplexityModeling = "0.5"
 RuntimeGeneratedFunctions = "0.5.12"

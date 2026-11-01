@@ -42,10 +42,12 @@ makes it worth keeping.
   `TrainingData` and `IntrinsicSpace` from `ReducedComplexityModeling`; the tests also use
   `ObservableSpace`. Both releases keep these names.
 
-  Two floors rise with them: `GeometricBase` from `"0.14.9, 0.15"` to `"0.15"`, and
+  Four floors rise with them: `GeometricBase` from `"0.14.9, 0.15"` to `"0.15"`, and
   `SimpleSolvers` from `"0.13.2, 0.14"` to `"0.14.2"`. Every `GeometricOptimizers` 0.9 release
   requires `GeometricBase` 0.15 and `SimpleSolvers` 0.14.2 or later, so the old floors can no longer
-  resolve beside it.
+  resolve beside it. With `GeometricBase` at 0.15, `GeometricEquations` rises from `"0.21"` to
+  `"0.21.5"` and `GeometricSolutions` from `"0.6.5"` to `"0.6.6"`: `GeometricEquations`
+  0.21.0–0.21.4 and `GeometricSolutions` 0.6.0–0.6.5 require `GeometricBase` 0.14.
 
 ### Bug Fixes
 
@@ -398,8 +400,8 @@ makes it worth keeping.
   `ReducedComplexityModeling` 0.3.0 alone needs `GeometricBase` 0.14.6 or later. An environment on
   `GeometricBase` 0.14.0–0.14.8, `RuntimeGeneratedFunctions` 0.5.0–0.5.11 or `SimpleSolvers`
   0.13.0–0.13.1 cannot resolve this version until it moves those packages up. The entry on the
-  bounds of `GeometricOptimizers` and `ReducedComplexityModeling` raises the `GeometricBase` and
-  `SimpleSolvers` floors again, to `"0.15"` and `"0.14.2"`.
+  bounds of `GeometricOptimizers` and `ReducedComplexityModeling` raises the `GeometricBase`,
+  `SimpleSolvers` and `GeometricSolutions` floors again, to `"0.15"`, `"0.14.2"` and `"0.6.6"`.
 
   The fourth floor is needed by the test environment, not by the package's code. The test-only
   `GeometricIntegrators` 0.18, beside `SimpleSolvers` 0.13.2, can only be 0.18.4 or 0.18.5, and both
