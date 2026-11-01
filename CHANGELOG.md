@@ -29,9 +29,25 @@ makes it worth keeping.
 
 - **Minimum Julia is now 1.12** (`[compat] julia = "1.12"`). A breaking change under this
   package's pre-1.0 convention: a caller on Julia 1.11 or earlier can no longer install this
-  version. `GeometricOptimizers` 0.7.0 requires Julia 1.11, and `ReducedComplexityModeling` 0.3.0
-  raises its own floor to 1.11. Nothing in the package's code or tests changes for 1.12; no
-  workaround existed for an older floor.
+  version. `GeometricOptimizers` 0.9 requires Julia 1.12, and so does `ReducedComplexityModeling`
+  0.5. Nothing in the package's code or tests changes for 1.12; no workaround existed for an older
+  floor.
+
+- **`[compat]` now admits `GeometricOptimizers` 0.9 and `ReducedComplexityModeling` 0.5 only**, in
+  place of `"0.7, 0.8"` and `"0.3"`. A caller held on an older version of either can no longer
+  install this version. The two bounds move together: `ReducedComplexityModeling` 0.3 requires
+  `NeuralNetworkParameters` 0.3 and `GeometricOptimizers` 0.9 requires `NeuralNetworkParameters`
+  0.5, so no environment holds both. Nothing in the package's code or tests changes: the package
+  uses `Optimizer`, `OptimizerState`, `BFGS` and `Backtracking` from `GeometricOptimizers`, and
+  `TrainingData` and `IntrinsicSpace` from `ReducedComplexityModeling`; the tests also use
+  `ObservableSpace`. Both releases keep these names.
+
+  Four floors rise with them. `GeometricBase` rises from `"0.14.9, 0.15"` to `"0.15"`, and
+  `SimpleSolvers` from `"0.13.2, 0.14"` to `"0.14.2"`. Every `GeometricOptimizers` 0.9 release
+  requires `GeometricBase` 0.15 and `SimpleSolvers` 0.14.2–0.14, so the old floors can no longer
+  resolve beside it. With `GeometricBase` at 0.15, `GeometricEquations` rises from `"0.21"` to
+  `"0.21.5"` and `GeometricSolutions` from `"0.6.5"` to `"0.6.6"`: `GeometricEquations`
+  0.21.0–0.21.4 and `GeometricSolutions` 0.6.0–0.6.5 require `GeometricBase` 0.14.
 
 ### Bug Fixes
 
@@ -334,13 +350,14 @@ makes it worth keeping.
   that accumulated round-off are at the step and fit, and a `TrainingData` whose times are not
   evenly spaced is refused before the fit.
 
-  `ReducedComplexityModeling` becomes a dependency at `"0.3"`. Version 0.2.0 could not be held
-  beside any `GeometricOptimizers` this package admits: it required `AbstractNeuralNetworks =
-  "0.6"` while `GeometricOptimizers` 0.7.0 and 0.8.0 both declare a weak dependency on `"0.8"`,
-  so no environment held both. 0.3.0 narrowed that to `"0.8"` and raised its own floor to Julia
-  1.11, which this package's floor covers. Nothing is re-exported and no name is added to either
-  package: `TrainingData` stays RCM's, `TrajectoryData` stays ours, and the conversion between
-  them is private.
+  `ReducedComplexityModeling` becomes a dependency, at `"0.5"` in this release; the entry on the
+  bounds of `GeometricOptimizers` and `ReducedComplexityModeling` says why. It entered at `"0.3"`, because
+  version 0.2.0 could not be held beside any `GeometricOptimizers` this package then admitted: it
+  required `AbstractNeuralNetworks = "0.6"` while `GeometricOptimizers` 0.7.0 and 0.8.0 both
+  declare a weak dependency on `"0.8"`, so no environment held both. 0.3.0 narrowed that to `"0.8"`
+  and raised its own floor to Julia 1.11, which this package's floor covers. Nothing is re-exported
+  and no name is added to either package: `TrainingData` stays RCM's, `TrajectoryData` stays ours,
+  and the conversion between them is private.
 
 ### Changed
 
@@ -382,7 +399,9 @@ makes it worth keeping.
   three: it resolved them to 0.14.9, 0.5.12 and 0.13.2.
   `ReducedComplexityModeling` 0.3.0 alone needs `GeometricBase` 0.14.6 or later. An environment on
   `GeometricBase` 0.14.0–0.14.8, `RuntimeGeneratedFunctions` 0.5.0–0.5.11 or `SimpleSolvers`
-  0.13.0–0.13.1 cannot resolve this version until it moves those packages up.
+  0.13.0–0.13.1 cannot resolve this version until it moves those packages up. The entry on the
+  bounds of `GeometricOptimizers` and `ReducedComplexityModeling` raises the `GeometricBase`,
+  `SimpleSolvers` and `GeometricSolutions` floors again, to `"0.15"`, `"0.14.2"` and `"0.6.6"`.
 
   The fourth floor is needed by the test environment, not by the package's code. The test-only
   `GeometricIntegrators` 0.18, beside `SimpleSolvers` 0.13.2, can only be 0.18.4 or 0.18.5, and both
