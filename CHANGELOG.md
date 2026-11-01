@@ -351,7 +351,7 @@ makes it worth keeping.
   evenly spaced is refused before the fit.
 
   `ReducedComplexityModeling` becomes a dependency, at `"0.5"` in this release; the entry on the
-  bounds of `GeometricOptimizers` and `ReducedComplexityModeling` says why. It entered at `"0.3"`:
+  bounds of `GeometricOptimizers` and `ReducedComplexityModeling` says why. It entered at `"0.3"`, because
   version 0.2.0 could not be held beside any `GeometricOptimizers` this package then admitted: it
   required `AbstractNeuralNetworks = "0.6"` while `GeometricOptimizers` 0.7.0 and 0.8.0 both
   declare a weak dependency on `"0.8"`, so no environment held both. 0.3.0 narrowed that to `"0.8"`
