@@ -49,6 +49,15 @@ makes it worth keeping.
   `"0.21.5"` and `GeometricSolutions` from `"0.6.5"` to `"0.6.6"`: `GeometricEquations`
   0.21.0–0.21.4 and `GeometricSolutions` 0.6.0–0.6.5 require `GeometricBase` 0.14.
 
+- **Three test-only floors in `test/Project.toml` are raised**, so that the Downgrade CI job, which
+  resolves `Project.toml` and `test/Project.toml` together at their lower bounds, resolves and
+  passes. `GeometricIntegrators` rises from `"0.18"` to `"0.18.6"` and `GeometricProblems` from
+  `"0.8, 0.9"` to `"0.9.1"`: `GeometricIntegrators` 0.18.0–0.18.5 and `GeometricProblems`
+  0.6.19–0.9.0 require `GeometricBase` 0.14, and the package requires 0.15. `Aqua` rises from
+  `"0.8"` to `"0.8.14"`: on Julia 1.12, `Aqua.test_piracies` in 0.8.0–0.8.13 reads the field
+  `Core.TypeName.mt`, which Julia 1.12 removes, and 0.8.14 is the first release that reads
+  `Core.methodtable` instead. The package's code and its own `[compat]` do not change.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the
