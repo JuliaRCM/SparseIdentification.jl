@@ -29,22 +29,24 @@ makes it worth keeping.
 
 - **Minimum Julia is now 1.12** (`[compat] julia = "1.12"`). A breaking change under this
   package's pre-1.0 convention: a caller on Julia 1.11 or earlier can no longer install this
-  version. `GeometricOptimizers` 0.9 requires Julia 1.12, and so does `ReducedComplexityModeling`
-  0.5. Nothing in the package's code or tests changes for 1.12; no workaround existed for an older
+  version. `GeometricOptimizers` 0.10 requires Julia 1.12, and so does `ReducedComplexityModeling`
+  0.6. Nothing in the package's code or tests changes for 1.12; no workaround existed for an older
   floor.
 
-- **`[compat]` now admits `GeometricOptimizers` 0.9 and `ReducedComplexityModeling` 0.5 only**, in
+- **`[compat]` now admits `GeometricOptimizers` 0.10 and `ReducedComplexityModeling` 0.6 only**, in
   place of `"0.7, 0.8"` and `"0.3"`. A caller held on an older version of either can no longer
-  install this version. The two bounds move together: `ReducedComplexityModeling` 0.3 requires
-  `NeuralNetworkParameters` 0.3 and `GeometricOptimizers` 0.9 requires `NeuralNetworkParameters`
-  0.5, so no environment holds both. Nothing in the package's code or tests changes: the package
-  uses `Optimizer`, `OptimizerState`, `BFGS` and `Backtracking` from `GeometricOptimizers`, and
-  `TrainingData` and `IntrinsicSpace` from `ReducedComplexityModeling`; the tests also use
-  `ObservableSpace`. Both releases keep these names.
+  install this version. The two bounds move together: both releases move to `KernelAbstractions`
+  0.10, and `GeometricOptimizers` 0.9 requires `KernelAbstractions` 0.9, so no environment holds an
+  older version of one beside the newer version of the other. On `KernelAbstractions` 0.10 the
+  `CPU()` backend is PoCL, and `GeometricOptimizers` 0.10 refuses a non-`isbits` element type in its
+  kernel-backed structured-matrix operations; the package uses none of those operations. Nothing in
+  the package's code or tests changes: the package uses `Optimizer`, `OptimizerState`, `BFGS` and
+  `Backtracking` from `GeometricOptimizers`, and `TrainingData` and `IntrinsicSpace` from
+  `ReducedComplexityModeling`; the tests also use `ObservableSpace`. Both releases keep these names.
 
   Four floors rise with them. `GeometricBase` rises from `"0.14.9, 0.15"` to `"0.15"`, and
-  `SimpleSolvers` from `"0.13.2, 0.14"` to `"0.14.2"`. Every `GeometricOptimizers` 0.9 release
-  requires `GeometricBase` 0.15 and `SimpleSolvers` 0.14.2–0.14, so the old floors can no longer
+  `SimpleSolvers` from `"0.13.2, 0.14"` to `"0.14.2"`. `GeometricOptimizers` 0.10 requires
+  `GeometricBase` 0.15 and `SimpleSolvers` 0.14.2–0.14, so the old floors can no longer
   resolve beside it. With `GeometricBase` at 0.15, `GeometricEquations` rises from `"0.21"` to
   `"0.21.5"` and `GeometricSolutions` from `"0.6.5"` to `"0.6.6"`: `GeometricEquations`
   0.21.0–0.21.4 and `GeometricSolutions` 0.6.0–0.6.5 require `GeometricBase` 0.14.
