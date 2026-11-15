@@ -74,6 +74,12 @@ makes it worth keeping.
   uses the symplectic Euler methods, whose letters `GeometricIntegrators` 0.19 exchanges, or
   `LinearWave`, the one breaking change of `GeometricProblems` 0.10.
 
+- **The docs floors match the test floors**: in `docs/Project.toml`, `GeometricIntegrators` rises
+  from `"0.18, 0.19"` to `"0.18.6, 0.19"` and `GeometricProblems` from `"0.8, 0.9, 0.10"` to
+  `"0.9.1, 0.10"`. The docs environment holds the package, which requires `GeometricBase` 0.15,
+  and `GeometricIntegrators` 0.18.0–0.18.5 and `GeometricProblems` 0.6.19–0.9.0 require
+  `GeometricBase` 0.14, so the old floors could not resolve.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the
