@@ -60,6 +60,20 @@ makes it worth keeping.
   `Core.TypeName.mt`, which Julia 1.12 removes, and 0.8.14 is the first release that reads
   `Core.methodtable` instead. The package's code and its own `[compat]` do not change.
 
+- **`[compat]` admits `GeometricSolutions` 0.7**: `"0.6.6"` becomes `"0.6.6, 0.7"`. The one
+  breaking change of 0.7, a fifth type parameter `tsType` of `EnsembleSolution`, does not reach the
+  package: nothing here names `EnsembleSolution`, and the package does not re-export
+  `GeometricSolutions`. `ReducedComplexityModeling = "0.6"` already admits
+  `ReducedComplexityModeling` 0.6.1, the first release that allows `GeometricSolutions` 0.7.
+
+- **The tests and the docs accept the releases that admit `GeometricSolutions` 0.7**
+  (`GeometricIntegrators` 0.19.1 and `GeometricProblems` 0.10.1). In `test/Project.toml`,
+  `GeometricIntegrators` goes from `"0.18.6"` to `"0.18.6, 0.19"` and `GeometricProblems` from
+  `"0.9.1"` to `"0.9.1, 0.10"`; in `docs/Project.toml`, `GeometricIntegrators` goes from `"0.18"`
+  to `"0.18, 0.19"` and `GeometricProblems` from `"0.8, 0.9"` to `"0.8, 0.9, 0.10"`. Nothing here
+  uses the symplectic Euler methods, whose letters `GeometricIntegrators` 0.19 exchanges, or
+  `LinearWave`, the one breaking change of `GeometricProblems` 0.10.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the
