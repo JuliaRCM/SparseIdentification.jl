@@ -80,6 +80,13 @@ makes it worth keeping.
   and `GeometricIntegrators` 0.18.0–0.18.5 and `GeometricProblems` 0.6.19–0.9.0 require
   `GeometricBase` 0.14, so the old floors could not resolve.
 
+- **The tests check the `GeometricBase.AbstractMethod` contract.** `test/quality/interface.jl`
+  asserts that `GeometricBase.interface_violations` is empty for an instance of `SINDy` and of
+  `HamiltonianSINDy`, including `HamiltonianSINDy()`, and fails when a concrete method type of the
+  package has no instance there. `GeometricBase` rises from `"0.15"` to `"0.15.5"`, the release
+  whose `interface_violations` accepts an `order` formula as a string on the type of a method. `test/Project.toml` gains `InteractiveUtils` for
+  `subtypes`. The package's code does not change.
+
 ### Bug Fixes
 
 - **The package loads again.** The blocker was not what was recorded here previously: the
