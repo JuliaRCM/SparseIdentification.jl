@@ -84,8 +84,10 @@ makes it worth keeping.
   asserts that `GeometricBase.interface_violations` is empty for an instance of `SINDy` and of
   `HamiltonianSINDy`, including `HamiltonianSINDy()`, and fails when a concrete method type of the
   package has no instance there. `GeometricBase` rises from `"0.15"` to `"0.15.5"`, the release
-  whose `interface_violations` accepts an `order` formula as a string on the type of a method. `test/Project.toml` gains `InteractiveUtils` for
-  `subtypes`. The package's code does not change.
+  that the ecosystem's conformance tests share. `interface_violations` first appears in 0.15.4;
+  0.15.5 changes only its rule for an `order` on the type of a method, and this package leaves
+  `order` at `missing`, so the check gives the same result on both. `test/Project.toml` gains
+  `InteractiveUtils` for `subtypes`. The package's code does not change.
 
 ### Bug Fixes
 
